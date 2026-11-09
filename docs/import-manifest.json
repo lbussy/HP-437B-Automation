@@ -1,0 +1,40 @@
+{
+  "import_date": "2026-11-09",
+  "source_project": "/Users/lbussy/GitHub/Generic Radio Stuff",
+  "destination_project": "/Users/lbussy/GitHub/HP 437B Automation",
+  "method": "Local byte-for-byte copy; originals retained",
+  "files": [
+    {
+      "path": "output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf",
+      "source_path": "/Users/lbussy/GitHub/Generic Radio Stuff/output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf",
+      "bytes": 9922829,
+      "sha256": "d9ec00559e5c98cc7bc84d60e0379205fd5fc32a53d2f3dc90dd3563235d1bac"
+    },
+    {
+      "path": "output/pdf/hp-437b-8482a/HP-437B-Service-Manual-00437-90076.pdf",
+      "source_path": "/Users/lbussy/GitHub/Generic Radio Stuff/output/pdf/hp-437b-8482a/HP-437B-Service-Manual-00437-90076.pdf",
+      "bytes": 1776916,
+      "sha256": "effd9379bb874cf500d4b9ec08f4872096c4788c1c57d22a063e48fc32d3e99d"
+    },
+    {
+      "path": "output/pdf/hp-437b-8482a/HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf",
+      "source_path": "/Users/lbussy/GitHub/Generic Radio Stuff/output/pdf/hp-437b-8482a/HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf",
+      "bytes": 1850639,
+      "sha256": "2e30ab79ffaf90464e2202ef1f90770fb3a1b3ded8ad23cfa5c4ac43586b904d"
+    },
+    {
+      "path": "output/pdf/hp-437b-8482a/SHA256SUMS.txt",
+      "source_path": "/Users/lbussy/GitHub/Generic Radio Stuff/output/pdf/hp-437b-8482a/SHA256SUMS.txt",
+      "bytes": 340,
+      "sha256": "67f988b947da102d85fb5b4285ee0f301c025acbe88a1c0f3b9231a0ee2e4bd3"
+    },
+    {
+      "path": "output/pdf/hp-437b-8482a/download-manifest.json",
+      "source_path": "/Users/lbussy/GitHub/Generic Radio Stuff/output/pdf/hp-437b-8482a/download-manifest.json",
+      "bytes": 2676,
+      "sha256": "92cd3b0ba2d95ca52f35ccb5506808c1e92a5141da32222207302944889d608a"
+    }
+  ],
+  "plan_source": "/Users/lbussy/GitHub/Generic Radio Stuff/docs/topics/hp-437b-8482a.md",
+  "plan_source_sha256_before_migration": "c96fd2f7f40d2612d5afa1dc92841c6993719e59f1d76496565cbede8a91260b"
+}

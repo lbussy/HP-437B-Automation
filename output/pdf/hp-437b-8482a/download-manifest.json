@@ -1,0 +1,46 @@
+{
+  "downloaded_date": "2026-10-31",
+  "project": "Generic Radio Stuff",
+  "storage": "Local project directory; cloud ChatGPT Project Files upload not completed.",
+  "notes": [
+    "Original publisher PDFs retained without modification.",
+    "437B service manual is a scanned document; first sheet is sideways in the source.",
+    "8482A is covered by the 8480 Series combined operating and service manual. See page 25 for meter/sensor calibration guidance; calibration factor discussion on page 15; performance tests and adjustments in chapter 2.",
+    "Sensor-specific calibration factors come from the individual sensor label/certificate; this is a manual, not a calibration certificate."
+  ],
+  "files": [
+    {
+      "filename": "HP-437B-Operating-Manual-00437-90047.pdf",
+      "manual_part_number": "00437-90047",
+      "edition": "January 1997; transition notice March 2000",
+      "pages": 157,
+      "bytes": 9922829,
+      "sha256": "d9ec00559e5c98cc7bc84d60e0379205fd5fc32a53d2f3dc90dd3563235d1bac",
+      "official_source_page": "https://www.keysight.com/us/en/assets/9018-40507/user-manuals/9018-40507.pdf",
+      "download_url": "https://www.keysight.com/content/dam/keysight/en/doc/gate/user-manuals/9018-40507.pdf",
+      "verified": "PDF signature, page tree and page contents parsed; cover and sample interior page visually inspected"
+    },
+    {
+      "filename": "HP-437B-Service-Manual-00437-90076.pdf",
+      "manual_part_number": "00437-90076",
+      "edition": "Publisher catalog date: January 1998",
+      "pages": 58,
+      "bytes": 1776916,
+      "sha256": "effd9379bb874cf500d4b9ec08f4872096c4788c1c57d22a063e48fc32d3e99d",
+      "official_source_page": "https://www.keysight.com/us/en/assets/9018-05110/service-manuals/9018-05110.pdf",
+      "download_url": "https://www.keysight.com/content/dam/keysight/en/doc/gate/service-manuals/9018-05110.pdf",
+      "verified": "PDF signature, page tree and page contents parsed; cover and sample interior page visually inspected"
+    },
+    {
+      "filename": "HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf",
+      "manual_part_number": "08481-90173",
+      "edition": "Edition 9, August 29, 2025",
+      "pages": 87,
+      "bytes": 1850639,
+      "sha256": "2e30ab79ffaf90464e2202ef1f90770fb3a1b3ded8ad23cfa5c4ac43586b904d",
+      "official_source_page": "https://www.keysight.com/us/en/assets/9018-04931/service-manuals/9018-04931.pdf",
+      "download_url": "https://www.keysight.com/content/dam/keysight/en/doc/gate/service-manuals/9018-04931.pdf",
+      "verified": "PDF signature, page tree and page contents parsed; cover and sample interior page visually inspected"
+    }
+  ]
+}

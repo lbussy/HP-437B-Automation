@@ -1,0 +1,48 @@
+# macOS metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editor state
+.idea/
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+*.swp
+*.swo
+*~
+
+# Local agent and tool state; root AGENTS.md remains trackable.
+.agents/
+.claude/
+.codex/
+
+# Credentials and local environment files
+.env
+.env.*
+!.env.example
+
+# Temporary files and helper dependencies
+tmp/
+temp/
+*.log
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+node_modules/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+
+# Local measurements and generated artifacts
+data/
+output/logs/
+output/reports/
+build/
+dist/
+*.egg-info/
+.coverage
+htmlcov/

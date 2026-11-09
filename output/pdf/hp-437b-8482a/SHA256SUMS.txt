@@ -1,0 +1,3 @@
+d9ec00559e5c98cc7bc84d60e0379205fd5fc32a53d2f3dc90dd3563235d1bac  HP-437B-Operating-Manual-00437-90047.pdf
+effd9379bb874cf500d4b9ec08f4872096c4788c1c57d22a063e48fc32d3e99d  HP-437B-Service-Manual-00437-90076.pdf
+2e30ab79ffaf90464e2202ef1f90770fb3a1b3ded8ad23cfa5c4ac43586b904d  HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf

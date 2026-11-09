@@ -1,0 +1,14 @@
+# Normalize maintained text; preserve publisher artifacts byte for byte.
+* text=auto
+*.md text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+LICENSE text eol=lf
+*.pdf binary
+*.png binary
+*.jpg binary
+*.zip binary
+output/pdf/** -text
