@@ -71,3 +71,7 @@ Explicit TR3 before GTL restores the missing free-run step without preset/reset 
 ## Sustained reference-run assessment
 
 P3-SUSTAIN completed a 300-second start window with 299 contiguous valid rows, zero invalid/error rows, and configured values 0.988–0.989 mW. Independent raw/CSV/sidecar checks confirm setup exclusion, actual units, identities/dependencies/session provenance, timestamp order, duration/overrun scheduling, and accepted TR3/GTL cleanup. Mean receipt spacing was 1.003768 seconds; the last reconstructed start at 299.123998 seconds puts the next target beyond 300, explaining the count without inventing a dropped reading. Reassessment checked that count alone was not treated as duration proof and that setup/reference flags were not claimed to continuously monitor output. Exact timing, checksums, and remaining operator confirmation are in the [sustained record](MAC-20261111-SUSTAINED.md). No further code defect was identified; absolute accuracy, failure recovery, other hosts, and replacement acceptance remain open.
+
+## Sustained batch final acceptance
+
+The owner confirmed live numeric display, RMT off, no TRIGGER HOLD, and PWR REF off without a local-key press. This closes the remaining operator-restoration gate for P3-SUSTAIN and supports acceptance of the recorded five-minute Mac/current-unit batch. No additional command, raw-artifact amendment, or software change was needed. Phase 3 and the documented remaining physical/host/replacement gates stay in progress.

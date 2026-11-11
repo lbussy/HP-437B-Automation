@@ -1,6 +1,6 @@
 # Five-minute Mac reference logging, November 11, 2026
 
-Status: data/metadata checks passed; final owner source-off/local-display confirmation pending. Phase 3 remains ⏳ In progress. [Plan](PHASE-3-PLAN.md#p3-sustain-five-minute-reference-logging) and [cleanup correction](AUTOMATIC-LOCAL.md#p3-r10-corrected-results-and-final-reassessment) define scope. Tested revision: `8e29186a3e5f3e0565727294799611ffc9e9945f`; production cleanup code is the verified TR3-before-GTL correction from `e8d1da5`.
+Status: ✅ Complete for this Mac/current-unit five-minute reference batch; owner confirmed live numeric readings, RMT off, no TRIGGER HOLD, and PWR REF off without PRESET/LOCAL. Phase 3 remains ⏳ In progress. [Plan](PHASE-3-PLAN.md#p3-sustain-five-minute-reference-logging) and [cleanup correction](AUTOMATIC-LOCAL.md#p3-r10-corrected-results-and-final-reassessment) define scope. Tested revision: `8e29186a3e5f3e0565727294799611ffc9e9945f`; production cleanup code is the verified TR3-before-GTL correction from `e8d1da5`.
 
 ## Setup and procedure
 
@@ -55,3 +55,7 @@ The verifier records operator restoration pending as of its creation; later owne
 ## Software and delivery checks
 
 The exact tested revision’s [software CI](https://github.com/lbussy/HP-437B-Automation/actions/runs/43101396677) passed. Corrected source and separate installed-wheel environments each passed 237 tests, lint/format, and package builds before this sustained run. No code changed during acquisition. Markdown links/anchors, matrix IDs, whitespace, and the nine original reference files were checked before delivery; raw local artifacts remain ignored. Software checks do not replace physical host/unit acceptance.
+
+## Final operator confirmation
+
+The owner confirmed that numeric readings resumed with RMT off and no TRIGGER HOLD, then PWR REF was switched off and its indicator was off, without pressing PRESET/LOCAL. This completes the specified operator restoration gate for P3-SUSTAIN. Accept the five-minute run on the recorded current-meter/Mac setup only; Phase 3 remains in progress for interruption/failure recovery, reversible control, Pi/retrieval, and replacement acceptance. Raw artifacts retain their capture-time pending field and were not amended.
