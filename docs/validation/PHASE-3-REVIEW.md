@@ -37,3 +37,7 @@ The owner inspected DUTY CYCLE and reported 1%. Combined with the previously cap
 ## Manual zero preflight
 
 The owner confirms duty correction off and reference off; retain the prior enabled/1% observations as history. The local ZERO procedure was checked visually against manual PDF 136: sensor RF input disconnected from sources, sensor cable retained, one unshifted ZERO, completion observed without further commands. Warm-up and zero completion remain pending. The named plan excludes remote zero, reference activation, gain calibration, automatic retry, and power interruption. This addresses the prepared-setup boundary while preserving the production serial-poll guard.
+
+## Post-zero operator observation
+
+The owner reported −0.009 µW after the warm-up reminder/manual-zero instructions. Unit conversion is −9 nW; preserve the explicit µW unit rather than the earlier mW baseline. This is operator-reported preparation evidence, not remote zero qualification or a specification pass. No zero duration/error history or all-range test was supplied. Calibration remains pending the actual reference calibration factor and prepared path.
