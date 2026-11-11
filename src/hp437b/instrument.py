@@ -23,7 +23,7 @@ BUS_GUARDS = {
     "G005": "A09: raw UNL deferred",
     "G006": "A09: raw UNT deferred",
     "G007": "A09: explicit REN deferred (automatic initialization is separate)",
-    "G008": "A09: local control deferred",
+    "G008": "Requires a negotiated go_to_local transport profile",
     "G009": "A09: lockout deferred",
     "G010": "A09: clear lockout deferred",
     "G011": "A09: device clear deferred",
@@ -191,6 +191,13 @@ class Instrument:
         self._cal_zero("CL", reference_factor, confirmed=confirmed)
 
     def bus(self, capability_id: str):
+        if capability_id == "G008":
+            if "go_to_local" not in self.transport.capabilities or not callable(
+                getattr(self.transport, "return_local", None)
+            ):
+                raise CapabilityUnavailable("G008: no negotiated go_to_local transport profile")
+            with self._operation() as deadline:
+                return self.transport.return_local(deadline)
         if capability_id not in BUS_GUARDS:
             raise ValueError(
                 "Use acquire/command/transport for G002/G003/G004; unknown ID rejected"
@@ -210,5 +217,11 @@ class Instrument:
 
     def close(self):
         with self._lock:
+            if self._closed:
+                return
             self._closed = True
-            self.transport.close()
+            try:
+                if not self._uncertain and "go_to_local" in self.transport.capabilities:
+                    self.transport.return_local(time.monotonic() + self.timeout)
+            finally:
+                self.transport.close()

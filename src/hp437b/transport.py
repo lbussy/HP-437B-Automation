@@ -1,7 +1,7 @@
 """Explicit USBTMC opening in a subprocess: an expired RPC terminates its worker.
 
-The parent never issues a retry or instrument recovery command. PyVISA-py 0.8.1
-USB operations beyond byte I/O are deliberately unavailable (inventory A09).
+The parent never issues a retry or instrument recovery command. Clean local
+return uses a project-local USB488 extension; other bus operations stay guarded.
 """
 
 import importlib.metadata
@@ -14,6 +14,7 @@ from contextlib import suppress
 from typing import Protocol
 
 from .errors import CapabilityUnavailable, OperationTimeout, TransportError
+from .usb488 import go_to_local, local_profile, session_interface
 
 
 class Transport(Protocol):
@@ -55,6 +56,9 @@ def _worker(pipe, resource: str, max_bytes: int) -> None:
                     handle.read_termination = None
                     handle.write_termination = None
                     handle.send_end = True
+                    profile = local_profile(session_interface(manager, handle), milliseconds)
+                    if profile is not None:
+                        result["local_return_profile"] = profile["profile"]
                 elif operation == "close":
                     break
                 else:
@@ -71,6 +75,8 @@ def _worker(pipe, resource: str, max_bytes: int) -> None:
                                 "Oversized/incomplete message; preserve stream boundaries"
                             )
                         result = bytes(result)
+                    elif operation == "go_to_local":
+                        result = go_to_local(session_interface(manager, handle), milliseconds)
                     else:
                         raise RuntimeError("Unknown transport operation")
                 pipe.send(("ok", result))
@@ -107,6 +113,7 @@ class VisaTransport:
         self._process = self._pipe = None
         self._lock = threading.RLock()
         self.metadata: dict[str, str] = {}
+        self.local_return: dict | None = None
 
     def open(self, timeout: float = 10.0) -> None:
         if not math.isfinite(timeout) or timeout <= 0:
@@ -114,6 +121,8 @@ class VisaTransport:
         with self._lock:
             if self._process is not None:
                 raise TransportError("Transport is already open")
+            self.capabilities = type(self).capabilities
+            self.local_return = None
             context = multiprocessing.get_context("spawn")
             parent, child = context.Pipe()
             self._pipe = parent
@@ -125,6 +134,10 @@ class VisaTransport:
             try:
                 self._process.start()
                 self.metadata = self._rpc("open", None, deadline)
+                self.capabilities = type(self).capabilities
+                if "local_return_profile" in self.metadata:
+                    self.capabilities |= {"go_to_local"}
+                self.local_return = None
             except BaseException:
                 self._stop()
                 raise
@@ -178,6 +191,17 @@ class VisaTransport:
 
     def bus(self, operation: str, deadline: float):
         raise CapabilityUnavailable(f"{operation}: A09, PyVISA-py 0.8.1 USB bus control deferred")
+
+    def return_local(self, deadline: float):
+        if "go_to_local" not in self.capabilities:
+            raise CapabilityUnavailable("No negotiated USB488 local-return profile")
+        self.local_return = {"status": "requested"}
+        try:
+            self.local_return = self._rpc("go_to_local", None, deadline)
+            return self.local_return
+        except BaseException as exc:
+            self.local_return = {"status": "failed", "error": f"{type(exc).__name__}: {exc}"}
+            raise
 
     def close(self) -> None:
         with self._lock:

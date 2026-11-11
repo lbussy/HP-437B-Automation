@@ -175,6 +175,31 @@ def test_resource_cleanup_failure_is_recorded(tmp_path):
     assert record["status"] == "failed" and "close failed" in record["cleanup_error"]
 
 
+@pytest.mark.parametrize("fail", [False, True])
+def test_logger_records_local_return_and_never_hides_rejection(tmp_path, fail):
+    class LocalDemo(DemoTransport):
+        capabilities = DemoTransport.capabilities | {"go_to_local"}
+        local_return = None
+
+        def return_local(self, deadline):
+            self.local_return = {"status": "failed" if fail else "accepted"}
+            if fail:
+                raise OSError("GTL rejected")
+
+    wire = LocalDemo()
+    path = tmp_path / "local.csv"
+    if fail:
+        with pytest.raises(OSError, match="GTL rejected"):
+            collect(Instrument(wire), path, count=1, interval=0, simulation=True)
+    else:
+        collect(Instrument(wire), path, count=1, interval=0, simulation=True)
+    rows, record = load(path)
+    assert len(rows) == 1
+    assert record["local_return"]["status"] == ("failed" if fail else "accepted")
+    assert record["status"] == ("failed" if fail else "completed")
+    assert wire.closed
+
+
 def test_metadata_disk_failure_still_closes_resource(tmp_path, monkeypatch):
     import hp437b.logger as logger
 

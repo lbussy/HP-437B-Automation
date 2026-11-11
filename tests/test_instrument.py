@@ -3,7 +3,13 @@ import time
 
 import pytest
 
-from hp437b.errors import CapabilityUnavailable, OperationTimeout, ProtocolError, StateUncertain
+from hp437b.errors import (
+    CapabilityUnavailable,
+    OperationTimeout,
+    ProtocolError,
+    StateUncertain,
+    TransportError,
+)
 from hp437b.instrument import BUS_GUARDS, Instrument
 
 
@@ -13,6 +19,44 @@ def test_trigger_read_order_and_units(absolute):
     assert device.acquire().unit == "dBm"
     assert wire.calls[-2:] == [("write", b"TR2"), ("read", None)]
     assert not wire.steps
+
+
+def test_close_returns_local_once_only_when_state_is_known(scripted):
+    class LocalWire(scripted):
+        capabilities = scripted.capabilities | {"go_to_local"}
+
+        def return_local(self, deadline):
+            assert deadline > time.monotonic()
+            self.calls.append(("local", None))
+
+    wire = LocalWire()
+    device = Instrument(wire)
+    device.close()
+    device.close()
+    assert wire.calls == [("local", None)] and wire.closed
+
+    wire = LocalWire([("write", b"*IDN?"), ("read", b"BROKEN\r\n")])
+    device = Instrument(wire)
+    with pytest.raises(ProtocolError):
+        device.identify()
+    device.close()
+    assert all(call[0] != "local" for call in wire.calls) and wire.closed
+
+
+def test_local_failure_still_closes_and_is_not_retried(scripted):
+    class LocalFailure(scripted):
+        capabilities = scripted.capabilities | {"go_to_local"}
+
+        def return_local(self, deadline):
+            self.calls.append(("local", None))
+            raise TransportError("GTL rejected")
+
+    wire = LocalFailure()
+    device = Instrument(wire)
+    with pytest.raises(TransportError, match="GTL rejected"):
+        device.close()
+    device.close()
+    assert wire.calls == [("local", None)] and wire.closed
 
 
 def test_ordinary_read_has_no_implicit_trigger(absolute):

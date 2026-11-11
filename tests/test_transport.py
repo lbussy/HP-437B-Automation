@@ -53,6 +53,18 @@ def test_real_ipc_deadline_terminates_worker():
     transport.close()
 
 
+def test_local_rpc_timeout_is_bounded_and_recorded_without_retry():
+    transport = connected("hang")
+    transport.capabilities |= {"go_to_local"}
+    start = time.monotonic()
+    with pytest.raises(OperationTimeout):
+        transport.return_local(start + 0.15)
+    assert time.monotonic() - start < 2
+    assert transport.local_return["status"] == "failed"
+    assert transport._process is None
+    transport.close()
+
+
 def test_ipc_success_and_worker_disconnect():
     transport = connected("ok")
     assert transport.read(time.monotonic() + 2) == b"reply"

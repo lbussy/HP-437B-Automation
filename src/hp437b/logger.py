@@ -200,6 +200,9 @@ def collect(
                 record["cleanup_error"] = f"{type(exc).__name__}: {exc}"
                 raise
             finally:
+                local_return = getattr(instrument.transport, "local_return", None)
+                if local_return is not None:
+                    record["local_return"] = dict(local_return)
                 record["finished_utc"] = utcnow().isoformat()
                 record["last_raw_hex"] = instrument.last_raw.hex()
                 _atomic_json(sidecar, record)
