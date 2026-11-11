@@ -1,6 +1,6 @@
 # Mac connected-sensor baseline, November 11, 2026
 
-Status: read sequence passed; display comparison and local restoration await operator report. Phase 3 remains ⏳ In progress. This extends the [identification run](MAC-20261111.md) under the [P3-BASELINE plan](PHASE-3-PLAN.md#p3-baseline-connected-sensor-reference-off). Production source: `8c75c45997704764647f4ff5979cd579372cf59b`; only documentation and ignored scratch capture code changed. Host/runtime/resource match the identification record: ARM64 MacBook Pro, macOS 27.0.1, Python 3.14.10, PyVISA 1.16.2, PyVISA-py 0.8.1, PyUSB 1.3.1, libusb 1.0.30, explicit `@py`.
+Status: read sequence passed; owner confirmed the held display matched approximately −0.006 mW, RMT went off, and updating resumed after return to local. Phase 3 remains ⏳ In progress. This extends the [identification run](MAC-20261111.md) under the [P3-BASELINE plan](PHASE-3-PLAN.md#p3-baseline-connected-sensor-reference-off). Production source: `8c75c45997704764647f4ff5979cd579372cf59b`; only documentation and ignored scratch capture code changed. Host/runtime/resource match the identification record: ARM64 MacBook Pro, macOS 27.0.1, Python 3.14.10, PyVISA 1.16.2, PyVISA-py 0.8.1, PyUSB 1.3.1, libusb 1.0.30, explicit `@py`.
 
 ## Setup and procedure
 
@@ -20,7 +20,7 @@ Acquisition ran 20:06:01.282014–20:06:08.889934 UTC (14:06:01–14:06:08 CST).
 
 Both SM payloads contain 26 characters followed by CRLF; the measurement reply contains 13 bytes including CRLF. The existing parser accepted all three frames. Filter 17 represents auto averaging of 128 readings, and range 11 is automatic range 1 under the inventory schema. The observed 7.43-second TR2 completion is recorded alongside those settings, without assigning a causal timing model from one sample. No electrical EOI trace or binary-framing test was performed.
 
-Duty-cycle correction is enabled; its numeric factor was not retrieved. Sensor correction values, zero/calibration state, and quantitative accuracy remain unqualified. The −0.009 mW pre-run display and −0.006 mW triggered reading were not simultaneous or governed by a stability/tolerance rule. They cannot establish display agreement or absolute power accuracy. Negative baseline power is retained rather than clamped to zero. This batch verifies the selected byte sequence and status interpretation with the reference off.
+Duty-cycle correction is enabled; its numeric factor was not retrieved. Sensor correction values, zero/calibration state, and quantitative accuracy remain unqualified. The −0.009 mW pre-run display and −0.006 mW triggered reading were not simultaneous or governed by a stability/tolerance rule. They cannot establish display agreement or absolute power accuracy. The subsequent owner report confirms approximately −0.006 mW on the held display before return to local, followed by RMT off and resumed updating. This is one qualitative held-display agreement observation, not the formal quantitative comparison gate, which still requires a preselected tolerance/stability rule. Negative baseline power is retained rather than clamped to zero. This batch verifies the selected byte sequence and status interpretation with the reference off.
 
 ## Evidence and acceptance boundaries
 
