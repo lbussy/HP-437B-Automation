@@ -8,6 +8,7 @@ Saved from the November 8, 2026 discussion at the user's request, and amended No
 - Collect power readings from the 437B using a Mac or Raspberry Pi.
 - The user does not yet have a GPIB adapter. No purchase, adapter connection, logging implementation, or bench validation is recorded.
 - Preserve this recommendation and plan for later work; saving it does not authorize purchasing hardware or implementing the logger now.
+- On November 11, 2026, the user reported that the seller/calibrator confirmed the current meter's [documented +5 V supply discrepancy](EQUIPMENT.md#individual-calibration-records) was unacceptable. The user plans to exchange the meter after a few development steps with it. The development steps are not yet specified, and the exchange is pending. Keep current-unit observations separate from replacement qualification.
 
 ### Adapter recommendation
 

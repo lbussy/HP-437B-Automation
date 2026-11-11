@@ -6,7 +6,7 @@ Status: planned; no results recorded. This is an acceptance checklist, not an ex
 
 Record meter and sensor identification, sensor calibration information, adapter model/firmware, host model/architecture/OS, Python and released dependency versions, USB cable, GPIB address, termination settings, and measurement configuration. Distinguish installed releases from unreleased backend changes.
 
-Use the [individual calibration records](EQUIPMENT.md#individual-calibration-records) for meter SN 3125U33223 and sensor SN MY41094127 when selecting calibration criteria and correction factors. Resolve the documented meter supply-check discrepancy before relying on that entry. Certificate results do not establish backend compatibility or replace local bench validation.
+The [individual calibration records](EQUIPMENT.md#individual-calibration-records) cover meter SN 3125U33223 and sensor SN MY41094127. The user reported on November 11, 2026, that the seller/calibrator confirmed the meter's documented +5 V supply discrepancy was unacceptable, and plans to exchange it after a few development steps. Do not count that supply entry as passing. Associate any interim development results with the current meter and its known discrepancy. Record the replacement meter's identity and applicable calibration records, and repeat hardware acceptance checks with it. Use correction factors for the sensor actually in use. Certificate results do not establish backend compatibility or replace local bench validation.
 
 ## Required checks
 

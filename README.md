@@ -6,6 +6,8 @@ Automated control and power logging for an HP 437B power meter and HP 8482A sens
 
 Planning and repository setup, November 9, 2026. The proposed stack is Python, PyVISA, and PyVISA-py. Next, choose the initial host and logging settings, then validate adapter communication and backend compatibility on the bench.
 
+Equipment update, November 11: the user reports that the seller/calibrator confirmed the current meter's [+5 V supply discrepancy](docs/EQUIPMENT.md#individual-calibration-records) was unacceptable. An exchange is planned after a few development steps with this unit. Replacement receipt and qualification remain pending.
+
 ## Start here
 
 | Document | Purpose |
