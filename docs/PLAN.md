@@ -80,3 +80,7 @@ See [open work](OPEN-WORK.md), [equipment references](EQUIPMENT.md), and the [ha
 ## Phase 2 software choices
 
 Python 3.11+ is the baseline; local checks used Python 3.14.10 on macOS ARM64. Runtime pins are PyVISA 1.16.2, PyVISA-py 0.8.1, and PyUSB 1.3.1, with @py selected explicitly. The finite logger defaults are ten samples, one-second interval, dBm, and ten-second operation timeout; user options override these software defaults. Initial host selection and final measurement policy remain DEC-01/DEC-02. See [usage](SOFTWARE.md) for exact behavior and qualification limits.
+
+## Automatic local-return implementation
+
+The owner requested removing the manual PRESET/LOCAL step after runs. The [project-local USB488 extension](validation/AUTOMATIC-LOCAL.md) retains dependency pins and reuses the existing USB handle to request Go To Local on healthy Instrument close. Other bus features and uncertain-state recovery remain guarded. Initial Mac physical verification is tracked separately from software tests, Pi, and replacement acceptance.

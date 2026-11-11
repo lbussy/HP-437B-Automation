@@ -35,3 +35,7 @@ The [bus evidence](inventory/GPIB.md#transport-evidence-profiles) identifies lim
 ## Phase 2 handoff
 
 Use the [installed software and CLI](SOFTWARE.md) and [Phase 2 review](PHASE-2-REVIEW.md) to prepare the first hardware batch. Scripted transports, IPC timeout tests, and synthetic demo output establish software behavior. Physical results belong in the Mac/Pi columns after identifying the actual meter, sensor, adapter, firmware, OS, and dependency versions.
+
+## Automatic local-return follow-up
+
+The owner requested automatic local return after normal sessions. The [versioned extension and cases](validation/AUTOMATIC-LOCAL.md) keep the pinned open-source stack and add a narrowly negotiated USB488 GTL path. Required physical acceptance distinguishes accepted USB control status from RMT off and working front-panel controls. Failed/uncertain transactions retain manual recovery requirements. No Pi or replacement support follows from a Mac current-unit result.

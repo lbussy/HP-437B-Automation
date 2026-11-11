@@ -29,3 +29,11 @@ Both physical cases require operator observation; accepted USB status alone cann
 ## Review and verification
 
 Preflight challenged version drift, device/interface mismatch, missing USB488 support, accepted versus completed GTL, duplicate USB claims, in-flight commands, cleanup failure suppression, and uncertain-state recovery. Corrections include dynamic capability negotiation on each open, resetting negotiated state before reopen, rechecking capability/status at request time, driver uncertainty gating, idempotent close, bounded RPC, and logger cleanup provenance. Initial local suite: 236 tests passed, lint/format passed. Physical outcomes and fresh reassessment are recorded below after execution.
+
+## First physical result
+
+P3-LOCAL-ID at implementation commit `c0ed20d`, November 11, 21:00:16 UTC (15:00:16 CST), identified HP 437B firmware 1.8 and completed normal close in 0.11665 seconds total. Negotiated interface 0, capabilities `010000010401000000000000000107070000000000000000`, GO_TO_LOCAL reply `01`. Local artifact `output/logs/phase3-20261111/automatic-local-id.json`, SHA-256 `6f8fb250800e016199d1c1189498b34d6904cccc4b3ea3cf84f356051c856c57`. This establishes accepted control transfer; the owner has been asked to confirm RMT off/front-panel control without pressing PRESET/LOCAL. No measurement, RF output, zero, or calibration command was sent.
+
+## Packaging and pending operator gate
+
+Wheel and source distribution build successfully; a separate wheel-installed environment imports the new module from site-packages and passes all 236 tests, with CLI capabilities working. This supplements source-environment lint/format/tests. No physical follow-up is attempted while the owner confirmation for P3-LOCAL-ID is pending; it would be incorrect to accept local restoration from USB status alone or to start the next batch without an established normal outcome.

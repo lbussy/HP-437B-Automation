@@ -23,6 +23,7 @@ Sources inspected November 11, 2026:
 | T7 | A: trigger/status byte claims | B: USB assert_trigger lacks implementation; read_stb inherits unsupported operation | ASCII TR1/TR2 and *STB? can use T1, but have different bus semantics; query polling during an unfinished trigger or calibration can abort it |
 | T8 | A: explicit raw addressing, universal clear, IFC, and parallel-poll exposure uncertain | B: general raw bus/IFC methods unsupported in USB session | Record as unresolved transport/API coverage; parallel polling may require another controller |
 | T9 | A: service-request/interrupt claim | B: interrupt endpoint discovered, but USB SRQ event delivery not established by focused inspection | Event API and end-to-end SRQ remain uncertain; do not equate polling to events |
+| T10 | Firmware source queues GO_TO_LOCAL and advertises USB488 bit 1 | Project-local extension reuses the pinned session’s PyUSB handle; native VISA bus methods unchanged | [Implementation, software tests, and physical cases](../validation/AUTOMATIC-LOCAL.md); conditional G008 only |
 | EX | Meter C0 exclusion | Not applicable | Model as documented instrument exclusion |
 
 These source findings are bounded to normal firmware and released backend 0.8.1; installed versions remain a future environment choice. A declared enum/request constant alone does not establish an exposed backend method. Byte-command transport support also does not prove instrument-level command execution.
@@ -111,8 +112,8 @@ Remote enable — `REN asserted then meter listen address; RL1 interface capabil
 Go to local — `GTL addressed to meter`.
 
 - Roles, prerequisites, response, and effects: Returns front-panel control without clearing remembered lockout; RMT off, configuration preserved. Triggered operation returns to normal free-run according to Triggering.
-- Proposed API: control_ren() with appropriate address/GTL mode or USB488 GO_TO_LOCAL; verify exposed resource API.
-- Transport evidence: T5 (profiles above).
+- Implemented API: `Instrument.bus("G008")` and automatic healthy `Instrument.close()`, through negotiated profile `xyphro-usb488-gtl-v1`; see [evidence and physical cases](../validation/AUTOMATIC-LOCAL.md). Native VISA control_ren remains unavailable.
+- Transport evidence: T10 (project-local negotiated extension), with native T5 limitations (profiles above).
 - Future qualification: Return local, check controls, state, and subsequent remote lockout.
 - Source: [00437-90047, §3-25; Triggering3-103/PDF 133, printed 3-35/PDF 65](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
 - Open issue: A09.

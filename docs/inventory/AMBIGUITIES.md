@@ -47,3 +47,5 @@ Filter rounding and settling. Filter remote procedure (printed 3-63/PDF 93) spec
 ## A09
 
 Adapter/backend bus coverage. [GPIB transport profiles](GPIB.md#transport-evidence-profiles) identify released PyVISA-py 0.8.1 gaps for explicit REN/local control, serial status byte, bus trigger, device clear, raw bus/IFC operations, and uncertain SRQ event/parallel-poll support. Automatic REN assertion at USBTMC initialization is a separate observed source implementation. These are source findings, not bench failures. Phase 2 must select a released solution or an explicit, versioned fix for required operations; Phase 3 must prove actual behavior. ASCII trigger and status queries provide useful candidates but preserve their different semantics.
+
+The [automatic-local extension](../validation/AUTOMATIC-LOCAL.md) addresses G008 for the identified adapter using its advertised USB488 support over the exact pinned session. This does not enable native VISA control_ren, REN deassertion, lockout clearing, serial polling, clear, GET, or SRQ. A09 remains open for those operations and any required physical/host cases.

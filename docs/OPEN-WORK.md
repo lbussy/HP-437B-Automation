@@ -12,6 +12,7 @@ Updated: 2026-11-11. Statuses: ✅ Complete, ⏳ In progress, and ▧ Open. Task
 | HP-02 | ⏳ In progress | XyphroLabs GpibUsb `03eb:2065` detected on Mac; initial Python identification returned 437B firmware 1.8. Complete raw framing, recovery, control, and logging evidence; adapter firmware/revision remain unknown |
 | DEC-01 | ✅ Complete | First batch: MacBook Pro Mac17,8, M5 Pro, ARM64, macOS 27.0.1. Pi identity/access remain P3-PI prerequisites |
 | DEC-02 | ▧ Open | Define initial measurement sequence, interval, duration, units, averaging/range policy, and CSV fields |
+| LOCAL-01 | ⏳ In progress | [Automatic local return](validation/AUTOMATIC-LOCAL.md): implementation and software tests pass; verify identification and logger cleanup on the current Mac setup, then repeat replacement/Pi acceptance |
 | VAL-01 | ⏳ In progress | Mac identification and [reference readback/display agreement](validation/MAC-20261111-REFERENCE.md) passed in scoped batches; [three-row reference logging](validation/MAC-20261111-SHORT-LOG.md) also passed; reversible control, sustained logging, recovery, replacement, and second-host acceptance remain pending |
 
 The [decision register](PLAN.md#decision-register) distinguishes user requirements from proposed choices. The Python interface/logger has source-derived software tests and installed-package checks. Physical acceptance and measured rates follow the separate Mac/Pi qualification plan.
