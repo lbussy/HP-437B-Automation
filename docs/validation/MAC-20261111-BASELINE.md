@@ -35,3 +35,7 @@ The owner subsequently confirms DTY CY is off after SHIFT, then DUTY CYCLE, with
 ## Owner-reported post-zero reading
 
 After the 30-minute warm-up reminder and the [manual-zero instructions](PHASE-3-PLAN.md#p3-manual-zero-preparation), the owner reported −0.009 µW (−9 nW). Record this as the reported post-procedure residual, not an independent all-range zero/performance pass. No error or timing detail was supplied, and no Python command was issued. The instructed setup keeps POWER REF off, duty correction off, sensor RF input disconnected, and the sensor cable attached. Gain calibration remains pending verification of the sensor reference calibration factor and the prepared reference path; remote C116 remains guarded.
+
+## Reference calibration factor confirmed
+
+The owner confirms REF CAL FACTOR 99% on sensor SN MY41094127, consistent with the saved certificate. The [manual CAL plan](PHASE-3-PLAN.md#p3-manual-cal-preparation) uses 99.0% with the internal 50 MHz/1 mW reference and states automatic reference activation/restoration. Calibration execution and outcome remain pending. No software calibration or reference-output command has been issued.
