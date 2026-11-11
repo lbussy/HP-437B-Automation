@@ -7,8 +7,8 @@ Saved from the November 8, 2026 discussion at the user's request, and amended No
 
 - Collect power readings from the 437B using a Mac or Raspberry Pi.
 - Adapter readiness remains HP-02; the Phase 2 Python interface and logger are implemented, with physical acceptance tracked under Phase 3.
-- Phase 2 implementation was explicitly authorized on November 11. Phase 3 execution was explicitly authorized on November 11; the [batch plan](validation/PHASE-3-PLAN.md) bounds current device work to supervised identification without a sensor.
-- On November 11, 2026, the user reported that the seller/calibrator confirmed the current meter's [documented +5 V supply discrepancy](EQUIPMENT.md#individual-calibration-records) was unacceptable. The user plans to exchange the meter after a few development steps with it. The current development batch is supervised Python identification without a sensor; the exchange remains pending. Keep current-unit observations separate from replacement qualification.
+- Phase 2 implementation was explicitly authorized on November 11. Phase 3 execution was explicitly authorized on November 11; the [batch plan](validation/PHASE-3-PLAN.md) records successive supervised Mac batches, and the [Pi plan](validation/PI-QUALIFICATION.md) defines second-host gates.
+- On November 11, 2026, the user reported that the seller/calibrator confirmed the current meter's [documented +5 V supply discrepancy](EQUIPMENT.md#individual-calibration-records) was unacceptable. The user plans to exchange the meter after a few development steps with it. Current-unit Mac measurement, control, logging, and named manual-recovery batches have passed; Pi software preparation is complete, and the exchange remains pending. Keep current-unit observations separate from replacement qualification.
 
 ### Adapter recommendation
 
@@ -52,7 +52,7 @@ If a required operation fails, investigate configuration or a reproducible backe
 | Adapter | Arrived: XyphroLabs GpibUsb, USB `03eb:2065`, detected on this Mac November 11 | Exact hardware revision, adapter firmware, cable, and GPIB address remain unverified; USB identification content is not adapter firmware |
 | Language and API | Python/PyVISA with pinned open-source PyVISA-py is implemented | Qualify actual device/host behavior |
 | Open-source backend | PyVISA-py 0.8.1 is the pinned byte-I/O backend with explicit bus guards | Resolve required bus gaps and qualify each intended host |
-| Host | First identification batch uses this MacBook Pro Mac17,8, Apple M5 Pro, ARM64, macOS 27.0.1 | Record Pi model/OS/access before second-host qualification; Mac/Pi acceptance remains pending |
+| Host | First identification batch uses this MacBook Pro Mac17,8, Apple M5 Pro, ARM64, macOS 27.0.1 | Pi 5/aarch64 Debian 13.7 and isolated software preflight verified; Pi physical and replacement acceptance remain pending |
 | Logging behavior | Timestamped CSV and session metadata are implemented with overridable defaults | Select the initial bench settings and averaging/range policy under DEC-02 |
 | Measurement setup | Manuals and [saved serial-specific calibration records](EQUIPMENT.md#individual-calibration-records) govern the procedure | Record frequency, signal path, applicable correction factors, and zero/calibration procedure before quantitative bench work |
 
@@ -61,7 +61,7 @@ If a required operation fails, investigate configuration or a reproducible backe
 1. Record the actual adapter model/firmware, Mac architecture and macOS version, or Pi model and OS. Confirm USB cabling and the meter's configured GPIB address.
 2. Follow the adapter's platform tutorial, install and record the candidate software versions, and establish basic communication with the provisional PyVISA-py USB backend. Confirm the 437B's command syntax, output format, termination, and trigger/read behavior from its operating manual before writing the logger.
 3. Verify a software reading against the front-panel display and exercise a reversible remote setting. Confirm units, status/error handling, and return to local operation. Do not assume calibration or zeroing should run automatically; derive any such procedure from the manuals and the actual bench setup.
-4. Choose the host, logging interval, duration, and CSV fields. Account for meter averaging, range changes, and settling; no sustained sampling rate has been established.
+4. Choose the host, logging interval, duration, and CSV fields. Account for meter averaging, range changes, and settling; the current Mac/unit achieved approximately one-second receipt spacing in the recorded five-minute reference case; additional hosts and other range/filter/signal conditions require their own evidence.
 5. Implement and validate the Python logger on the selected host, including timestamps, explicit units, timeouts, invalid readings, and clean shutdown. Test required triggering/status operations, recovery after a timeout, and a sustained logging run before accepting the backend. For Pi logging, verify Mac access and file retrieval. Validate each additional host before claiming support. Record actual bench results and any adapter-specific limitations here.
 
 

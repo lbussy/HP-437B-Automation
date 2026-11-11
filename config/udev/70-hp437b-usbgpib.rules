@@ -1,0 +1,2 @@
+# HP 437B qualification: XyphroLabs USBGpib USBTMC access for plugdev.
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="03eb", ATTR{idProduct}=="2065", GROUP="plugdev", MODE="0660"

@@ -2,6 +2,10 @@
 
 Status: ⏳ In progress, November 11, 2026. Execution was explicitly requested, including the saved prompt's scoped commit/push authorization. Starting commit: `9b8ec5c559124645140d354ef9e15289d25c34a9`, clean `devel`. See the [run record](MAC-20261111.md) and [review](PHASE-3-REVIEW.md).
 
+## Current batch pointer
+
+Mac current-unit identification, connected-sensor/reference acquisition, reversible unit/source control, finite/five-minute logging, corrected automatic free-run/local cleanup, and named interruption/manual USB recovery passed in the linked records below. The owner subsequently requested automatic normal local return, which is implemented and qualified separately from uncertain-transfer recovery. The [Pi plan and results](PI-QUALIFICATION.md) govern the active second-host batch, including its finite budgets, owner-authorized persistent USB permission rule, and hardware gates. The first-batch restrictions and pending entries below describe the historical initial release; later named sections/records release only their specified additional procedures. Final replacement acceptance and the remaining exclusions stay open.
+
 ## Profile and current setup
 
 The final profile is supervised absolute-power logging on Mac and Pi, with manual local restoration permitted. Mandatory gates are explicit opening/identification, units/status, serialized TR2/read, front-panel agreement, reversible control/restoration, finite and sustained logging, interruption/file protection, bounded failure/recovery, clean shutdown, and Pi access/retrieval. Unattended recovery, programmatic local restoration, GET, SRQ, serial polling, calibration, zeroing, table editing, reset, and binary restoration are excluded from this profile; their inventory requirements remain deferred. Final acceptance requires the replacement meter and actual sensor on both hosts.

@@ -1,6 +1,6 @@
 # Open work
 
-Updated: 2026-11-11. Statuses: ✅ Complete, ⏳ In progress, and ▧ Open. Task identifiers HP-01 and HP-02 are retained from Generic Radio Stuff. The user authorized Phase 3 execution on November 11; the initial batch is supervised Mac identification without a sensor.
+Updated: 2026-11-11. Statuses: ✅ Complete, ⏳ In progress, and ▧ Open. Task identifiers HP-01 and HP-02 are retained from Generic Radio Stuff. The user authorized Phase 3 execution on November 11; Mac current-unit batches have passed within their recorded scope; isolated Pi software preflight has passed, and Pi identification, baseline/control, and short logging/retrieval passed; five-minute logging/retrieval passed; final operator confirmation and Pi failure/recovery remain pending.
 
 | ID | Status | Next result |
 | --- | --- | --- |
@@ -10,7 +10,8 @@ Updated: 2026-11-11. Statuses: ✅ Complete, ⏳ In progress, and ▧ Open. Task
 | PHASE-03 | ⏳ In progress | Execute the [batch plan](validation/PHASE-3-PLAN.md), retain [Mac results](validation/MAC-20261111.md), and qualify the replacement/sensor on both hosts |
 | HP-01 | ▧ Open | Seller/calibrator confirmed the +5 V discrepancy was unacceptable, per the user's November 11 report; user plans an exchange after a few development steps. Record replacement identity and calibration records, then derive a bench procedure, select applicable sensor factors, and record the measurement setup |
 | HP-02 | ⏳ In progress | XyphroLabs GpibUsb `03eb:2065` detected on Mac; initial Python identification returned 437B firmware 1.8. Complete raw framing, recovery, control, and logging evidence; adapter firmware/revision remain unknown |
-| DEC-01 | ✅ Complete | First batch: MacBook Pro Mac17,8, M5 Pro, ARM64, macOS 27.0.1. Pi identity/access remain P3-PI prerequisites |
+| DEC-01 | ✅ Complete | First batch: MacBook Pro Mac17,8, M5 Pro, ARM64, macOS 27.0.1. Pi 5/aarch64 Debian 13.7, Python 3.13.5, and isolated software preflight verified; [Pi hardware cases](validation/PI-QUALIFICATION.md) have passed identification/owner restoration, baseline/control, and short logging |
+| PI-01 | ⏳ In progress | [Pi preflight](validation/PI-QUALIFICATION.md): isolated installed-package suite (237 tests), lint/format/build/help/capabilities, pinned runtime, and libusb load passed; permanent scoped USB access rule installed at owner request; identification/owner restoration, baseline/control, and three-row and five-minute CSV/retrieval passed (300 sustained valid rows); final operator observation, reference-on display agreement, and named Pi failure/recovery remain pending |
 | DEC-02 | ▧ Open | Define initial measurement sequence, interval, duration, units, averaging/range policy, and CSV fields |
 | LOCAL-01 | ✅ Complete | [Corrected automatic cleanup](validation/AUTOMATIC-LOCAL.md) sends TR3 then GTL; independent status/display and owner checks pass after reproducing P3-R10. Failed/uncertain transfers retain manual recovery; replacement/Pi repetition remains PHASE-03 |
 | SUSTAIN-01 | ✅ Complete | [Five-minute Mac reference logging](validation/MAC-20261111-SUSTAINED.md): 299 valid rows, timing/data checks passed, owner confirmed live display and RMT/reference off without PRESET/LOCAL; current Mac/unit only |

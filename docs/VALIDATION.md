@@ -43,3 +43,7 @@ The owner requested automatic local return after normal sessions. The [versioned
 ## Named interruption and recovery evidence
 
 The [failure/recovery record](validation/FAILURE-RECOVERY.md) accepts between-read process-directed SIGINT and one induced in-flight acquisition timeout with subsequent manual adapter USB reconnect and fresh protocol verification on the current Mac/unit. Partial-data integrity, uncertainty blocking, no unsafe post-fault traffic, and final source-off/live-local state are recorded separately. Other fault patterns, unattended recovery, device clear, second-host behavior, and replacement acceptance are not inferred.
+
+## Pi preflight
+
+[Pi qualification](validation/PI-QUALIFICATION.md) records the isolated Raspberry Pi 5/aarch64 environment and passing 237-test installed-package suite, lint/format/build, CLI checks, exact runtime pins, and native libusb loading. Ordinary-user USB identification, owner local confirmation, baseline/control, short/five-minute reference logging, and CSV/sidecar hash retrieval passed under the owner-authorized permanent USB permission rule. Final operator observation, reference-on display agreement, and named Pi failure/recovery remain pending. These version/current-unit cases do not establish replacement or unattended support.

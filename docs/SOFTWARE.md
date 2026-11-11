@@ -4,7 +4,7 @@ Phase 2 software milestone, November 11, 2026. The package provides validated co
 
 ## Installation and checks
 
-Python 3.11+ is the project baseline. Local software checks used Python 3.14.10 on macOS ARM64. The CI workflow targets Linux Python 3.11 and 3.14; consult its actual run before claiming CI success. Initial Mac identification is recorded below; measurement and logging on Mac, and all Pi communication, await bench qualification.
+Python 3.11+ is the project baseline. Local software checks used Python 3.14.10 on macOS ARM64. The CI workflow targets Linux Python 3.11 and 3.14; consult its actual run before claiming CI success. Current-unit Mac measurement/logging and named recovery cases are recorded below. Pi software preflight and identification now pass; later Pi physical cases and replacement acceptance remain pending.
 
 From a checkout:
 
@@ -133,3 +133,18 @@ The [Mac unit/reference batch](validation/MAC-20261111-CONTROL.md) verified LG/L
 The [November 11 failure cases](validation/FAILURE-RECOVERY.md) verified a single SIGINT sent to the CLI between completed reads: exit 130, one retained valid row, interrupted final metadata, healthy TR3/GTL cleanup, and fresh-session acquisition. An induced 0.5-second deadline during a real TR2/read failed after 0.504 seconds, saved a blank-value failed row and failed sidecar, disposed the worker, blocked reuse before extra I/O, and skipped normal cleanup commands. The configured setup timeout and harness override were recorded explicitly; the induced deadline is not evidence of a spontaneous meter fault.
 
 For that tested timeout, operator-assisted recovery used only adapter USB disconnect/reconnect with meter power retained and POWER REF off, followed by fresh identity, status, complete acquisition, corrected free-run/local cleanup, independent free-run/display verification, and owner confirmation. This is a qualified named manual procedure on the recorded setup, not unattended recovery or device-clear support. Do not replace the physical/protocol reconciliation with reopening or `acknowledge_external_recovery` alone, and do not silently retry.
+
+## Raspberry Pi USB permissions
+
+The [Pi qualification record](validation/PI-QUALIFICATION.md) found the XyphroLabs `03eb:2065` USB device root-owned without user write access on Debian 13.7. PyUSB/libusb needs read/write access to its `/dev/bus/usb` node; access to `/dev/usbtmc0` alone does not supply that. The owner authorized a permanent vendor/product-scoped rule, provided in [70-hp437b-usbgpib.rules](../config/udev/70-hp437b-usbgpib.rules), granting the existing `plugdev` group mode 0660. This grants members access to matching adapters, rather than granting all users access or running the logger as root.
+
+On a Linux host with that group, review the rule, confirm the logging account is already a member (`id`), and install it with administrator authorization:
+
+```bash
+sudo install -m 0644 config/udev/70-hp437b-usbgpib.rules /etc/udev/rules.d/70-hp437b-usbgpib.rules
+sudo udevadm control --reload-rules
+```
+
+Reconnect only the adapter USB cable while no control session is open, or trigger a change event for the specifically identified USB sysfs device. Inspect the current device node after enumeration and verify ordinary-user read/write access before opening it. USB bus/device numbers change across reconnects. Any group-membership change is a separate host administration step and may require a fresh login; no such change was needed on the tested Pi. Removing the installed rule, reloading rules, and reconnecting reverses this configuration. Do not overwrite an existing rule without review.
+
+On this Pi the kernel `usbtmc` driver was initially bound. The pinned PyVISA-py USB path detaches interface 0 when opening, then disposes resources on close without explicitly reattaching the kernel driver. The identification run succeeded with ordinary-user permissions after rule activation; no module blacklist, service change, or manual unbind was required. Record binding/reconnect behavior separately from instrument TR3/Go To Local cleanup. This identification result does not qualify the remaining Pi logging/recovery cases.

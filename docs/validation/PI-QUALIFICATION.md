@@ -1,0 +1,99 @@
+# Raspberry Pi qualification plan and preflight
+
+Status: ⏳ In progress, November 11, 2026. The owner supplied the Pi SSH alias and explicitly authorized using its existing configuration outside the execution restriction. Network alias and authentication details remain local; no password/key material is stored here. Phase 3 execution authorization covers project-local preparation/dependencies and the recorded bounded cases. Mac/current-unit passes remain separate from Pi and final replacement acceptance.
+
+## Host preflight and isolated software delivery
+
+Read-only preflight identifies Raspberry Pi 5 Model B Rev 1.0, aarch64, Debian GNU/Linux 13.7 (trixie), kernel 6.18.34+rpt-rpi-2712, Python 3.13.5 at `/usr/bin/python3`, venv/ensurepip available, and `libusb-1.0.so.0` present. No pre-existing project workspace was found at the checked candidate paths, and no applicable parent AGENTS.md file was present. System-wide PyVISA/PyVISA-py/PyUSB are absent; use a new isolated venv rather than changing system Python or another radio project.
+
+Create `/home/pi/hp437b-qualification/20261111` with separate artifacts, extracted source, venv, and ignored run output. Source artifact `hp437b_automation-0.1.0.tar.gz`, 139936 bytes, SHA-256 `883cf907412ec6da06ef8ba100419dfd3a0cfd85d1c2cb67da71b11bb200b8e7`, was built from clean commit `d2f44df19ce8d293d040dd1303b09849feb9b972`. Inspection confirmed source, tests, lockfile, and authored Markdown, without publisher/calibration PDFs, raw CSV, credentials, local state, symlinks, absolute paths, or traversal members. Keep the original provenance manifest/hash and verify the received bytes before safe extraction.
+
+Install the unchanged `requirements-dev.lock` and package only in that project venv. Verify installed package origin and exact runtime versions, libusb backend/version, CLI help/capabilities, lint/format, software suite, and build. These are software checks, not USB compatibility. The initial preflight did not authorize OS upgrades, apt installation, udev/group/security changes, service modification, firmware flashing, or other application changes. The owner subsequently explicitly authorized the permanent adapter udev access rule recorded below. If an actual missing host prerequisite requires one, prepare the concrete action before requesting additional authorization.
+
+## P3-PI-SW result
+
+✅ Software-only pass. The received archive matched the recorded SHA-256, was safely extracted, and installed without changing the locked dependencies. The non-editable installed package resolves inside the isolated venv at `lib/python3.13/site-packages/hp437b/__init__.py`. Runtime versions are hp437b-automation 0.1.0, PyVISA 1.16.2, PyVISA-py 0.8.1, and PyUSB 1.3.1. Native libusb reports 1.0.28, nano 11946, and PyUSB successfully loads its libusb1 backend. This load check does not open the adapter.
+
+The installed-package suite passed all 237 tests in 1.17 seconds. Ruff lint and format checks passed (56 files already formatted); source and wheel builds passed without build isolation; CLI help and capabilities returned successfully. Installation used the Pi's existing PyPI/piwheels indexes. No system packages, host security configuration, services, or other radio project were changed. Local preparation evidence is retained in ignored `tmp/pi-qualification/software-checks.log`, `environment.json`, and `provenance.json`. The owner confirmed the USB host move with the prepared setup unchanged. Resource opening and physical behavior remain untested pending the access gate below.
+
+## Device move and readiness gate
+
+Keep the adapter on Mac until Pi software preflight passes. Then prompt the owner to move only the adapter's USB host connection to the Pi, retaining meter power, GPIB/sensor connections, direct reference path, and POWER REF off. Do not access the Mac adapter during/after the move. Record Pi USB descriptors/resource, device-node permissions, any kernel USBTMC binding, and actual access results before claiming host support. Use the exact pinned @py stack first. Establish operator availability for PRESET/LOCAL or adapter USB reconnect if automatic cleanup/recovery fails.
+
+The original meter SN 3125U33223 retains the documented supply discrepancy; sensor SN MY41094127, manual REF CF 99%, measurement CAL FAC 100%, W, duty/offset/REL off. Owner confirmation of unchanged setup is required at the move. Interim Pi results cannot qualify the replacement. Adapter firmware/revision are still unknown; resolve with a separately source-backed read-only procedure or owner label evidence, never by interpreting meter firmware 1.8 or USB bcdDevice as adapter firmware.
+
+## Cases and release sequence
+
+| Case | Finite procedure | Acceptance and stop condition |
+| --- | --- | --- |
+| P3-PI-SW | Isolated installation, origin/pins, native libusb, software suite/lint/build/help/capabilities; no instrument commands | Software-only pass, same code/pins; record actual environment and errors |
+| P3-PI-ID | After owner move/access readiness: one explicit USB open, *IDN?/read, corrected TR3/GTL close; source off | 30-second open/query/cleanup deadlines, 100-second maximum, one attempt/no retry. Exact known ID and complete framing; owner confirms live local display/RMT off and reference off |
+| P3-PI-BASELINE | Fresh SM, one W TR2/read, fresh SM, close; after 10 seconds independently capture SM/OD before further cleanup | 30-second operations, 120-second total, source/corrections off/no errors, numeric acquisition and post-cleanup free-run. Stop on mismatch/failure |
+| P3-PI-CONTROL | After baseline: repeat the Mac W/dBm/W and remote OC0/OC1/OC0 prepared-reference procedure/tolerances, finish W/reference off and local | Same source limits, 180-second action plus 30-second cleanup budgets, one attempt; no resets/calibration or RF wiring change. Use [Mac case](MAC-20261111-CONTROL.md) as procedure reference, not Pi evidence |
+| P3-PI-SHORT | Three rows, interval 1, timeout 10, W, one excluded setup acquisition, source-on direct internal reference under explicit procedure; remote final source off | At most 90 seconds; CSV/raw/status/session integrity and normal cleanup; no accuracy claim |
+| P3-PI-SUSTAIN | Repeat 300-second duration/1-second interval/10-second timeout reference profile with known settings | At most 380 seconds including bounded setup/cleanup, one attempt; actual count/timing/overruns/raw/units/metadata, then explicit source off and owner local-state check |
+| P3-PI-RETRIEVE | Start/observe bounded sessions through Mac SSH, retrieve completed CSV/sidecar and compare SHA-256/session IDs | Source and retrieved bytes match, metadata completion verified; keep private networking/authentication local. Do not claim process-lifetime behavior not actually tested |
+| P3-PI-FAILURE | Repeat the separately named inter-read SIGINT and one induced in-flight timeout/manual USB recovery only after earlier Pi cases pass and owner is available | Use [failure procedure](FAILURE-RECOVERY.md) budgets and exclusions. One injection each, no retries or post-uncertainty writes; fresh protocol/owner recovery proof required |
+
+The sequence initially released software preparation, then hardware cases after the owner move/access confirmations recorded below. Each hardware case depends on the preceding readiness/evidence gate and a concrete local run procedure; do not start a later case from a software pass alone. Existing safe reference-control authorization applies only to the unchanged prepared sensor/internal-reference path. Stop at the first required failure and investigate without guessing at host/driver support or silently changing the stack. Preserve per-case tested revision, exact commands, raw evidence/hashes, setup, expected/observed results, cleanup, and operator reports. Raw Pi measurements and retrieved files remain under ignored local output, with deliberately reviewed summaries committed.
+
+## Preflight review
+
+Review challenges cross-host package/architecture drift, hidden system dependencies, copying an untracked checkout, accidental publication of manuals/measurements/credentials, changing another radio application's environment, USB ownership/driver contention, wrong unit identity, stale status, trigger ordering, normal cleanup versus uncertain recovery, SSH process lifetime, and missing retrieval checksums. The isolated verified bundle/venv, readiness gates, unchanged runtime pins, existing source-backed procedures, and separate Pi evidence address preparation risks. Physical claims stay open until their actual cases pass.
+
+## Pi USB access gate
+
+The owner confirmed the adapter USB host move. Read-only sysfs inspection found one XyphroLabs GpibUsb `03eb:2065`, serial descriptor `HEWLETT-PACKARD_437B_1.8`, USB bcdDevice `0001`, interface 0 class/subclass/protocol `fe/03/01`, bound to the Linux `usbtmc` kernel driver. The current USB device node is root:root mode 0664; the SSH account can read but cannot write it. The separate `/dev/usbtmc0` is root-only. USB enumeration therefore passes, but the pinned PyUSB path lacks required access. No instrument session was opened, no command sent, and no access configuration changed during discovery.
+
+The owner explicitly chose permanent access instead of the proposed temporary ACL. No overlapping adapter rule was found. Installed `/etc/udev/rules.d/70-hp437b-usbgpib.rules`, matching only USB device vendor/product `03eb:2065` and granting existing `plugdev` group mode 0660. Reloaded rules and triggered only the identified adapter change event. The ordinary logging account already belonged to `plugdev`; the resulting node was root:plugdev mode 0660, with read/write access verified as that account. No group changes or world-write permission were needed. The exact [repository rule](../../config/udev/70-hp437b-usbgpib.rules) and [setup/removal instructions](../SOFTWARE.md#raspberry-pi-usb-permissions) document this host requirement. The pinned installed backend attempts to detach an active kernel driver on interface 0 and disposes PyUSB resources at close; it does not explicitly reattach the kernel driver. Record binding after testing, and use an owner-assisted USB reconnect if restoration of the original kernel binding is needed. Neither successful enumeration nor the software suite establishes Pi USB opening or local restoration.
+
+## P3-PI-ID initial result
+
+Identification and corrected cleanup completed on November 11, 2026, 21:51:45.377298–21:51:45.635500 UTC (15:51 CST), in 0.258170 seconds. One explicit `@py` resource open and `*IDN?` returned `HEWLETT-PACKARD,437B,,1.8\r\n`, raw hex `4845574c4554542d5041434b4152442c343337422c2c312e380d0a`. The resource was `USB0::0x03EB::0x2065::HEWLETT-PACKARD_437B_1.8::0::INSTR`. Source provenance is the original verified archive/commit above; no production code changed. This verifies meter firmware 1.8, not adapter firmware.
+
+The ordinary-user process negotiated `xyphro-usb488-gtl-v1`, interface 0, capabilities `010000010401000000000000000107070000000000000000`. Healthy cleanup recorded TR3 (`545233`) followed by accepted GTL response `01`; close returned. The owner subsequently confirmed live numeric readings, RMT off, and POWER REF off without PRESET/LOCAL. Accept identification and normal automatic restoration within this setup. No retries, acquisition, reference switching, or calibration were performed. The run used 30-second operation deadlines and a 100-second outer budget.
+
+Retrieved raw `output/logs/pi-20261111/identification.json` matches the remote SHA-256 `8f5d4c596288e2db14be72e1170b76d698c01e09be716fa601b5ea69ea887e67`. Raw capture retains its truthful pending operator observation. This retrieval verifies this JSON only; CSV/sidecar session retrieval remains a later case. The owner confirmation released the subsequent source-off baseline case.
+
+## P3-PI-BASELINE and P3-PI-CONTROL results
+
+✅ Source-off baseline and independent free-run verification passed. The fresh identification/SM/OD/TR2/read/SM sequence returned −0.0100 µW (`-0.0100E-06\r\n`), normal absolute W, reference/corrections off, no measurement/entry error, and expected post-TR2 standby. The 7.738-second batch ended with accepted TR3/GTL. An independent open after a ten-second wait found standby false and numeric OD `0.01 uW` before its own cleanup. This independently checks the previous cleanup rather than inferring free-run from GTL status.
+
+✅ Reversible unit/source control passed in 41.289 seconds. From verified source-off/W/free-run, the procedure sent confirmed OC1, waited 20 seconds, then repeated the [Mac control sequence and preselected tolerances](MAC-20261111-CONTROL.md#physical-sequence-and-results). Baseline 0.988 mW, LG −0.0500 dBm, restored W 0.988 mW, first OC0 0.010 µW, OC1 repeat 0.989 mW, final OC0 0.010 µW. Conversion difference 0.002431 dB passed the 0.02 dB criterion; W restoration/repeat passed 0.002 mW, and off readings were below 1% of baseline. Fresh status verified source/units/corrections/errors at each stage. Final W/reference off and normal TR3/GTL cleanup passed. No zero/calibration, numerical factor, range/filter policy, reset, or RF wiring change occurred. These are configured consistency/control observations, not absolute accuracy acceptance.
+
+| Retrieved ignored artifact | SHA-256 |
+| --- | --- |
+| `output/logs/pi-20261111/baseline.json` | `eb64da61d2b5b95573c09a2e1bd9c392df685922ad58f2cdd8c073101ae6c4d7` |
+| `output/logs/pi-20261111/baseline-free-run.json` | `a66b464d7dfe0375666910aab2538a3c285666559d55bf69c254273620fc2772` |
+| `output/logs/pi-20261111/control-reference.json` | `343689a4849842005890947fd210d29310d9982d6e221cf9af8d63110de6b83e` |
+
+Operator restoration was explicitly confirmed after Pi identification; a final observation after the reference logging batch remains required. The control capture retains its pending operator field without retroactive edits. Later logging/failure/replacement gates remain separate.
+
+## P3-PI-SHORT and retrieval results
+
+✅ Three-row reference session and CSV/sidecar retrieval passed. The explicitly recorded supervisor verified W/source-off/free-run, enabled OC1 with confirmation, waited 20 seconds, acquired a reference check, and closed normally before invoking the unchanged installed production CLI. CLI arguments selected count 3, interval 1 second, timeout 10 seconds, unit W, and the recorded meter/sensor serials. CLI returned 0, completed metadata, three valid rows, and accepted TR3/GTL cleanup. A fresh source-control session confirmed free-run, captured numeric OD, sent OC0, acquired a low-power reading with fresh source-off status, then closed normally. The generic logger itself preserves source state; these switches belong to the explicit supervisor.
+
+Session `0d29b375-4661-47ba-87f9-0f0317646552`: all three rows were 0.9880000 mW, no invalid rows or missing sequences, mean receipt spacing 1.000052 seconds (range 1.000034–1.000070), maximum start overrun 0.000063 seconds. CLI setup/collection/cleanup lasted 2.823781 seconds; full reference procedure including settling and switching lasted 32.572800 seconds. The setup acquisition was excluded from CSV rows. Exact raw/value/unit consistency, UTC and monotonic ordering, settings, initial status, session IDs, final last-raw field, and cleanup records passed independent checks.
+
+Mac-started SSH execution, observation of completion, and retrieved CSV/sidecar integrity passed for this bounded run. Local files under ignored `output/logs/pi-20261111/` match the remote procedure's hashes: `reference-short.csv` SHA-256 `d882c15c7f239d454be752368df9d2d97baa5bc52942d3e05df6ee1952749e8c`; `reference-short.csv.session.json` SHA-256 `ce88685b60b2f6fa6a2297d3ac33319d98f3be43c9fd1bcdbd61a709688bede3`. Procedure and verification JSON remain beside them. This tests attached SSH process execution, not survival of SSH loss or unattended restart. Final owner observation after the sustained batch remains pending.
+
+## P3-PI-SUSTAIN release
+
+After independent short-run verification, released the same supervised reference procedure for duration 300 seconds, interval 1 second, timeout 10 seconds, W. A 380-second outer limit includes reference settling, logger setup/cleanup, and explicit final-off acquisition. The production CLI has its own 330-second supervisor wait. No source-off command is sent blindly after failed/uncertain CLI evidence; stop and involve the operator instead. The completed results follow; final operator observation remains pending.
+
+At the 150-row running observation, all rows were valid. Before requesting the owner display observation, selected a 0.001 mW comparison tolerance (one displayed 0.001 mW increment) against the contemporaneous stable reference log range. The owner was asked for reading/units and PWR REF annunciator without key presses. This is a live consistency comparison; it does not identify an exact instrument sample time or establish absolute accuracy. Owner response and final off/local observation remain pending.
+
+## P3-PI-SUSTAIN and retrieval results
+
+✅ Data/timing/metadata/retrieval checks passed for session `29ef7e10-e835-4b02-81ae-eb365dd6f18f`: 300 valid W rows, no invalid rows or missing sequences, 0.988–0.989 mW, mean receipt spacing 1.000064 seconds (range 0.997896–1.002143), maximum start overrun 0.000081 seconds. The last acquisition began at 299.019228 seconds and its receipt elapsed time was 299.250705 seconds; the next nominal start exceeded the 300-second window. CLI setup/collection/cleanup lasted 300.596797 seconds. The explicit reference procedure, including settling and final-off checks, lasted 330.367746 seconds and finished 22:01:34.672579 UTC (16:01 CST), within the 380-second budget.
+
+Independent verification checked exact settings, source/correction status, raw-versus-parsed values/units/CRLF, contiguous sequences, UTC/monotonic order, setup exclusion, sidecar session identity/count/last reply, accepted TR3/GTL cleanup, and matching remote/retrieved hashes. The final source-control session captured reference-on numeric OD, sent OC0, verified low-power acquisition and fresh reference-off status, and closed with accepted TR3/GTL. The owner has been asked for final live-display/RMT/reference-off confirmation; this physical observation remains distinct from accepted USB control status. No key press should be required.
+
+| Retrieved ignored artifact | SHA-256 |
+| --- | --- |
+| `output/logs/pi-20261111/reference-sustained.csv` | `808d5bdd0415bf8eda7edb1c2dfbabbf5793bb4070e36cea3f2938a914a081a5` |
+| `output/logs/pi-20261111/reference-sustained.csv.session.json` | `fa33c10832f553d333ad30d6ab2c2dc472182a3d3c55b8744ed8d3601ca877e8` |
+
+The explicit procedure and independent verification JSON remain beside the retrieved files. The installed udev rule exactly matches repository bytes (SHA-256 `9a103e41be902ef27cc1068b768c68bb6781a5d3f35f70d9657a86c5e64af6be`). Rule persistence across a physical reconnect has not yet been bench-checked; the named failure/recovery batch provides that opportunity. Pi interruption/timeout/manual recovery, owner reference-on display agreement if not reported, adapter firmware/revision, final application policy, and replacement acceptance remain open. This run establishes neither absolute accuracy nor unattended logging/recovery or SSH-loss survival.
+
+P3-PI-FILE-PROTECTION also passed: invoking the production CLI with the existing short-run CSV returned exit 1/FileExistsError at exclusive file reservation, before its connect callback; both CSV and sidecar hashes remained unchanged. Local trace is ignored `tmp/pi-qualification/file-protection.json`. No instrument command or overwrite occurred in this refusal case.
