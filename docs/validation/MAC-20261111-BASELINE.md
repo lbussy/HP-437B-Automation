@@ -39,3 +39,7 @@ After the 30-minute warm-up reminder and the [manual-zero instructions](PHASE-3-
 ## Reference calibration factor confirmed
 
 The owner confirms REF CAL FACTOR 99% on sensor SN MY41094127, consistent with the saved certificate. The [manual CAL plan](PHASE-3-PLAN.md#p3-manual-cal-preparation) uses 99.0% with the internal 50 MHz/1 mW reference and states automatic reference activation/restoration. Calibration execution and outcome remain pending. No software calibration or reference-output command has been issued.
+
+## Owner-reported post-CAL state
+
+Following the local 99.0% CAL instructions, the owner reported POWER REF off and −0.08 µW (−80 nW). Record this as the reported post-procedure state, consistent with the routine restoring reference off; no duration or explicit error history was provided. It does not establish 1 mW reference readback, absolute accuracy, or remote C001 support. No Python I/O was performed. The active measurement CAL FAC remains to be inspected before the reference-on readback batch; REF CF used during CAL is a separate setting.

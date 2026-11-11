@@ -41,3 +41,7 @@ The owner confirms duty correction off and reference off; retain the prior enabl
 ## Post-zero operator observation
 
 The owner reported −0.009 µW after the warm-up reminder/manual-zero instructions. Unit conversion is −9 nW; preserve the explicit µW unit rather than the earlier mW baseline. This is operator-reported preparation evidence, not remote zero qualification or a specification pass. No zero duration/error history or all-range test was supplied. Calibration remains pending the actual reference calibration factor and prepared path.
+
+## Post-CAL reassessment
+
+The owner reports reference off and −0.08 µW following manual CAL instructions. Preserve the correct −80 nW conversion and avoid treating a reference-off residual as a 1 mW comparison. Reference gain calibration and active measurement CAL FAC have different roles; the next read-only front-panel inspection resolves the latter before reference-on interpretation. Remote calibration remains guarded; no Python I/O or independent accuracy verification occurred.
