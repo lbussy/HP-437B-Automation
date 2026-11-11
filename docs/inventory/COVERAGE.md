@@ -1,0 +1,159 @@
+# Capability coverage matrix
+
+Reviewed November 11, 2026. This matrix accounts for118 command/syntax variants across50 functional families and20 bus-operation entries (19 supported/relevant and one C0 exclusion). [Counting rules](COMMANDS.md#source-and-counting-convention) define the totals. [Review record](REVIEW.md) records reconciliation against both summary pages and detailed sections.
+
+## Status model
+
+Manual: ✅ means the documented occurrence, available semantics, source citation, and ambiguity flag were checked; it is not hardware verification. Implementation, software tests, Mac, and Pi each use separate ✅/⏳/▧ statuses. “Excl.” marks a documented instrument exclusion. All future tests refer to an authorized setup and retain unit/version identity.
+
+Transport profiles T1–T9 and EX resolve to [GPIB evidence](GPIB.md#transport-evidence-profiles), with separate adapter and backend evidence. Labels: documented claim=source states support; source-inspected=identified released implementation; uncertain=evidence insufficient; unsupported=identified implementation gap; bench-verified=recorded physical result. The profile records evidence, not an end-to-end passing result.
+
+Each reference entry contains parameter domains, effects, prerequisites, and a per-capability future test with an observable result. Open issue IDs link to the [ambiguity register](AMBIGUITIES.md). Implementation is proposed API exposure, not existing code.
+
+## Commands and syntax
+
+| ID / command | Manual | Impl | SW tests | Mac | Pi | Proposed Python exposure | Adapter/backend evidence | Qualification case | Issue |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [C001 `CL`](COMMANDS.md#c001) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_calibration()` or explicit action; variant `CL` | T1: A documented / B source-inspected transport | [case C001](COMMANDS.md#c001) | [A04](AMBIGUITIES.md#a04) |
+| [C002 `*CLS`](COMMANDS.md#c002) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_status_clear()` or explicit action; variant `*CLS` | T1: A documented / B source-inspected transport | [case C002](COMMANDS.md#c002) | [A06](AMBIGUITIES.md#a06) |
+| [C003 `CS`](COMMANDS.md#c003) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_status_clear()` or explicit action; variant `CS` | T1: A documented / B source-inspected transport | [case C003](COMMANDS.md#c003) | — |
+| [C004 `CT0`](COMMANDS.md#c004) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_clear()` or explicit action; variant `CT0` | T1: A documented / B source-inspected transport | [case C004](COMMANDS.md#c004) | [A03](AMBIGUITIES.md#a03) |
+| [C005 `CT1`](COMMANDS.md#c005) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_clear()` or explicit action; variant `CT1` | T1: A documented / B source-inspected transport | [case C005](COMMANDS.md#c005) | [A03](AMBIGUITIES.md#a03) |
+| [C006 `CT2`](COMMANDS.md#c006) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_clear()` or explicit action; variant `CT2` | T1: A documented / B source-inspected transport | [case C006](COMMANDS.md#c006) | [A03](AMBIGUITIES.md#a03) |
+| [C007 `CT3`](COMMANDS.md#c007) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_clear()` or explicit action; variant `CT3` | T1: A documented / B source-inspected transport | [case C007](COMMANDS.md#c007) | [A03](AMBIGUITIES.md#a03) |
+| [C008 `CT4`](COMMANDS.md#c008) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_clear()` or explicit action; variant `CT4` | T1: A documented / B source-inspected transport | [case C008](COMMANDS.md#c008) | [A03](AMBIGUITIES.md#a03) |
+| [C009 `CT5`](COMMANDS.md#c009) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_clear()` or explicit action; variant `CT5` | T1: A documented / B source-inspected transport | [case C009](COMMANDS.md#c009) | [A03](AMBIGUITIES.md#a03) |
+| [C010 `CT6`](COMMANDS.md#c010) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_clear()` or explicit action; variant `CT6` | T1: A documented / B source-inspected transport | [case C010](COMMANDS.md#c010) | [A03](AMBIGUITIES.md#a03) |
+| [C011 `CT7`](COMMANDS.md#c011) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_clear()` or explicit action; variant `CT7` | T1: A documented / B source-inspected transport | [case C011](COMMANDS.md#c011) | [A03](AMBIGUITIES.md#a03) |
+| [C012 `CT8`](COMMANDS.md#c012) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_clear()` or explicit action; variant `CT8` | T1: A documented / B source-inspected transport | [case C012](COMMANDS.md#c012) | [A03](AMBIGUITIES.md#a03) |
+| [C013 `CT9`](COMMANDS.md#c013) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_clear()` or explicit action; variant `CT9` | T1: A documented / B source-inspected transport | [case C013](COMMANDS.md#c013) | [A03](AMBIGUITIES.md#a03) |
+| [C014 `DA`](COMMANDS.md#c014) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_display()` or explicit action; variant `DA` | T1: A documented / B source-inspected transport | [case C014](COMMANDS.md#c014) | — |
+| [C015 `DC0`](COMMANDS.md#c015) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_duty_correction()` or explicit action; variant `DC0` | T1: A documented / B source-inspected transport | [case C015](COMMANDS.md#c015) | — |
+| [C016 `DC1`](COMMANDS.md#c016) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_duty_correction()` or explicit action; variant `DC1` | T1: A documented / B source-inspected transport | [case C016](COMMANDS.md#c016) | — |
+| [C017 `DD`](COMMANDS.md#c017) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_display()` or explicit action; variant `DD` | T1: A documented / B source-inspected transport | [case C017](COMMANDS.md#c017) | [A07](AMBIGUITIES.md#a07) |
+| [C018 `DF`](COMMANDS.md#c018) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_display()` or explicit action; variant `DF` | T1: A documented / B source-inspected transport | [case C018](COMMANDS.md#c018) | [A07](AMBIGUITIES.md#a07) |
+| [C019 `DE`](COMMANDS.md#c019) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_display()` or explicit action; variant `DE` | T1: A documented / B source-inspected transport | [case C019](COMMANDS.md#c019) | — |
+| [C020 `DN`](COMMANDS.md#c020) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_cursor()` or explicit action; variant `DN` | T1: A documented / B source-inspected transport | [case C020](COMMANDS.md#c020) | — |
+| [C021 `LT`](COMMANDS.md#c021) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_cursor()` or explicit action; variant `LT` | T1: A documented / B source-inspected transport | [case C021](COMMANDS.md#c021) | — |
+| [C022 `RT`](COMMANDS.md#c022) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_cursor()` or explicit action; variant `RT` | T1: A documented / B source-inspected transport | [case C022](COMMANDS.md#c022) | — |
+| [C023 `UP`](COMMANDS.md#c023) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_cursor()` or explicit action; variant `UP` | T1: A documented / B source-inspected transport | [case C023](COMMANDS.md#c023) | — |
+| [C024 `DU`](COMMANDS.md#c024) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_display()` or explicit action; variant `DU` | T1: A documented / B source-inspected transport | [case C024](COMMANDS.md#c024) | [A07](AMBIGUITIES.md#a07) |
+| [C025 `DY`](COMMANDS.md#c025) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_duty_correction()` or explicit action; variant `DY` | T1: A documented / B source-inspected transport | [case C025](COMMANDS.md#c025) | — |
+| [C026 `EN`](COMMANDS.md#c026) | ✅ | ▧ | ▧ | ▧ | ▧ | encoder/context operation: `EN` | T1: A documented / B source-inspected transport | [case C026](COMMANDS.md#c026) | — |
+| [C027 `ERR?`](COMMANDS.md#c027) | ✅ | ▧ | ▧ | ▧ | ▧ | `read_error_query()`; raw reply retained | T1: A documented / B source-inspected transport | [case C027](COMMANDS.md#c027) | [A06](AMBIGUITIES.md#a06) |
+| [C028 `*ESR?`](COMMANDS.md#c028) | ✅ | ▧ | ▧ | ▧ | ▧ | `read_event_status()`; raw reply retained | T1: A documented / B source-inspected transport | [case C028](COMMANDS.md#c028) | [A06](AMBIGUITIES.md#a06) |
+| [C029 `*ESE`](COMMANDS.md#c029) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_event_enable()` or explicit action; variant `*ESE` | T1: A documented / B source-inspected transport | [case C029](COMMANDS.md#c029) | [A06](AMBIGUITIES.md#a06) |
+| [C030 `*ESE?`](COMMANDS.md#c030) | ✅ | ▧ | ▧ | ▧ | ▧ | `read_event_enable()`; raw reply retained | T1: A documented / B source-inspected transport | [case C030](COMMANDS.md#c030) | — |
+| [C031 `ET0`](COMMANDS.md#c031) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_edit()` or explicit action; variant `ET0` | T1: A documented / B source-inspected transport | [case C031](COMMANDS.md#c031) | [A03](AMBIGUITIES.md#a03) |
+| [C032 `ET1`](COMMANDS.md#c032) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_edit()` or explicit action; variant `ET1` | T1: A documented / B source-inspected transport | [case C032](COMMANDS.md#c032) | [A03](AMBIGUITIES.md#a03) |
+| [C033 `ET2`](COMMANDS.md#c033) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_edit()` or explicit action; variant `ET2` | T1: A documented / B source-inspected transport | [case C033](COMMANDS.md#c033) | [A03](AMBIGUITIES.md#a03) |
+| [C034 `ET3`](COMMANDS.md#c034) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_edit()` or explicit action; variant `ET3` | T1: A documented / B source-inspected transport | [case C034](COMMANDS.md#c034) | [A03](AMBIGUITIES.md#a03) |
+| [C035 `ET4`](COMMANDS.md#c035) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_edit()` or explicit action; variant `ET4` | T1: A documented / B source-inspected transport | [case C035](COMMANDS.md#c035) | [A03](AMBIGUITIES.md#a03) |
+| [C036 `ET5`](COMMANDS.md#c036) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_edit()` or explicit action; variant `ET5` | T1: A documented / B source-inspected transport | [case C036](COMMANDS.md#c036) | [A03](AMBIGUITIES.md#a03) |
+| [C037 `ET6`](COMMANDS.md#c037) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_edit()` or explicit action; variant `ET6` | T1: A documented / B source-inspected transport | [case C037](COMMANDS.md#c037) | [A03](AMBIGUITIES.md#a03) |
+| [C038 `ET7`](COMMANDS.md#c038) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_edit()` or explicit action; variant `ET7` | T1: A documented / B source-inspected transport | [case C038](COMMANDS.md#c038) | [A03](AMBIGUITIES.md#a03) |
+| [C039 `ET8`](COMMANDS.md#c039) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_edit()` or explicit action; variant `ET8` | T1: A documented / B source-inspected transport | [case C039](COMMANDS.md#c039) | [A03](AMBIGUITIES.md#a03) |
+| [C040 `ET9`](COMMANDS.md#c040) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_table_edit()` or explicit action; variant `ET9` | T1: A documented / B source-inspected transport | [case C040](COMMANDS.md#c040) | [A03](AMBIGUITIES.md#a03) |
+| [C041 `EX`](COMMANDS.md#c041) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_exit()` or explicit action; variant `EX` | T1: A documented / B source-inspected transport | [case C041](COMMANDS.md#c041) | — |
+| [C042 `FA`](COMMANDS.md#c042) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_filter()` or explicit action; variant `FA` | T1: A documented / B source-inspected transport | [case C042](COMMANDS.md#c042) | — |
+| [C043 `FH`](COMMANDS.md#c043) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_filter()` or explicit action; variant `FH` | T1: A documented / B source-inspected transport | [case C043](COMMANDS.md#c043) | — |
+| [C044 `FM`](COMMANDS.md#c044) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_filter()` or explicit action; variant `FM` | T1: A documented / B source-inspected transport | [case C044](COMMANDS.md#c044) | [A08](AMBIGUITIES.md#a08) |
+| [C045 `FR`](COMMANDS.md#c045) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_frequency()` or explicit action; variant `FR` | T1: A documented / B source-inspected transport | [case C045](COMMANDS.md#c045) | [A04](AMBIGUITIES.md#a04) |
+| [C046 `GT0`](COMMANDS.md#c046) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_group_trigger_policy()` or explicit action; variant `GT0` | T1: A documented / B source-inspected transport | [case C046](COMMANDS.md#c046) | — |
+| [C047 `GT1`](COMMANDS.md#c047) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_group_trigger_policy()` or explicit action; variant `GT1` | T1: A documented / B source-inspected transport | [case C047](COMMANDS.md#c047) | — |
+| [C048 `GT2`](COMMANDS.md#c048) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_group_trigger_policy()` or explicit action; variant `GT2` | T1: A documented / B source-inspected transport | [case C048](COMMANDS.md#c048) | — |
+| [C049 `GZ`](COMMANDS.md#c049) | ✅ | ▧ | ▧ | ▧ | ▧ | encoder/context operation: `GZ` | T1: A documented / B source-inspected transport | [case C049](COMMANDS.md#c049) | — |
+| [C050 `HZ`](COMMANDS.md#c050) | ✅ | ▧ | ▧ | ▧ | ▧ | encoder/context operation: `HZ` | T1: A documented / B source-inspected transport | [case C050](COMMANDS.md#c050) | — |
+| [C051 `KZ`](COMMANDS.md#c051) | ✅ | ▧ | ▧ | ▧ | ▧ | encoder/context operation: `KZ` | T1: A documented / B source-inspected transport | [case C051](COMMANDS.md#c051) | — |
+| [C052 `MZ`](COMMANDS.md#c052) | ✅ | ▧ | ▧ | ▧ | ▧ | encoder/context operation: `MZ` | T1: A documented / B source-inspected transport | [case C052](COMMANDS.md#c052) | — |
+| [C053 `ID`](COMMANDS.md#c053) | ✅ | ▧ | ▧ | ▧ | ▧ | `read_identification()`; raw reply retained | T1: A documented / B source-inspected transport | [case C053](COMMANDS.md#c053) | [A01](AMBIGUITIES.md#a01) |
+| [C054 `IDN?`](COMMANDS.md#c054) | ✅ | ▧ | ▧ | ▧ | ▧ | `read_identification()`; raw reply retained | T1: A documented / B source-inspected transport | [case C054](COMMANDS.md#c054) | [A01](AMBIGUITIES.md#a01) |
+| [C055 `*IDN?`](COMMANDS.md#c055) | ✅ | ▧ | ▧ | ▧ | ▧ | `read_identification()`; raw reply retained | T1: A documented / B source-inspected transport | [case C055](COMMANDS.md#c055) | [A01](AMBIGUITIES.md#a01) |
+| [C056 `KB`](COMMANDS.md#c056) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_calibration_factor()` or explicit action; variant `KB` | T1: A documented / B source-inspected transport | [case C056](COMMANDS.md#c056) | [A04](AMBIGUITIES.md#a04) |
+| [C057 `LG`](COMMANDS.md#c057) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_units()` or explicit action; variant `LG` | T1: A documented / B source-inspected transport | [case C057](COMMANDS.md#c057) | — |
+| [C058 `LN`](COMMANDS.md#c058) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_units()` or explicit action; variant `LN` | T1: A documented / B source-inspected transport | [case C058](COMMANDS.md#c058) | — |
+| [C059 `LH`](COMMANDS.md#c059) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_high_limit()` or explicit action; variant `LH` | T1: A documented / B source-inspected transport | [case C059](COMMANDS.md#c059) | — |
+| [C060 `LL`](COMMANDS.md#c060) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_low_limit()` or explicit action; variant `LL` | T1: A documented / B source-inspected transport | [case C060](COMMANDS.md#c060) | — |
+| [C061 `LM0`](COMMANDS.md#c061) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_limits_enable()` or explicit action; variant `LM0` | T1: A documented / B source-inspected transport | [case C061](COMMANDS.md#c061) | — |
+| [C062 `LM1`](COMMANDS.md#c062) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_limits_enable()` or explicit action; variant `LM1` | T1: A documented / B source-inspected transport | [case C062](COMMANDS.md#c062) | — |
+| [C063 `LP`](COMMANDS.md#c063) | ✅ | ▧ | ▧ | ▧ | ▧ | `read_learn()`; raw reply retained | T1: A documented / B source-inspected transport | [case C063](COMMANDS.md#c063) | [A02](AMBIGUITIES.md#a02) |
+| [C064 `LP2`](COMMANDS.md#c064) | ✅ | ▧ | ▧ | ▧ | ▧ | `read_learn()`; raw reply retained | T1: A documented / B source-inspected transport | [case C064](COMMANDS.md#c064) | [A02](AMBIGUITIES.md#a02) |
+| [C065 `OC0`](COMMANDS.md#c065) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_reference_output()` or explicit action; variant `OC0` | T1: A documented / B source-inspected transport | [case C065](COMMANDS.md#c065) | — |
+| [C066 `OC1`](COMMANDS.md#c066) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_reference_output()` or explicit action; variant `OC1` | T1: A documented / B source-inspected transport | [case C066](COMMANDS.md#c066) | — |
+| [C067 `OD`](COMMANDS.md#c067) | ✅ | ▧ | ▧ | ▧ | ▧ | `read_display_output()`; raw reply retained | T1: A documented / B source-inspected transport | [case C067](COMMANDS.md#c067) | [A03](AMBIGUITIES.md#a03) |
+| [C068 `OF0`](COMMANDS.md#c068) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_offset_enable()` or explicit action; variant `OF0` | T1: A documented / B source-inspected transport | [case C068](COMMANDS.md#c068) | — |
+| [C069 `OF1`](COMMANDS.md#c069) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_offset_enable()` or explicit action; variant `OF1` | T1: A documented / B source-inspected transport | [case C069](COMMANDS.md#c069) | — |
+| [C070 `OS`](COMMANDS.md#c070) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_offset()` or explicit action; variant `OS` | T1: A documented / B source-inspected transport | [case C070](COMMANDS.md#c070) | — |
+| [C071 `PCT`](COMMANDS.md#c071) | ✅ | ▧ | ▧ | ▧ | ▧ | encoder/context operation: `PCT` | T1: A documented / B source-inspected transport | [case C071](COMMANDS.md#c071) | [A03](AMBIGUITIES.md#a03) |
+| [C072 `%`](COMMANDS.md#c072) | ✅ | ▧ | ▧ | ▧ | ▧ | encoder/context operation: `%` | T1: A documented / B source-inspected transport | [case C072](COMMANDS.md#c072) | [A03](AMBIGUITIES.md#a03) |
+| [C073 `PR`](COMMANDS.md#c073) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_preset()` or explicit action; variant `PR` | T1: A documented / B source-inspected transport | [case C073](COMMANDS.md#c073) | — |
+| [C074 `RA`](COMMANDS.md#c074) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_auto_range()` or explicit action; variant `RA` | T1: A documented / B source-inspected transport | [case C074](COMMANDS.md#c074) | — |
+| [C075 `RC`](COMMANDS.md#c075) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_recall()` or explicit action; variant `RC` | T1: A documented / B source-inspected transport | [case C075](COMMANDS.md#c075) | — |
+| [C076 `RE`](COMMANDS.md#c076) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_resolution()` or explicit action; variant `RE` | T1: A documented / B source-inspected transport | [case C076](COMMANDS.md#c076) | [A04](AMBIGUITIES.md#a04) |
+| [C077 `RF0`](COMMANDS.md#c077) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_table_reference_factor()` or explicit action; variant `RF0` | T1: A documented / B source-inspected transport | [case C077](COMMANDS.md#c077) | [A03](AMBIGUITIES.md#a03) |
+| [C078 `RF1`](COMMANDS.md#c078) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_table_reference_factor()` or explicit action; variant `RF1` | T1: A documented / B source-inspected transport | [case C078](COMMANDS.md#c078) | [A03](AMBIGUITIES.md#a03) |
+| [C079 `RF2`](COMMANDS.md#c079) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_table_reference_factor()` or explicit action; variant `RF2` | T1: A documented / B source-inspected transport | [case C079](COMMANDS.md#c079) | [A03](AMBIGUITIES.md#a03) |
+| [C080 `RF3`](COMMANDS.md#c080) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_table_reference_factor()` or explicit action; variant `RF3` | T1: A documented / B source-inspected transport | [case C080](COMMANDS.md#c080) | [A03](AMBIGUITIES.md#a03) |
+| [C081 `RF4`](COMMANDS.md#c081) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_table_reference_factor()` or explicit action; variant `RF4` | T1: A documented / B source-inspected transport | [case C081](COMMANDS.md#c081) | [A03](AMBIGUITIES.md#a03) |
+| [C082 `RF5`](COMMANDS.md#c082) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_table_reference_factor()` or explicit action; variant `RF5` | T1: A documented / B source-inspected transport | [case C082](COMMANDS.md#c082) | [A03](AMBIGUITIES.md#a03) |
+| [C083 `RF6`](COMMANDS.md#c083) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_table_reference_factor()` or explicit action; variant `RF6` | T1: A documented / B source-inspected transport | [case C083](COMMANDS.md#c083) | [A03](AMBIGUITIES.md#a03) |
+| [C084 `RF7`](COMMANDS.md#c084) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_table_reference_factor()` or explicit action; variant `RF7` | T1: A documented / B source-inspected transport | [case C084](COMMANDS.md#c084) | [A03](AMBIGUITIES.md#a03) |
+| [C085 `RF8`](COMMANDS.md#c085) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_table_reference_factor()` or explicit action; variant `RF8` | T1: A documented / B source-inspected transport | [case C085](COMMANDS.md#c085) | [A03](AMBIGUITIES.md#a03) |
+| [C086 `RF9`](COMMANDS.md#c086) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_table_reference_factor()` or explicit action; variant `RF9` | T1: A documented / B source-inspected transport | [case C086](COMMANDS.md#c086) | [A03](AMBIGUITIES.md#a03) |
+| [C087 `RH`](COMMANDS.md#c087) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_range_hold()` or explicit action; variant `RH` | T1: A documented / B source-inspected transport | [case C087](COMMANDS.md#c087) | — |
+| [C088 `RL0`](COMMANDS.md#c088) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_relative()` or explicit action; variant `RL0` | T1: A documented / B source-inspected transport | [case C088](COMMANDS.md#c088) | — |
+| [C089 `RL1`](COMMANDS.md#c089) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_relative()` or explicit action; variant `RL1` | T1: A documented / B source-inspected transport | [case C089](COMMANDS.md#c089) | — |
+| [C090 `RL2`](COMMANDS.md#c090) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_relative()` or explicit action; variant `RL2` | T1: A documented / B source-inspected transport | [case C090](COMMANDS.md#c090) | — |
+| [C091 `RM`](COMMANDS.md#c091) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_manual_range()` or explicit action; variant `RM` | T1: A documented / B source-inspected transport | [case C091](COMMANDS.md#c091) | — |
+| [C092 `*RST`](COMMANDS.md#c092) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_soft_reset()` or explicit action; variant `*RST` | T1: A documented / B source-inspected transport | [case C092](COMMANDS.md#c092) | [A05](AMBIGUITIES.md#a05) |
+| [C093 `RV`](COMMANDS.md#c093) | ✅ | ▧ | ▧ | ▧ | ▧ | `read_mask_read()`; raw reply retained | T1: A documented / B source-inspected transport | [case C093](COMMANDS.md#c093) | [A02](AMBIGUITIES.md#a02) |
+| [C094 `SE`](COMMANDS.md#c094) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_selection()` or explicit action; variant `SE` | T1: A documented / B source-inspected transport | [case C094](COMMANDS.md#c094) | — |
+| [C095 `SM`](COMMANDS.md#c095) | ✅ | ▧ | ▧ | ▧ | ▧ | `read_status_message()`; raw reply retained | T1: A documented / B source-inspected transport | [case C095](COMMANDS.md#c095) | — |
+| [C096 `SN0`](COMMANDS.md#c096) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_label()` or explicit action; variant `SN0` | T1: A documented / B source-inspected transport | [case C096](COMMANDS.md#c096) | [A03](AMBIGUITIES.md#a03) |
+| [C097 `SN1`](COMMANDS.md#c097) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_label()` or explicit action; variant `SN1` | T1: A documented / B source-inspected transport | [case C097](COMMANDS.md#c097) | [A03](AMBIGUITIES.md#a03) |
+| [C098 `SN2`](COMMANDS.md#c098) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_label()` or explicit action; variant `SN2` | T1: A documented / B source-inspected transport | [case C098](COMMANDS.md#c098) | [A03](AMBIGUITIES.md#a03) |
+| [C099 `SN3`](COMMANDS.md#c099) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_label()` or explicit action; variant `SN3` | T1: A documented / B source-inspected transport | [case C099](COMMANDS.md#c099) | [A03](AMBIGUITIES.md#a03) |
+| [C100 `SN4`](COMMANDS.md#c100) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_label()` or explicit action; variant `SN4` | T1: A documented / B source-inspected transport | [case C100](COMMANDS.md#c100) | [A03](AMBIGUITIES.md#a03) |
+| [C101 `SN5`](COMMANDS.md#c101) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_label()` or explicit action; variant `SN5` | T1: A documented / B source-inspected transport | [case C101](COMMANDS.md#c101) | [A03](AMBIGUITIES.md#a03) |
+| [C102 `SN6`](COMMANDS.md#c102) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_label()` or explicit action; variant `SN6` | T1: A documented / B source-inspected transport | [case C102](COMMANDS.md#c102) | [A03](AMBIGUITIES.md#a03) |
+| [C103 `SN7`](COMMANDS.md#c103) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_label()` or explicit action; variant `SN7` | T1: A documented / B source-inspected transport | [case C103](COMMANDS.md#c103) | [A03](AMBIGUITIES.md#a03) |
+| [C104 `SN8`](COMMANDS.md#c104) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_label()` or explicit action; variant `SN8` | T1: A documented / B source-inspected transport | [case C104](COMMANDS.md#c104) | [A03](AMBIGUITIES.md#a03) |
+| [C105 `SN9`](COMMANDS.md#c105) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_sensor_label()` or explicit action; variant `SN9` | T1: A documented / B source-inspected transport | [case C105](COMMANDS.md#c105) | [A03](AMBIGUITIES.md#a03) |
+| [C106 `SP`](COMMANDS.md#c106) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_special_menu()` or explicit action; variant `SP` | T1: A documented / B source-inspected transport | [case C106](COMMANDS.md#c106) | [A05](AMBIGUITIES.md#a05) |
+| [C107 `*SRE`](COMMANDS.md#c107) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_mask_set()` or explicit action; variant `*SRE` | T1: A documented / B source-inspected transport | [case C107](COMMANDS.md#c107) | [A02](AMBIGUITIES.md#a02) |
+| [C108 `*SRE?`](COMMANDS.md#c108) | ✅ | ▧ | ▧ | ▧ | ▧ | `read_mask_read()`; raw reply retained | T1: A documented / B source-inspected transport | [case C108](COMMANDS.md#c108) | [A02](AMBIGUITIES.md#a02) |
+| [C109 `ST`](COMMANDS.md#c109) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_store()` or explicit action; variant `ST` | T1: A documented / B source-inspected transport | [case C109](COMMANDS.md#c109) | — |
+| [C110 `*STB?`](COMMANDS.md#c110) | ✅ | ▧ | ▧ | ▧ | ▧ | `read_status_byte_query()`; raw reply retained | T1: A documented / B source-inspected transport | [case C110](COMMANDS.md#c110) | — |
+| [C111 `TR0`](COMMANDS.md#c111) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_trigger()` or explicit action; variant `TR0` | T1: A documented / B source-inspected transport | [case C111](COMMANDS.md#c111) | — |
+| [C112 `TR1`](COMMANDS.md#c112) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_trigger()` or explicit action; variant `TR1` | T1: A documented / B source-inspected transport | [case C112](COMMANDS.md#c112) | — |
+| [C113 `TR2`](COMMANDS.md#c113) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_trigger()` or explicit action; variant `TR2` | T1: A documented / B source-inspected transport | [case C113](COMMANDS.md#c113) | — |
+| [C114 `TR3`](COMMANDS.md#c114) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_trigger()` or explicit action; variant `TR3` | T1: A documented / B source-inspected transport | [case C114](COMMANDS.md#c114) | — |
+| [C115 `*TST?`](COMMANDS.md#c115) | ✅ | ▧ | ▧ | ▧ | ▧ | `read_self_test_query()`; raw reply retained | T1: A documented / B source-inspected transport | [case C115](COMMANDS.md#c115) | [A05](AMBIGUITIES.md#a05) |
+| [C116 `ZE`](COMMANDS.md#c116) | ✅ | ▧ | ▧ | ▧ | ▧ | `set_zero()` or explicit action; variant `ZE` | T1: A documented / B source-inspected transport | [case C116](COMMANDS.md#c116) | — |
+| [C117 `@1`](COMMANDS.md#c117) | ✅ | ▧ | ▧ | ▧ | ▧ | `write_legacy_mask_prefix_raw()` | T1: A documented / B source-inspected transport | [case C117](COMMANDS.md#c117) | [A02](AMBIGUITIES.md#a02) |
+| [C118 `@2`](COMMANDS.md#c118) | ✅ | ▧ | ▧ | ▧ | ▧ | `write_learn_restore_prefix_raw()` | T1: A documented / B source-inspected transport | [case C118](COMMANDS.md#c118) | [A02](AMBIGUITIES.md#a02) |
+
+## Bus operations
+
+| ID / operation | Manual | Impl | SW tests | Mac | Pi | API and expected-result case | Adapter/backend evidence | Issue |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [G001 Addressing / handshake](GPIB.md#g001) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G001](GPIB.md#g001) | [T2](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
+| [G002 Receive data](GPIB.md#g002) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G002](GPIB.md#g002) | [T1](GPIB.md#transport-evidence-profiles) | — |
+| [G003 Send data / ordinary measurement read](GPIB.md#g003) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G003](GPIB.md#g003) | [T1](GPIB.md#transport-evidence-profiles) | — |
+| [G004 End of message](GPIB.md#g004) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G004](GPIB.md#g004) | [T3](GPIB.md#transport-evidence-profiles) | [A02](AMBIGUITIES.md#a02) |
+| [G005 Unlisten](GPIB.md#g005) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G005](GPIB.md#g005) | [T8](GPIB.md#transport-evidence-profiles) | — |
+| [G006 Untalk](GPIB.md#g006) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G006](GPIB.md#g006) | [T8](GPIB.md#transport-evidence-profiles) | — |
+| [G007 Remote enable](GPIB.md#g007) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G007](GPIB.md#g007) | [T4](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
+| [G008 Go to local](GPIB.md#g008) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G008](GPIB.md#g008) | [T5](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
+| [G009 Local lockout](GPIB.md#g009) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G009](GPIB.md#g009) | [T5](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
+| [G010 Clear lockout / set local](GPIB.md#g010) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G010](GPIB.md#g010) | [T5](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
+| [G011 Selected device clear](GPIB.md#g011) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G011](GPIB.md#g011) | [T6](GPIB.md#transport-evidence-profiles) | — |
+| [G012 Universal device clear](GPIB.md#g012) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G012](GPIB.md#g012) | [T8](GPIB.md#transport-evidence-profiles) | — |
+| [G013 Group execute trigger](GPIB.md#g013) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G013](GPIB.md#g013) | [T7](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
+| [G014 Require service](GPIB.md#g014) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G014](GPIB.md#g014) | [T9](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
+| [G015 Serial poll enable / status byte](GPIB.md#g015) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G015](GPIB.md#g015) | [T7](GPIB.md#transport-evidence-profiles) | [A06](AMBIGUITIES.md#a06) |
+| [G016 Serial poll disable](GPIB.md#g016) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G016](GPIB.md#g016) | [T8](GPIB.md#transport-evidence-profiles) | — |
+| [G017 Parallel poll configure / enable](GPIB.md#g017) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G017](GPIB.md#g017) | [T8](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
+| [G018 Parallel poll disable / unconfigure](GPIB.md#g018) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G018](GPIB.md#g018) | [T8](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
+| [G019 Interface clear / abort](GPIB.md#g019) | ✅ | ▧ | ▧ | ▧ | ▧ | [API / case G019](GPIB.md#g019) | [T8](GPIB.md#transport-evidence-profiles) | — |
+| [G020 Pass/take control exclusion](GPIB.md#g020) | ✅ | Excl. | Excl. | Excl. | Excl. | [API / case G020](GPIB.md#g020) | [EX](GPIB.md#transport-evidence-profiles) | — |

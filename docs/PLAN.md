@@ -65,6 +65,14 @@ If a required operation fails, investigate configuration or a reproducible backe
 5. Implement and validate the Python logger on the selected host, including timestamps, explicit units, timeouts, invalid readings, and clean shutdown. Test required triggering/status operations, recovery after a timeout, and a sustained logging run before accepting the backend. For Pi logging, verify Mac access and file retrieval. Validate each additional host before claiming support. Record actual bench results and any adapter-specific limitations here.
 
 
+## Three-phase execution
+
+1. Inventory: complete; use the [command and GPIB reference](inventory/README.md) and [coverage matrix](inventory/COVERAGE.md).
+2. Implement: build the Python interface in batches, beginning with basic power logging and raw-response preservation. Resolve transport requirements using the [released-backend evidence](inventory/GPIB.md#transport-evidence-profiles) and [source questions](inventory/AMBIGUITIES.md).
+3. Qualify: verify required capabilities for each host and unit against the matrix and [hardware validation plan](VALIDATION.md).
+
+The [Phase 1 review](inventory/REVIEW.md) recommends the first batch and documents command sequencing constraints. Preserve separate documentation, implementation, software-test, Mac, and Pi statuses. PyVISA-py remains provisional for complete bus control.
+
 ## Related records
 
 See [open work](OPEN-WORK.md), [equipment references](EQUIPMENT.md), and the [hardware validation plan](VALIDATION.md).

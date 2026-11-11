@@ -4,7 +4,7 @@ Automated control and power logging for an HP 437B power meter and HP 8482A sens
 
 ## Status
 
-Planning and repository setup, November 9, 2026. The proposed stack is Python, PyVISA, and PyVISA-py. Next, choose the initial host and logging settings, then validate adapter communication and backend compatibility on the bench.
+Phase 1 inventory completed November 11, 2026:118 command/syntax variants in50 functional families and20 GPIB operation entries. The proposed stack is Python, PyVISA, and PyVISA-py. Next, define the first implementation batch and initial host, with the documented backend gaps included in transport selection.
 
 Equipment update, November 11: the user reports that the seller/calibrator confirmed the current meter's [+5 V supply discrepancy](docs/EQUIPMENT.md#individual-calibration-records) was unacceptable. An exchange is planned after a few development steps with this unit. Replacement receipt and qualification remain pending.
 
@@ -15,6 +15,7 @@ Equipment update, November 11: the user reports that the seller/calibrator confi
 | [Plan and decision register](docs/PLAN.md) | Requirements, adapter recommendation, software candidate, unresolved decisions, and steps to resume |
 | [Open work](docs/OPEN-WORK.md) | Task status and next results |
 | [Release checklist](docs/RELEASE-CHECKLIST.md) | Three-phase readiness and prepared execution prompts |
+| [Capability inventory](docs/inventory/README.md) | Command and bus references, coverage matrix, source ambiguities, and review results |
 | [Equipment and manuals](docs/EQUIPMENT.md) | Official manuals, serial-specific calibration records, and operating references |
 | [Hardware validation](docs/VALIDATION.md) | Evidence required before claiming control or unattended logging support |
 | [Project provenance](docs/PROVENANCE.md) | Migration from Generic Radio Stuff and manual verification |

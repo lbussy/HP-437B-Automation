@@ -25,3 +25,9 @@ PyVISA-py remains provisional until required checks pass. An unrelated missing f
 ## Results to retain
 
 For each validation run, record date, operator, environment, exact procedure/commands, expected and observed behavior, pass/fail for each required check, and remaining limits. Raw local measurements belong in ignored `data/` or `output/logs/`; deliberately selected, reviewed evidence may be added under `docs/validation/` when available. No passing result is implied by this document.
+
+## Capability-by-capability qualification
+
+Use the [coverage matrix](inventory/COVERAGE.md) to select capability IDs and their linked prerequisites, expected results, and source questions. Record implementation, software-test, Mac, and Pi status independently. Resolve ambiguous reset/self-test, table-edit, binary-restore, and status lifecycle behavior before accepting those APIs.
+
+The [bus evidence](inventory/GPIB.md#transport-evidence-profiles) identifies limitations in released PyVISA-py 0.8.1. Demonstrate the selected released solution for serial polling, device clear, local restoration, and any required bus trigger or SRQ events. Follow the documented trigger/calibration ordering: await completion or use a verified serial-poll route, because an incoming ASCII program command can abort unfinished work.
