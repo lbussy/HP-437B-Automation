@@ -147,7 +147,7 @@ Each reference entry contains parameter domains, effects, prerequisites, and a p
 | [G008 Go to local](GPIB.md#g008) | ✅ | ✅ Conditional USB488 | ✅ Software + guards | [✅ Normal close only](../validation/AUTOMATIC-LOCAL.md) | [✅ Normal close only](../validation/PI-QUALIFICATION.md) | [API / case G008](GPIB.md#g008) | [T10](../validation/AUTOMATIC-LOCAL.md) | [A09](AMBIGUITIES.md#a09) |
 | [G009 Local lockout](GPIB.md#g009) | ✅ | ▧ Deferred | ✅ Guard test | ▧ | ▧ | [API / case G009](GPIB.md#g009) | [T5](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
 | [G010 Clear lockout / set local](GPIB.md#g010) | ✅ | ▧ Deferred | ✅ Guard test | ▧ | ▧ | [API / case G010](GPIB.md#g010) | [T5](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
-| [G011 Selected device clear](GPIB.md#g011) | ✅ | ▧ Deferred | ✅ Guard test | ▧ | ▧ | [API / case G011](GPIB.md#g011) | [T6](GPIB.md#transport-evidence-profiles) | — |
+| [G011 Selected device clear](GPIB.md#g011) | ✅ | ▧ API guarded; experimental helper | ✅ Guard + candidate tests | ▧ | [⏳ Healthy USBTMC handshake only; recovery failed](../validation/PI-ONLY-RECOVERY.md) | [API / case G011](GPIB.md#g011) | [T6](GPIB.md#transport-evidence-profiles) | — |
 | [G012 Universal device clear](GPIB.md#g012) | ✅ | ▧ Deferred | ✅ Guard test | ▧ | ▧ | [API / case G012](GPIB.md#g012) | [T8](GPIB.md#transport-evidence-profiles) | — |
 | [G013 Group execute trigger](GPIB.md#g013) | ✅ | ▧ Deferred | ✅ Guard test | ▧ | ▧ | [API / case G013](GPIB.md#g013) | [T7](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
 | [G014 Require service](GPIB.md#g014) | ✅ | ▧ Deferred | ✅ Guard test | ▧ | ▧ | [API / case G014](GPIB.md#g014) | [T9](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
@@ -157,3 +157,5 @@ Each reference entry contains parameter domains, effects, prerequisites, and a p
 | [G018 Parallel poll disable / unconfigure](GPIB.md#g018) | ✅ | ▧ Deferred | ✅ Guard test | ▧ | ▧ | [API / case G018](GPIB.md#g018) | [T8](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
 | [G019 Interface clear / abort](GPIB.md#g019) | ✅ | ▧ Deferred | ✅ Guard test | ▧ | ▧ | [API / case G019](GPIB.md#g019) | [T8](GPIB.md#transport-evidence-profiles) | — |
 | [G020 Pass/take control exclusion](GPIB.md#g020) | ✅ | Excl. | ✅ Exclusion test | Excl. | Excl. | [API / case G020](GPIB.md#g020) | [EX](GPIB.md#transport-evidence-profiles) | — |
+
+The experimental G011 USBTMC-clear helper does not remove its normal bus/API deferral: its healthy handshake passed on the Pi, but its post-timeout handshake failed. The [investigation](../validation/PI-ONLY-RECOVERY.md) separates those observations from qualified recovery and retains the unchanged guards and deferred totals.
