@@ -114,7 +114,7 @@ Go to local — `GTL addressed to meter`.
 - Roles, prerequisites, response, and effects: Returns front-panel control without clearing remembered lockout; RMT off, configuration preserved. Triggered operation returns to normal free-run according to Triggering.
 - Implemented API: `Instrument.bus("G008")` and automatic healthy `Instrument.close()`, through negotiated profile `xyphro-usb488-gtl-v1`; see [evidence and physical cases](../validation/AUTOMATIC-LOCAL.md). Native VISA control_ren remains unavailable.
 - Transport evidence: T10 (project-local negotiated extension), with native T5 limitations (profiles above).
-- Future qualification: Return local, check controls, state, and subsequent remote lockout.
+- Qualification: [Mac ID and logger normal-close cases](../validation/AUTOMATIC-LOCAL.md) passed, including owner-observed local controls without PRESET/LOCAL. Lockout behavior, other hosts, and replacement acceptance remain untested.
 - Source: [00437-90047, §3-25; Triggering3-103/PDF 133, printed 3-35/PDF 65](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
 - Open issue: A09.
 

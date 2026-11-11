@@ -1,6 +1,6 @@
 # Automatic return to local
 
-Status: implementation/software tests complete; physical verification pending. November 11, 2026. The owner explicitly requested removal of the PRESET/LOCAL step after normal runs. Starting commit `17daed824a92a721ab24e8209209fbbb85666325`, clean `devel`. Scope: project-local adapter transport extension and normal session cleanup, no firmware flashing or dependency/backend replacement. POWER REF stays off during these tests.
+Status: ✅ Complete for normal Mac/current-unit identification and logger shutdown; Phase 3 remains ⏳ In progress. November 11, 2026. The owner explicitly requested removal of the PRESET/LOCAL step after normal runs. Starting commit `17daed824a92a721ab24e8209209fbbb85666325`, clean `devel`. Scope: project-local adapter transport extension and normal session cleanup, no firmware flashing or dependency/backend replacement. POWER REF stays off during these tests.
 
 ## Source-backed route
 
@@ -32,8 +32,20 @@ Preflight challenged version drift, device/interface mismatch, missing USB488 su
 
 ## First physical result
 
-P3-LOCAL-ID at implementation commit `c0ed20d`, November 11, 21:00:16 UTC (15:00:16 CST), identified HP 437B firmware 1.8 and completed normal close in 0.11665 seconds total. Negotiated interface 0, capabilities `010000010401000000000000000107070000000000000000`, GO_TO_LOCAL reply `01`. Local artifact `output/logs/phase3-20261111/automatic-local-id.json`, SHA-256 `6f8fb250800e016199d1c1189498b34d6904cccc4b3ea3cf84f356051c856c57`. This establishes accepted control transfer; the owner has been asked to confirm RMT off/front-panel control without pressing PRESET/LOCAL. No measurement, RF output, zero, or calibration command was sent.
+P3-LOCAL-ID at implementation commit `c0ed20d`, November 11, 21:00:16 UTC (15:00:16 CST), identified HP 437B firmware 1.8 and completed normal close in 0.11665 seconds total. Negotiated interface 0, capabilities `010000010401000000000000000107070000000000000000`, GO_TO_LOCAL reply `01`. Local artifact `output/logs/phase3-20261111/automatic-local-id.json`, SHA-256 `6f8fb250800e016199d1c1189498b34d6904cccc4b3ea3cf84f356051c856c57`. The owner subsequently confirmed RMT off and working front-panel controls without pressing PRESET/LOCAL. P3-LOCAL-ID passes for this Mac/unit/setup. No measurement, RF output, zero, or calibration command was sent.
 
-## Packaging and pending operator gate
+## Packaging and operator gate
 
-Wheel and source distribution build successfully; a separate wheel-installed environment imports the new module from site-packages and passes all 236 tests, with CLI capabilities working. This supplements source-environment lint/format/tests. No physical follow-up is attempted while the owner confirmation for P3-LOCAL-ID is pending; it would be incorrect to accept local restoration from USB status alone or to start the next batch without an established normal outcome.
+Wheel and source distribution build successfully; a separate wheel-installed environment imports the new module from site-packages and passes all 236 tests, with CLI capabilities working. This supplements source-environment lint/format/tests. The owner confirmation for P3-LOCAL-ID released P3-LOCAL-LOG; no follow-up was started before that report. Accepted USB status alone is insufficient to prove local restoration.
+
+## Logger physical result
+
+P3-LOCAL-LOG at commit `fe32502f83ff8c1cf4f5e3c989cc9698527071a0` ran the production CLI with one row, interval 0, timeout 30, W, actual serials, and reference off. November 11, 21:05:03.066339–21:05:18.135950 UTC (15:05:03–15:05:18 CST): 15.069611 seconds total, including a setup acquisition and one CSV acquisition. CSV acquisition elapsed 7.43289 seconds; value −4.00E−8 W (−0.040 µW), exact frame `-0.0400E-06\r\n`. Session `4db3041c-8a73-49a3-b29e-a8120cd15eef` completed with one valid row, no instrument errors, and local-return profile/status `xyphro-usb488-gtl-v1` / accepted / response `01`. Initial SM `000000110017000A0012000000\r\n` confirms absolute W, reference/duty/offset/REL off, no errors, auto range 1/filter 128, and standby after setup.
+
+Independent artifact checks confirmed row count, raw/value/unit consistency, identity/session/dependency provenance, separate setup reading, completed final metadata, source/correction flags, and accepted local-return result. Raw evidence remains ignored: `output/logs/phase3-20261111/automatic-local-log.csv`, SHA-256 `2ccd623155a2dd0e71bcae0bc81df3918f32251ffb1de17dec86ec0d669a2104`; sidecar `automatic-local-log.csv.session.json`, SHA-256 `e9f7881f69f172d3cf8dc5ffa6e1d59ffb7583b0dd89c72e8b33896934a8db87` in the same directory. The owner subsequently confirmed RMT off, resumed updating, and working controls without pressing PRESET/LOCAL. P3-LOCAL-LOG passes on this recorded setup. No RF was activated.
+
+## Final reassessment and acceptance
+
+Fresh review after both owner observations accepts normal automatic local return for the identified Mac, adapter, pinned dependencies, and current meter. Both a complete ID query and a production logger session negotiated capability, received USB status `01`, closed, and were followed by owner confirmation of local front-panel operation without the key. State/error tests, worker timeout, exact status validation, and logger cleanup-failure tests retain the manual fallback for uncertain or failed operations. The review found no remaining actionable defect in this delivered normal-cleanup scope. GO_TO_LOCAL does not deassert REN, clear lockout, control RF output, or qualify device-clear/serial-poll recovery. Do not use it to claim unattended fault recovery, other-adapter support, Pi support, or replacement acceptance.
+
+Software evidence: 236 source tests and 236 installed-wheel tests passed; lint/format, wheel/sdist build, local links/anchors, matrix enumeration, and source-artifact integrity checks passed. CI for implementation delivery was observed queued, separately from local and physical evidence. Normal users of `hp437b log` and healthy `Instrument.close()` on this profile no longer need the PRESET/LOCAL step. Raw `VisaTransport.close()` alone remains resource disposal; callers should close their Instrument.

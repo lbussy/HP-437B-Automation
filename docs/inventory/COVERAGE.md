@@ -144,7 +144,7 @@ Each reference entry contains parameter domains, effects, prerequisites, and a p
 | [G005 Unlisten](GPIB.md#g005) | ✅ | ▧ Deferred | ✅ Guard test | ▧ | ▧ | [API / case G005](GPIB.md#g005) | [T8](GPIB.md#transport-evidence-profiles) | — |
 | [G006 Untalk](GPIB.md#g006) | ✅ | ▧ Deferred | ✅ Guard test | ▧ | ▧ | [API / case G006](GPIB.md#g006) | [T8](GPIB.md#transport-evidence-profiles) | — |
 | [G007 Remote enable](GPIB.md#g007) | ✅ | ▧ Deferred | ✅ Guard test | ▧ | ▧ | [API / case G007](GPIB.md#g007) | [T4](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
-| [G008 Go to local](GPIB.md#g008) | ✅ | ✅ Conditional USB488 | ✅ Software + guards | [⏳ Verification](../validation/AUTOMATIC-LOCAL.md) | ▧ | [API / case G008](GPIB.md#g008) | [T10](../validation/AUTOMATIC-LOCAL.md) | [A09](AMBIGUITIES.md#a09) |
+| [G008 Go to local](GPIB.md#g008) | ✅ | ✅ Conditional USB488 | ✅ Software + guards | [✅ Normal close only](../validation/AUTOMATIC-LOCAL.md) | ▧ | [API / case G008](GPIB.md#g008) | [T10](../validation/AUTOMATIC-LOCAL.md) | [A09](AMBIGUITIES.md#a09) |
 | [G009 Local lockout](GPIB.md#g009) | ✅ | ▧ Deferred | ✅ Guard test | ▧ | ▧ | [API / case G009](GPIB.md#g009) | [T5](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
 | [G010 Clear lockout / set local](GPIB.md#g010) | ✅ | ▧ Deferred | ✅ Guard test | ▧ | ▧ | [API / case G010](GPIB.md#g010) | [T5](GPIB.md#transport-evidence-profiles) | [A09](AMBIGUITIES.md#a09) |
 | [G011 Selected device clear](GPIB.md#g011) | ✅ | ▧ Deferred | ✅ Guard test | ▧ | ▧ | [API / case G011](GPIB.md#g011) | [T6](GPIB.md#transport-evidence-profiles) | — |
