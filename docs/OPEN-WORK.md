@@ -13,7 +13,8 @@ Updated: 2026-11-11. Statuses: ✅ Complete, ⏳ In progress, and ▧ Open. Task
 | DEC-01 | ✅ Complete | First batch: MacBook Pro Mac17,8, M5 Pro, ARM64, macOS 27.0.1. Pi identity/access remain P3-PI prerequisites |
 | DEC-02 | ▧ Open | Define initial measurement sequence, interval, duration, units, averaging/range policy, and CSV fields |
 | LOCAL-01 | ✅ Complete | [Corrected automatic cleanup](validation/AUTOMATIC-LOCAL.md) sends TR3 then GTL; independent status/display and owner checks pass after reproducing P3-R10. Failed/uncertain transfers retain manual recovery; replacement/Pi repetition remains PHASE-03 |
-| VAL-01 | ⏳ In progress | Mac identification and [reference readback/display agreement](validation/MAC-20261111-REFERENCE.md) passed in scoped batches; [three-row reference logging](validation/MAC-20261111-SHORT-LOG.md) also passed; reversible control, sustained logging, recovery, replacement, and second-host acceptance remain pending |
+| SUSTAIN-01 | ⏳ In progress | [Five-minute Mac reference logging](validation/MAC-20261111-SUSTAINED.md): data/metadata checks passed, 299 valid rows, final owner live-display/source-off confirmation pending |
+| VAL-01 | ⏳ In progress | Mac identification and [reference readback/display agreement](validation/MAC-20261111-REFERENCE.md) passed in scoped batches; [three-row reference logging](validation/MAC-20261111-SHORT-LOG.md) also passed; sustained-run data checks also passed, with final owner restoration confirmation pending; reversible control, recovery, replacement, and second-host acceptance remain pending |
 
 The [decision register](PLAN.md#decision-register) distinguishes user requirements from proposed choices. The Python interface/logger has source-derived software tests and installed-package checks. Physical acceptance and measured rates follow the separate Mac/Pi qualification plan.
 
