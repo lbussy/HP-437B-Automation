@@ -43,3 +43,7 @@ The owner confirms REF CAL FACTOR 99% on sensor SN MY41094127, consistent with t
 ## Owner-reported post-CAL state
 
 Following the local 99.0% CAL instructions, the owner reported POWER REF off and −0.08 µW (−80 nW). Record this as the reported post-procedure state, consistent with the routine restoring reference off; no duration or explicit error history was provided. It does not establish 1 mW reference readback, absolute accuracy, or remote C001 support. No Python I/O was performed. The active measurement CAL FAC remains to be inspected before the reference-on readback batch; REF CF used during CAL is a separate setting.
+
+## Active measurement calibration factor observed
+
+The owner reports CAL FAC 100.0% during the instructed non-editing inspection. Keep this distinct from sensor REF CF 99% used for CAL. The [first reference observation](PHASE-3-PLAN.md#p3-reference-observe-preparation) preserves that measurement factor and makes no absolute-accuracy claim. Reference activation and resulting reading remain pending operator action; no Python command has been sent for this follow-up.
