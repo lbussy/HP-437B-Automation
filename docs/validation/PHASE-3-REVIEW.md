@@ -33,3 +33,7 @@ P3-R06 (Medium): duty correction is enabled and its numeric factor is unknown, a
 ## Duty-cycle value follow-up
 
 The owner inspected DUTY CYCLE and reported 1%. Combined with the previously captured enabled flag, this identifies a ×100 mathematical pulse-power correction. The operator was instructed to inspect without editing and exit using SHIFT, then ENTER; exit confirmation remains pending. No setter, reference activation, zeroing, or calibration was executed. The numeric uncertainty in P3-R06 is resolved by owner observation; an appropriate correction policy for the planned continuous reference remains to be established before interpreting power.
+
+## Manual zero preflight
+
+The owner confirms duty correction off and reference off; retain the prior enabled/1% observations as history. The local ZERO procedure was checked visually against manual PDF 136: sensor RF input disconnected from sources, sensor cable retained, one unshifted ZERO, completion observed without further commands. Warm-up and zero completion remain pending. The named plan excludes remote zero, reference activation, gain calibration, automatic retry, and power interruption. This addresses the prepared-setup boundary while preserving the production serial-poll guard.
