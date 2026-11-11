@@ -115,3 +115,7 @@ The initial Mac batch established resource access, identification, and operator-
 ## Phase 3 host-access observation
 
 The November 11 [Mac identification batch](validation/MAC-20261111.md) found that the restricted execution process could see macOS USB registry information while PyUSB enumerated no adapter. Read-only discovery outside that restriction found the adapter, and the pinned production transport then returned HP 437B firmware 1.8. Keep process access separate from libusb installation, device permissions, and backend compatibility; do not change host security settings or dependency pins to work around this observation. Measurement, logging, recovery, and Pi qualification remain pending.
+
+## Qualified short reference session and local return
+
+The [November 11 Mac short session](validation/MAC-20261111-SHORT-LOG.md) produced three valid reference readings, complete CSV/metadata, and a passing existing-file protection check. This is current-meter evidence, not sustained logging, real-radio input, or replacement/Pi acceptance. The logger uses one connection for the whole run. With the present transport/profile, the operator presses PRESET/LOCAL once after a completed remote session to restore local operation; each individual sample does not require a button press. Programmatic go-to-local and failed-transfer recovery remain unqualified; merely closing USB does not prove local restoration.
