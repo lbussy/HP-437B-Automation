@@ -14,6 +14,7 @@ Equipment update, November 11: the user reports that the seller/calibrator confi
 | --- | --- |
 | [Plan and decision register](docs/PLAN.md) | Requirements, adapter recommendation, software candidate, unresolved decisions, and steps to resume |
 | [Open work](docs/OPEN-WORK.md) | Task status and next results |
+| [Release checklist](docs/RELEASE-CHECKLIST.md) | Three-phase readiness and prepared execution prompts |
 | [Equipment and manuals](docs/EQUIPMENT.md) | Official manuals, serial-specific calibration records, and operating references |
 | [Hardware validation](docs/VALIDATION.md) | Evidence required before claiming control or unattended logging support |
 | [Project provenance](docs/PROVENANCE.md) | Migration from Generic Radio Stuff and manual verification |
