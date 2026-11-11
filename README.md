@@ -4,7 +4,7 @@ Automated control and power logging for an HP 437B power meter and HP 8482A sens
 
 ## Status
 
-Phase 1 inventory completed November 11, 2026:118 command/syntax variants in50 functional families and20 GPIB operation entries. The proposed stack is Python, PyVISA, and PyVISA-py. Next, define the first implementation batch and initial host, with the documented backend gaps included in transport selection.
+Phase 2 software milestone completed November 11, 2026. The Python package provides typed command encoding, serialized control, a finite CSV logger, and an explicit synthetic demo. Software coverage includes 78 command/syntax variants; 40 source-ambiguous variants have explicit guards. Mac/Pi hardware qualification is the next phase.
 
 Equipment update, November 11: the user reports that the seller/calibrator confirmed the current meter's [+5 V supply discrepancy](docs/EQUIPMENT.md#individual-calibration-records) was unacceptable. An exchange is planned after a few development steps with this unit. Replacement receipt and qualification remain pending.
 
@@ -15,6 +15,8 @@ Equipment update, November 11: the user reports that the seller/calibrator confi
 | [Plan and decision register](docs/PLAN.md) | Requirements, adapter recommendation, software candidate, unresolved decisions, and steps to resume |
 | [Open work](docs/OPEN-WORK.md) | Task status and next results |
 | [Release checklist](docs/RELEASE-CHECKLIST.md) | Three-phase readiness and prepared execution prompts |
+| [Software usage](docs/SOFTWARE.md) | Installation, API/CLI, output schema, guards, and recovery |
+| [Phase 2 review](docs/PHASE-2-REVIEW.md) | Implementation evidence, adversarial corrections, and deferred coverage |
 | [Capability inventory](docs/inventory/README.md) | Command and bus references, coverage matrix, source ambiguities, and review results |
 | [Equipment and manuals](docs/EQUIPMENT.md) | Official manuals, serial-specific calibration records, and operating references |
 | [Hardware validation](docs/VALIDATION.md) | Evidence required before claiming control or unattended logging support |
@@ -37,7 +39,7 @@ The adapter transports the meter's original HP commands. Validate read/write sup
 - `tmp/` or `temp/`: ignored scratch files and previews.
 - `data/`, `output/logs/`, and `output/reports/`: ignored local measurement/generated output locations when needed.
 
-Add source, tests, package metadata, dependency pins, and automation when implementation is requested and requirements are settled.
+The installable package lives under `src/hp437b/`, software tests under `tests/`, and the pinned development environment in `requirements-dev.lock`. See [software usage](docs/SOFTWARE.md) for checks and the hardware-free demo.
 
 ## Licensing
 

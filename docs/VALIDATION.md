@@ -31,3 +31,7 @@ For each validation run, record date, operator, environment, exact procedure/com
 Use the [coverage matrix](inventory/COVERAGE.md) to select capability IDs and their linked prerequisites, expected results, and source questions. Record implementation, software-test, Mac, and Pi status independently. Resolve ambiguous reset/self-test, table-edit, binary-restore, and status lifecycle behavior before accepting those APIs.
 
 The [bus evidence](inventory/GPIB.md#transport-evidence-profiles) identifies limitations in released PyVISA-py 0.8.1. Demonstrate the selected released solution for serial polling, device clear, local restoration, and any required bus trigger or SRQ events. Follow the documented trigger/calibration ordering: await completion or use a verified serial-poll route, because an incoming ASCII program command can abort unfinished work.
+
+## Phase 2 handoff
+
+Use the [installed software and CLI](SOFTWARE.md) and [Phase 2 review](PHASE-2-REVIEW.md) to prepare the first hardware batch. Scripted transports, IPC timeout tests, and synthetic demo output establish software behavior. Physical results belong in the Mac/Pi columns after identifying the actual meter, sensor, adapter, firmware, OS, and dependency versions.

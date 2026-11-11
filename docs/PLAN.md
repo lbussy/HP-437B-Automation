@@ -1,13 +1,13 @@
 # Control and logging plan
 
 
-Saved from the November 8, 2026 discussion at the user's request, and amended November 9 with the provisional open-source backend and validation plan. Resume when an adapter is available and the user requests implementation.
+Saved from the November 8, 2026 discussion at the user's request, and amended November 9 with the provisional open-source backend and validation plan. Phase 2 software was executed at the user's request on November 11; hardware qualification follows when the setup is ready.
 
 ### User requirements and current state
 
 - Collect power readings from the 437B using a Mac or Raspberry Pi.
-- The user does not yet have a GPIB adapter. No purchase, adapter connection, logging implementation, or bench validation is recorded.
-- Preserve this recommendation and plan for later work; saving it does not authorize purchasing hardware or implementing the logger now.
+- Adapter readiness remains HP-02; the Phase 2 Python interface and logger are implemented, with physical acceptance tracked under Phase 3.
+- Phase 2 implementation was explicitly authorized on November 11. Physical device work follows a separate qualification request.
 - On November 11, 2026, the user reported that the seller/calibrator confirmed the current meter's [documented +5 V supply discrepancy](EQUIPMENT.md#individual-calibration-records) was unacceptable. The user plans to exchange the meter after a few development steps with it. The development steps are not yet specified, and the exchange is pending. Keep current-unit observations separate from replacement qualification.
 
 ### Adapter recommendation
@@ -50,10 +50,10 @@ If a required operation fails, investigate configuration or a reproducible backe
 | --- | --- | --- |
 | Instrument and goal | User wants automated 437B data collection from Mac or Pi; remote control is also of interest | Define the initial measurement sequence and any other instruments to coordinate |
 | Adapter | USBGpib V2 remains the recommendation; the Amazon listing shared November 9 is [ASIN B0GF2D6VJW](https://www.amazon.com/dp/B0GF2D6VJW) | Confirm purchase/arrival, model, firmware, and cable; no purchase is recorded |
-| Language and API | Python with PyVISA is proposed | Confirm during implementation; no logger exists yet |
-| Open-source backend | PyVISA-py is the provisional first candidate | Pass the hardware validation above on each intended host |
+| Language and API | Python/PyVISA with pinned open-source PyVISA-py is implemented | Qualify actual device/host behavior |
+| Open-source backend | PyVISA-py 0.8.1 is the pinned byte-I/O backend with explicit bus guards | Resolve required bus gaps and qualify each intended host |
 | Host | Mac direct USB or Pi beside the meter, with Mac network access, are proposed options | Choose the first host and record Mac architecture/macOS or Pi model/OS |
-| Logging behavior | Timestamped CSV is proposed | Choose interval, duration, units, averaging/range policy, and output fields |
+| Logging behavior | Timestamped CSV and session metadata are implemented with overridable defaults | Select the initial bench settings and averaging/range policy under DEC-02 |
 | Measurement setup | Manuals and [saved serial-specific calibration records](EQUIPMENT.md#individual-calibration-records) govern the procedure | Record frequency, signal path, applicable correction factors, and zero/calibration procedure before quantitative bench work |
 
 ### Resume when the adapter arrives
@@ -68,7 +68,7 @@ If a required operation fails, investigate configuration or a reproducible backe
 ## Three-phase execution
 
 1. ✅ Complete — Phase 1: Inventory; use the [command and GPIB reference](inventory/README.md) and [coverage matrix](inventory/COVERAGE.md).
-2. ▧ Open — Phase 2: Implement; use the [prepared implementation prompt](prompts/phase-2-implementation.md) to build the Python interface in batches, beginning with basic power logging and raw-response preservation. Resolve transport requirements using the [released-backend evidence](inventory/GPIB.md#transport-evidence-profiles) and [source questions](inventory/AMBIGUITIES.md).
+2. ✅ Complete — Phase 2: Implement; the [software milestone](SOFTWARE.md) provides the interface/logger and records deferred coverage in the [review](PHASE-2-REVIEW.md). The [execution prompt](prompts/phase-2-implementation.md) is retained. Resolve transport requirements using the [released-backend evidence](inventory/GPIB.md#transport-evidence-profiles) and [source questions](inventory/AMBIGUITIES.md).
 3. ▧ Open — Phase 3: Qualify; verify required capabilities for each host and unit against the matrix and [hardware validation plan](VALIDATION.md).
 
 The [Phase 1 review](inventory/REVIEW.md) recommends the first batch and documents command sequencing constraints. Preserve separate documentation, implementation, software-test, Mac, and Pi statuses. PyVISA-py remains provisional for complete bus control.
@@ -76,3 +76,7 @@ The [Phase 1 review](inventory/REVIEW.md) recommends the first batch and documen
 ## Related records
 
 See [open work](OPEN-WORK.md), [equipment references](EQUIPMENT.md), and the [hardware validation plan](VALIDATION.md).
+
+## Phase 2 software choices
+
+Python 3.11+ is the baseline; local checks used Python 3.14.10 on macOS ARM64. Runtime pins are PyVISA 1.16.2, PyVISA-py 0.8.1, and PyUSB 1.3.1, with @py selected explicitly. The finite logger defaults are ten samples, one-second interval, dBm, and ten-second operation timeout; user options override these software defaults. Initial host selection and final measurement policy remain DEC-01/DEC-02. See [usage](SOFTWARE.md) for exact behavior and qualification limits.

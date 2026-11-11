@@ -16,4 +16,4 @@ On November 11, 2026, the owner supplied complete calibration PDFs for 437B SN 3
 
 ## Evidence limits
 
-Reference copying and repository checks establish file integrity, not equipment performance. There is no recorded adapter purchase, bench connection, software implementation, host qualification, or RF transmission in this project. Pricing, availability, and software claims preserved in the plan are dated discussion findings and must be rechecked before consequential use.
+Reference copying and repository checks establish file integrity, not equipment performance. Phase 2 software evidence is recorded in [its review](PHASE-2-REVIEW.md); physical qualification remains governed by the device-specific validation plan. Pricing, availability, and software claims preserved in the plan are dated discussion findings and must be rechecked before consequential use.

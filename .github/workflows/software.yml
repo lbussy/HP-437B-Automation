@@ -1,0 +1,25 @@
+name: Software checks
+on:
+  push:
+    branches: [devel]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  software:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -r requirements-dev.lock
+      - run: python -m pip install --no-build-isolation -e .
+      - run: ruff check src tests
+      - run: ruff format --check src tests
+      - run: python -m pytest -q
+      - run: python -m build --no-isolation
+      - run: git diff --check

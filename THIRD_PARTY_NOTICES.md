@@ -20,6 +20,8 @@ The complete [437B and 8482A calibration records](docs/EQUIPMENT.md#individual-c
 
 ## Software dependencies
 
-No third-party runtime or library code is vendored in this repository. The proposed stack and linked documentation remain subject to their own licenses. Record exact versions and applicable dependency licenses when implementation is added. R&S VISA is proprietary royalty-free software, not part of this project's MIT grant, and is not bundled here.
+The package uses ordinary dependencies; their source is obtained through their package distributions. Runtime pins: [PyVISA 1.16.2](https://pypi.org/project/PyVISA/1.16.2/) (MIT), [PyVISA-py 0.8.1](https://pypi.org/project/PyVISA-py/0.8.1/) (MIT), [PyUSB 1.3.1](https://pypi.org/project/PyUSB/1.3.1/) (BSD-3-Clause), and transitive typing_extensions 4.16.0 (PSF-2.0). A separately installed libusb retains its LGPL-2.1-or-later terms. Dependencies and libusb remain separate from this project's MIT grant.
+
+Development pins and transitive versions are in [requirements-dev.lock](requirements-dev.lock). pytest, Ruff, build, setuptools, iniconfig, pluggy, and pyproject_hooks use MIT licenses; Pygments uses BSD-2-Clause; packaging uses Apache-2.0 OR BSD-2-Clause. Package distributions carry the authoritative license notices. R&S VISA is proprietary royalty-free software, not part of this project's MIT grant, and is not bundled here.
 
 Product names and trademarks remain those of their owners. The original copied download manifest describes the earlier download; migration details are recorded separately in [project provenance](docs/PROVENANCE.md).

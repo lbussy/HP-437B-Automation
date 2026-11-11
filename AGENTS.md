@@ -4,7 +4,7 @@ Use this repository for HP 437B/8482A control and logging work. Start with READM
 
 ## Current state
 
-This is a planning/documentation repository. USBGpib V2 is recommended, and Python/PyVISA/PyVISA-py is provisional. No purchase, logger, device connection, or hardware qualification is established. Read current records before proceeding. Distinguish user decisions, assistant proposals, software tests, and physical bench evidence.
+The Phase 2 Python interface/logger and software tests are implemented. See docs/SOFTWARE.md and docs/PHASE-2-REVIEW.md for coverage and guards. USBGpib V2 remains recommended; PyVISA-py 0.8.1 bus control and physical host compatibility require the documented qualification work. Read current records before proceeding. Distinguish user decisions, assistant proposals, software tests, and physical bench evidence.
 
 ## Equipment references
 
