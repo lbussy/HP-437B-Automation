@@ -7,7 +7,7 @@ Updated: 2026-11-11. Statuses: ✅ Complete, ⏳ In progress, and ▧ Open. Work
 | Repository setup | ✅ Complete | Project structure, manuals, provenance, and public GitHub repository established |
 | Phase 1: Inventory | ✅ Complete | [Reference and matrix](inventory/README.md): 118 command/syntax variants in 50 functional families and 20 bus entries. [Review](inventory/REVIEW.md) records corrections and remaining source questions; [execution prompt](prompts/phase-1-command-inventory.md) retained |
 | Phase 2: Implement | ✅ Complete | [Software milestone and limits](SOFTWARE.md): 78 command/syntax variants implemented/tested; 40 explicitly deferred; [review](PHASE-2-REVIEW.md). [Execution prompt](prompts/phase-2-implementation.md) retained |
-| Phase 3: Qualify | ▧ Open | Bench-verify required capabilities through the adapter/backend on Mac and Pi, with recorded results and limitations |
+| Phase 3: Qualify | ▧ Open | Bench-verify required capabilities through the adapter/backend on Mac and Pi, with recorded results and limitations; [prepared qualification prompt](prompts/phase-3-qualification.md) awaits execution |
 | HP-01: Equipment readiness | ▧ Open | Await the replacement, record its identity and calibration records, derive the bench procedure, and establish applicable sensor factors and measurement setup |
 | HP-02: Adapter readiness | ▧ Open | Await the adapter, confirm arrival, identity, firmware, and cabling for control and logging |
 | DEC-01: Initial host | ▧ Open | Choose Mac or Pi first and record host architecture/model and OS |
