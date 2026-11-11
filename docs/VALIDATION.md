@@ -39,3 +39,7 @@ Use the [installed software and CLI](SOFTWARE.md) and [Phase 2 review](PHASE-2-R
 ## Automatic local-return follow-up
 
 The owner requested automatic local return after normal sessions. The [versioned extension and cases](validation/AUTOMATIC-LOCAL.md) keep the pinned open-source stack and add a narrowly negotiated USB488 GTL path. Required physical acceptance distinguishes accepted USB control status from RMT off and working front-panel controls. Failed/uncertain transactions retain manual recovery requirements. No Pi or replacement support follows from a Mac current-unit result.
+
+## Named interruption and recovery evidence
+
+The [failure/recovery record](validation/FAILURE-RECOVERY.md) accepts between-read process-directed SIGINT and one induced in-flight acquisition timeout with subsequent manual adapter USB reconnect and fresh protocol verification on the current Mac/unit. Partial-data integrity, uncertainty blocking, no unsafe post-fault traffic, and final source-off/live-local state are recorded separately. Other fault patterns, unattended recovery, device clear, second-host behavior, and replacement acceptance are not inferred.
