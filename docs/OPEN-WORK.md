@@ -16,7 +16,7 @@ Updated: 2026-11-11. Statuses: ✅ Complete, ⏳ In progress, and ▧ Open. Task
 
 The [decision register](PLAN.md#decision-register) distinguishes user requirements from proposed choices. The Python interface/logger has source-derived software tests and installed-package checks. Physical acceptance and measured rates follow the separate Mac/Pi qualification plan.
 
-The user intends to do a few development steps with the current meter before exchanging it; the first selected step is communication-only Python identification without a sensor. Associate any resulting observations with the current serial number and known supply discrepancy, and validate the replacement separately.
+The user intends to do a few development steps with the current meter before exchanging it; the initial identification step used no sensor, followed by a [connected-sensor baseline](validation/MAC-20261111-BASELINE.md) with POWER REF off. Associate any resulting observations with the current serial number and known supply discrepancy, and validate the replacement separately.
 
 See the [release checklist](RELEASE-CHECKLIST.md) for the three-phase sequence and release-readiness summary.
 

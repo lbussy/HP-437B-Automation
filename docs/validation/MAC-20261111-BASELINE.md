@@ -1,0 +1,29 @@
+# Mac connected-sensor baseline, November 11, 2026
+
+Status: read sequence passed; display comparison and local restoration await operator report. Phase 3 remains ⏳ In progress. This extends the [identification run](MAC-20261111.md) under the [P3-BASELINE plan](PHASE-3-PLAN.md#p3-baseline-connected-sensor-reference-off). Production source: `8c75c45997704764647f4ff5979cd579372cf59b`; only documentation and ignored scratch capture code changed. Host/runtime/resource match the identification record: ARM64 MacBook Pro, macOS 27.0.1, Python 3.14.10, PyVISA 1.16.2, PyVISA-py 0.8.1, PyUSB 1.3.1, libusb 1.0.30, explicit `@py`.
+
+## Setup and procedure
+
+The owner confirms original meter SN 3125U33223 and 8482A sensor SN MY41094127, sensor cable connected to SENSOR, sensor RF connector directly connected to POWER REF, and reference output off. Initial owner-observed display: −0.009 mW. The current meter retains its known supply discrepancy; these are interim development observations. No external RF source is connected. No RF-output, correction, range, filter, unit, zero, calibration, preset, or table-setting command was sent.
+
+One explicit open, `Instrument.query("SM")`, one `Instrument.acquire("TR2")`, then `Instrument.query("SM")`, and finally close. Each operation had a 10-second deadline; total batch budget was 45 seconds with no retries or faults. The initial status gate required normal mode, absolute linear W, free-run, and reference off. The trigger reply was consumed before the second SM. Local operation restores free-run; the operator was asked to record the held reading before pressing PRESET/LOCAL once while remote.
+
+## Physical observations
+
+Acquisition ran 20:06:01.282014–20:06:08.889934 UTC (14:06:01–14:06:08 CST). Total including open/close: 7.6077 seconds. Initial SM: 0.01695 seconds; TR2/read: 7.43105 seconds; final SM: 0.01661 seconds. One valid numeric reading and no instrument-error sentinel were returned. This single duration establishes neither a sustained rate nor a general timeout guarantee.
+
+| Operation | Raw ASCII, with explicit terminators | Observed interpretation |
+| --- | --- | --- |
+| SM before | `000000110017000A0002000010\r\n` | Normal; measurement/entry errors 0/0; absolute W; reference off; free-run; range 11; filter 17; offset off; duty correction on; GET policy 2 |
+| TR2/read | `-0.0060E-03\r\n` | −0.0000060 W = −0.0060 mW = −6.0 µW |
+| SM after | `000000110017000A0012000010\r\n` | Same settings/flags, with standby set after completed TR2/read |
+
+Both SM payloads contain 26 characters followed by CRLF; the measurement reply contains 13 bytes including CRLF. The existing parser accepted all three frames. Filter 17 represents auto averaging of 128 readings, and range 11 is automatic range 1 under the inventory schema. The observed 7.43-second TR2 completion is recorded alongside those settings, without assigning a causal timing model from one sample. No electrical EOI trace or binary-framing test was performed.
+
+Duty-cycle correction is enabled; its numeric factor was not retrieved. Sensor correction values, zero/calibration state, and quantitative accuracy remain unqualified. The −0.009 mW pre-run display and −0.006 mW triggered reading were not simultaneous or governed by a stability/tolerance rule. They cannot establish display agreement or absolute power accuracy. Negative baseline power is retained rather than clamped to zero. This batch verifies the selected byte sequence and status interpretation with the reference off.
+
+## Evidence and acceptance boundaries
+
+Raw evidence remains ignored at `output/logs/phase3-20261111/sensor-baseline.json`, SHA-256 `7f5d101e67fdc22c043972809feaedace0bad87e7af292b0c9e88cd561021d4b`. It contains exact hex/ASCII bytes, parsed results, UTC times, elapsed durations, source revision, setup, resource, dependencies, and finally-close outcome. The local scratch script is `tmp/phase3-baseline.py`, SHA-256 `9038d36aa0b5a78286273a6b9003b467fd0f0e63f5b0b98217fce10624c5cfdd`. Operator follow-up is recorded separately; raw evidence is not amended after capture.
+
+C095 and C113 have passing Mac reference-off frame/sequence observations; complete status lifecycle, error semantics, trigger settling, corrected power, and replacement qualification remain open. G002/G003/G004 remain partial, with ASCII status/measurement-path evidence. Unit configuration, reversible LG/LN control, short/sustained logging, failure recovery, Pi qualification/retrieval, and replacement acceptance are pending. No zero or calibration has been performed by this project.
