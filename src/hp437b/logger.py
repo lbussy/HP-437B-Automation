@@ -203,6 +203,8 @@ def collect(
                 local_return = getattr(instrument.transport, "local_return", None)
                 if local_return is not None:
                     record["local_return"] = dict(local_return)
+                if instrument.cleanup is not None:
+                    record["instrument_cleanup"] = dict(instrument.cleanup)
                 record["finished_utc"] = utcnow().isoformat()
                 record["last_raw_hex"] = instrument.last_raw.hex()
                 _atomic_json(sidecar, record)

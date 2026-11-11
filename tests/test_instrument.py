@@ -29,11 +29,12 @@ def test_close_returns_local_once_only_when_state_is_known(scripted):
             assert deadline > time.monotonic()
             self.calls.append(("local", None))
 
-    wire = LocalWire()
+    wire = LocalWire([("write", b"TR3")])
     device = Instrument(wire)
     device.close()
     device.close()
-    assert wire.calls == [("local", None)] and wire.closed
+    assert wire.calls == [("write", b"TR3"), ("local", None)] and wire.closed
+    assert device.cleanup["status"] == "accepted"
 
     wire = LocalWire([("write", b"*IDN?"), ("read", b"BROKEN\r\n")])
     device = Instrument(wire)
@@ -41,6 +42,7 @@ def test_close_returns_local_once_only_when_state_is_known(scripted):
         device.identify()
     device.close()
     assert all(call[0] != "local" for call in wire.calls) and wire.closed
+    assert ("write", b"TR3") not in wire.calls
 
 
 def test_local_failure_still_closes_and_is_not_retried(scripted):
@@ -51,12 +53,33 @@ def test_local_failure_still_closes_and_is_not_retried(scripted):
             self.calls.append(("local", None))
             raise TransportError("GTL rejected")
 
-    wire = LocalFailure()
+    wire = LocalFailure([("write", b"TR3")])
     device = Instrument(wire)
     with pytest.raises(TransportError, match="GTL rejected"):
         device.close()
     device.close()
-    assert wire.calls == [("local", None)] and wire.closed
+    assert wire.calls == [("write", b"TR3"), ("local", None)] and wire.closed
+    assert device.cleanup["status"] == "failed"
+
+
+def test_free_run_cleanup_write_failure_closes_without_gtl(scripted):
+    class BrokenWrite(scripted):
+        capabilities = scripted.capabilities | {"go_to_local"}
+
+        def write(self, data, deadline):
+            self.calls.append(("write", data))
+            raise TransportError("write rejected")
+
+        def return_local(self, deadline):
+            pytest.fail("GTL must not follow a failed/uncertain TR3 write")
+
+    wire = BrokenWrite()
+    device = Instrument(wire)
+    with pytest.raises(TransportError, match="write rejected"):
+        device.close()
+    assert wire.closed and wire.calls == [("write", b"TR3")]
+    assert device.cleanup["status"] == "failed"
+    assert "free_run_command_hex" not in device.cleanup
 
 
 def test_ordinary_read_has_no_implicit_trigger(absolute):

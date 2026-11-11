@@ -51,6 +51,7 @@ class Instrument:
         self._log = self._relative = None
         self.last_raw = b""
         self.firmware: tuple[int, ...] | None = None
+        self.cleanup: dict | None = None
 
     @property
     def unit(self):
@@ -222,6 +223,17 @@ class Instrument:
             self._closed = True
             try:
                 if not self._uncertain and "go_to_local" in self.transport.capabilities:
-                    self.transport.return_local(time.monotonic() + self.timeout)
+                    deadline = time.monotonic() + self.timeout
+                    self.cleanup = {"status": "requested", "sequence": "TR3 then USB488 GTL"}
+                    # GTL can clear RMT while leaving this firmware's TR2 standby
+                    # display held. Explicit free-run is a separate HP command.
+                    self._write(encode("TR3"), deadline)
+                    self.cleanup["free_run_command_hex"] = b"TR3".hex()
+                    self.transport.return_local(deadline)
+                    self.cleanup["status"] = "accepted"
+            except BaseException as exc:
+                if self.cleanup is not None:
+                    self.cleanup.update(status="failed", error=f"{type(exc).__name__}: {exc}")
+                raise
             finally:
                 self.transport.close()

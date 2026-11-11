@@ -181,6 +181,10 @@ def test_logger_records_local_return_and_never_hides_rejection(tmp_path, fail):
         capabilities = DemoTransport.capabilities | {"go_to_local"}
         local_return = None
 
+        def write(self, data, deadline):
+            if data != b"TR3":
+                return super().write(data, deadline)
+
         def return_local(self, deadline):
             self.local_return = {"status": "failed" if fail else "accepted"}
             if fail:
@@ -197,6 +201,8 @@ def test_logger_records_local_return_and_never_hides_rejection(tmp_path, fail):
     assert len(rows) == 1
     assert record["local_return"]["status"] == ("failed" if fail else "accepted")
     assert record["status"] == ("failed" if fail else "completed")
+    assert record["instrument_cleanup"]["sequence"] == "TR3 then USB488 GTL"
+    assert record["instrument_cleanup"]["status"] == ("failed" if fail else "accepted")
     assert wire.closed
 
 
