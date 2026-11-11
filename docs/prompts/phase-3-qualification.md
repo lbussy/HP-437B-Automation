@@ -1,6 +1,6 @@
 # Phase 3 execution prompt: hardware qualification
 
-Prepared November 11, 2026. Execute this prompt when the user explicitly requests Phase 3 execution. Saving, reviewing, or linking this prompt is document maintenance. This saved prompt awaits execution.
+Prepared November 11, 2026. Execute this prompt when the user explicitly requests Phase 3 execution. Saving, reviewing, or linking this prompt is document maintenance. The user explicitly requested execution on November 11, 2026; see the [batch plan](../validation/PHASE-3-PLAN.md) and [review](../validation/PHASE-3-REVIEW.md). Phase 3 remains in progress.
 
 ## Objective and completion boundary
 

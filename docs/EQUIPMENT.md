@@ -40,4 +40,4 @@ The operating and service manuals are scanned. Use the PDFs, with rendering or O
 
 ## Automation work
 
-The [plan](PLAN.md) and [open work](OPEN-WORK.md) are maintained in this project. Sensor-specific calibration factors must come from the individual sensor label or certificate. Serial numbers and individual laboratory calibration records are indexed above. No project bench measurement or automation validation results are recorded yet.
+The [plan](PLAN.md) and [open work](OPEN-WORK.md) are maintained in this project. Sensor-specific calibration factors must come from the individual sensor label or certificate. Serial numbers and individual laboratory calibration records are indexed above. The adapter is present: XyphroLabs GpibUsb, USB `03eb:2065`, USB serial string `HEWLETT-PACKARD_437B_1.8`. Initial Mac Python identification returned HP 437B firmware 1.8; see the [run record](validation/MAC-20261111.md). Exact adapter revision/firmware remain unknown. The user confirms no sensor is connected for this communication-only batch. Power measurements and replacement qualification remain pending.

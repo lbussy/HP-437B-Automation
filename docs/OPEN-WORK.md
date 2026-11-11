@@ -1,22 +1,22 @@
 # Open work
 
-Updated: 2026-11-11. Statuses: ✅ Complete, ⏳ In progress, and ▧ Open. Task identifiers HP-01 and HP-02 are retained from Generic Radio Stuff. The user authorized Phase 2 software execution; physical qualification remains Phase 3 work.
+Updated: 2026-11-11. Statuses: ✅ Complete, ⏳ In progress, and ▧ Open. Task identifiers HP-01 and HP-02 are retained from Generic Radio Stuff. The user authorized Phase 3 execution on November 11; the initial batch is supervised Mac identification without a sensor.
 
 | ID | Status | Next result |
 | --- | --- | --- |
 | SETUP-01 | ✅ Complete | Initial repository structure, copied and verified manuals, migrated plan, and links from the old notes |
 | PHASE-01 | ✅ Complete | [Inventory](inventory/README.md):118 command/syntax variants,50 functional families,20 bus entries; review/corrections complete. Source and transport questions remain tracked for later phases |
 | PHASE-02 | ✅ Complete | [Software milestone](SOFTWARE.md): 78 command/syntax variants implemented and software-tested, 40 guarded/deferred; [review record](PHASE-2-REVIEW.md) links evidence and follow-ups |
-| PHASE-03 | ▧ Open | Qualify capabilities on each intended host using the coverage matrix and recorded bench evidence |
+| PHASE-03 | ⏳ In progress | Execute the [batch plan](validation/PHASE-3-PLAN.md), retain [Mac results](validation/MAC-20261111.md), and qualify the replacement/sensor on both hosts |
 | HP-01 | ▧ Open | Seller/calibrator confirmed the +5 V discrepancy was unacceptable, per the user's November 11 report; user plans an exchange after a few development steps. Record replacement identity and calibration records, then derive a bench procedure, select applicable sensor factors, and record the measurement setup |
-| HP-02 | ▧ Open | Confirm adapter arrival; establish and validate control and logging on the selected host |
-| DEC-01 | ▧ Open | Choose first host and record Mac architecture/macOS or Pi model/OS |
+| HP-02 | ⏳ In progress | XyphroLabs GpibUsb `03eb:2065` detected on Mac; initial Python identification returned 437B firmware 1.8. Complete raw framing, recovery, control, and logging evidence; adapter firmware/revision remain unknown |
+| DEC-01 | ✅ Complete | First batch: MacBook Pro Mac17,8, M5 Pro, ARM64, macOS 27.0.1. Pi identity/access remain P3-PI prerequisites |
 | DEC-02 | ▧ Open | Define initial measurement sequence, interval, duration, units, averaging/range policy, and CSV fields |
-| VAL-01 | ▧ Open | Qualify the provisional backend against the [hardware validation plan](VALIDATION.md) |
+| VAL-01 | ⏳ In progress | Pinned backend identification tested on Mac; required measurement, recovery, and second-host acceptance remain pending |
 
 The [decision register](PLAN.md#decision-register) distinguishes user requirements from proposed choices. The Python interface/logger has source-derived software tests and installed-package checks. Physical acceptance and measured rates follow the separate Mac/Pi qualification plan.
 
-The user intends to do a few development steps with the current meter before exchanging it; those steps have not yet been specified. Associate any resulting observations with the current serial number and known supply discrepancy, and validate the replacement separately.
+The user intends to do a few development steps with the current meter before exchanging it; the first selected step is communication-only Python identification without a sensor. Associate any resulting observations with the current serial number and known supply discrepancy, and validate the replacement separately.
 
 See the [release checklist](RELEASE-CHECKLIST.md) for the three-phase sequence and release-readiness summary.
 

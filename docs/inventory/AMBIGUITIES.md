@@ -4,7 +4,7 @@ Reviewed November 11, 2026. These are explicit source conflicts or qualification
 
 ## A01
 
-Identification spelling and framing. Table 3-5 (00437-90047, printed 3-41/PDF 71) lists `ID` and `IDN?`; §3-21 (printed 3-33/PDF 63) names `*IDN?`. All three are inventoried as documented spellings. Test each on the actual firmware, record raw response spacing/termination, and establish what the next unqualified read returns. Prefer the detailed `*IDN?` spelling as the first candidate, with a timeout/recovery plan.
+Identification spelling and framing. Table 3-5 (00437-90047, printed 3-41/PDF 71) lists `ID` and `IDN?`; §3-21 (printed 3-33/PDF 63) names `*IDN?`. All three are inventoried as documented spellings. Test each on the actual firmware, record raw response spacing/termination, and establish what the next unqualified read returns. Prefer the detailed `*IDN?` spelling as the first candidate, with a timeout/recovery plan. The [November 11 Mac capture](../validation/MAC-20261111.md) returned `HEWLETT-PACKARD,437B,,1.8` plus CRLF through the pinned backend. This establishes C055 on that setup; aliases and next ordinary-read behavior remain untested, so A01 remains open.
 
 ## A02
 

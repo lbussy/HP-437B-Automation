@@ -4,7 +4,7 @@ Phase 2 software milestone, November 11, 2026. The package provides validated co
 
 ## Installation and checks
 
-Python 3.11+ is the project baseline. Local software checks used Python 3.14.10 on macOS ARM64. The CI workflow targets Linux Python 3.11 and 3.14; consult its actual run before claiming CI success. Mac and Pi USB communication each await bench qualification.
+Python 3.11+ is the project baseline. Local software checks used Python 3.14.10 on macOS ARM64. The CI workflow targets Linux Python 3.11 and 3.14; consult its actual run before claiming CI success. Initial Mac identification is recorded below; measurement and logging on Mac, and all Pi communication, await bench qualification.
 
 From a checkout:
 
@@ -110,4 +110,8 @@ Software coverage is 78 implemented/tested command or syntax variants and 40 exp
 
 Deferred commands cover CT/ET/SN table operations, identification aliases, bare LP, legacy RV/@1/@2 framing/restore, reset/self-test/menu operations, and DF. Each guard cites the relevant [A01–A09 source issue](inventory/AMBIGUITIES.md). RF table reference writes use the detailed documented syntax and require explicit confirmation; structured table traversal/restore remains deferred. The public library uses source-backed candidate grammar pending actual firmware/transport validation.
 
-The next qualification batch should establish real resource access, identification, units/status framing, TR2/read ordering, timeout recovery, and local-control restoration. Record the actual meter and sensor identities; qualify the replacement meter separately from current-unit observations with the known supply discrepancy.
+The initial Mac batch established resource access, identification, and operator-confirmed local restoration. The next batch must establish units/status framing, TR2/read ordering, measurement/logging, and timeout recovery. Record the actual meter and sensor identities; qualify the replacement meter separately from current-unit observations with the known supply discrepancy.
+
+## Phase 3 host-access observation
+
+The November 11 [Mac identification batch](validation/MAC-20261111.md) found that the restricted execution process could see macOS USB registry information while PyUSB enumerated no adapter. Read-only discovery outside that restriction found the adapter, and the pinned production transport then returned HP 437B firmware 1.8. Keep process access separate from libusb installation, device permissions, and backend compatibility; do not change host security settings or dependency pins to work around this observation. Measurement, logging, recovery, and Pi qualification remain pending.

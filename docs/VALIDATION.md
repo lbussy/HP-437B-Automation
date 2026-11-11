@@ -1,6 +1,6 @@
 # Hardware validation plan
 
-Status: planned; no results recorded. This is an acceptance checklist, not an executable bench procedure. Derive actual commands and zero/calibration steps from the [manuals](EQUIPMENT.md) and the real signal path.
+Status: ⏳ In progress, November 11, 2026. The [batch plan](validation/PHASE-3-PLAN.md), [Mac run record](validation/MAC-20261111.md), and [review](validation/PHASE-3-REVIEW.md) record execution and remaining gates. This document is the overall acceptance checklist. Derive actual commands and zero/calibration steps from the [manuals](EQUIPMENT.md) and the real signal path.
 
 ## Record the environment
 

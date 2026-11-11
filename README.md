@@ -4,7 +4,7 @@ Automated control and power logging for an HP 437B power meter and HP 8482A sens
 
 ## Status
 
-Phase 2 software milestone completed November 11, 2026. The Python package provides typed command encoding, serialized control, a finite CSV logger, and an explicit synthetic demo. Software coverage includes 78 command/syntax variants; 40 source-ambiguous variants have explicit guards. Mac/Pi hardware qualification is the next phase.
+Phase 2 software milestone completed November 11, 2026. The Python package provides typed command encoding, serialized control, a finite CSV logger, and an explicit synthetic demo. Software coverage includes 78 command/syntax variants; 40 source-ambiguous variants have explicit guards. [Phase 3 qualification](docs/validation/PHASE-3-PLAN.md) is in progress. This Mac detects the adapter, and an initial Python identification returned HP 437B firmware 1.8; raw-frame capture and local restoration are tracked in the [run record](docs/validation/MAC-20261111.md). No sensor is connected, so power/logging qualification remains pending.
 
 Equipment update, November 11: the user reports that the seller/calibrator confirmed the current meter's [+5 V supply discrepancy](docs/EQUIPMENT.md#individual-calibration-records) was unacceptable. An exchange is planned after a few development steps with this unit. Replacement receipt and qualification remain pending.
 
