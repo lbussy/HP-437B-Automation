@@ -45,3 +45,7 @@ The owner reported −0.009 µW after the warm-up reminder/manual-zero instructi
 ## Post-CAL reassessment
 
 The owner reports reference off and −0.08 µW following manual CAL instructions. Preserve the correct −80 nW conversion and avoid treating a reference-off residual as a 1 mW comparison. Reference gain calibration and active measurement CAL FAC have different roles; the next read-only front-panel inspection resolves the latter before reference-on interpretation. Remote calibration remains guarded; no Python I/O or independent accuracy verification occurred.
+
+## Reference-on readback review
+
+P3-REFERENCE-READ preserved REF CF 99%, active CAL FAC 100%, and operator source control. Preflight selected a held-display comparison rule before acquisition and gated reference/units/corrections/errors without configuration changes. Captured SM/TR2/read/SM shows 0.9880 mW, reference on, duty/offset/REL off, no errors, and expected standby after acquisition. Fresh reassessment confirms exact bytes, operation ordering, one-attempt deadlines, source identity, and retained factor. The earlier 0.989 mW manual sample cannot substitute for held-display evidence. The owner then reported held display 0.988 mW and RMT/PWR REF both off. Difference from Python 0.9880 mW is zero at the display increment, within the preselected 0.001 mW criterion; accept this readback comparison and supervised restoration in the [reference record](MAC-20261111-REFERENCE.md). No absolute-accuracy, rate, replacement, Pi, or recovery acceptance is inferred.

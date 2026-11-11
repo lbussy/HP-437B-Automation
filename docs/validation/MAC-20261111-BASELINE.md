@@ -47,3 +47,7 @@ Following the local 99.0% CAL instructions, the owner reported POWER REF off and
 ## Active measurement calibration factor observed
 
 The owner reports CAL FAC 100.0% during the instructed non-editing inspection. Keep this distinct from sensor REF CF 99% used for CAL. The [first reference observation](PHASE-3-PLAN.md#p3-reference-observe-preparation) preserves that measurement factor and makes no absolute-accuracy claim. Reference activation and resulting reading remain pending operator action; no Python command has been sent for this follow-up.
+
+## Subsequent reference-on observation and acquisition
+
+The owner reported 0.989 mW with reference on, then confirmed reference off. The requested next [Python reference acquisition](MAC-20261111-REFERENCE.md) returned 0.9880 mW with the same recorded factors; held-display comparison and operator restoration are tracked there.
