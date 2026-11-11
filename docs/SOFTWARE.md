@@ -154,3 +154,15 @@ On this Pi the kernel `usbtmc` driver was initially bound. The pinned PyVISA-py 
 The [USB port-reset experiment](validation/PI-ONLY-RECOVERY.md) is not a qualified recovery procedure: healthy reset verification passed, but the post-timeout run was followed by loss of Pi reachability and an owner restart before protocol verification. Cause remains unproven. No reset command or implicit retry has been added to this package; retain uncertainty and the documented manual routes. USBTMC/device clear remains separately guarded while its source-backed procedure is prepared.
 
 The later explicit USBTMC-clear candidate is implemented only as experimental `hp437b.usbtmc_clear.clear_interface`, requiring exclusive caller ownership and an outer bounded worker. Eighteen targeted tests pass (255 source/installed total), and a healthy clear/fresh protocol check passed, but post-timeout recovery failed its USB handshake. It is not exposed by the normal bus API or CLI and is not a recommended automatic recovery handler. The [current manual isolation investigation](validation/PI-ONLY-RECOVERY.md#r3-failed-session-clear-result-and-next-manual-route) retains its separate physical gate.
+
+## Qualified manual Pi-only recovery
+
+The [P3-PI-R4 case](validation/PI-ONLY-RECOVERY.md#p3-pi-r4-accepted-manual-pi-only-recovery) passed once on the current meter/sensor/Pi setup without moving USB to Mac or rebooting Pi. This is a physical operator procedure, not an automatic logger recovery feature:
+
+1. Let the failed logger exit and its worker/resources close. Keep the meter powered and POWER REF off; retain failed CSV/sidecar files.
+2. Disconnect both adapter USB and its rear GPIB connection for 30 seconds, leaving sensor/RF wiring unchanged.
+3. Reconnect GPIB securely, then USB directly to Pi, and allow enumeration (the test procedure allowed 15 seconds).
+4. Require the correct discovered USB identity/access, fresh 437B identification/status, a complete source-off acquisition, corrected TR3/GTL cleanup, and live local display/RMT off/reference off before resuming. The linked case records the exact API sequence and independent SM/OD check.
+5. Use a new Instrument and a new output filename for subsequent logging; do not clear uncertainty on the failed object or blindly retry its acquisition.
+
+The observed route worked, but the long operator-response gap prevents a necessity, minimum-step, latency, or repeatability claim. USB-only reconnect and software-only clear did not pass their failure cases. The experiment does not establish that both disconnections are essential or diagnose why they helped. Final replacement and unattended recovery remain unqualified.
