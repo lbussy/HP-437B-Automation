@@ -75,3 +75,7 @@ P3-SUSTAIN completed a 300-second start window with 299 contiguous valid rows, z
 ## Sustained batch final acceptance
 
 The owner confirmed live numeric display, RMT off, no TRIGGER HOLD, and PWR REF off without a local-key press. This closes the remaining operator-restoration gate for P3-SUSTAIN and supports acceptance of the recorded five-minute Mac/current-unit batch. No additional command, raw-artifact amendment, or software change was needed. Phase 3 and the documented remaining physical/host/replacement gates stay in progress.
+
+## Reversible units and remote source assessment
+
+P3-CONTROL passed W/dBm/W restoration and OC0/OC1/OC0 control on the same prepared reference path. Independent raw/value/status checks confirm logarithmic conversion within the preselected 0.02 dB allowance, W restoration/repeat within 0.002 mW, large source-off signal reduction with fresh flags, unchanged correction flags, and accepted corrected cleanup. Owner confirmed live numeric display, RMT off, and PWR REF off without keys. Fresh reassessment distinguishes generic logger source preservation from this explicit source-switching procedure, post-TR2 standby from post-cleanup free-run, and configured readback from absolute accuracy. [Evidence](MAC-20261111-CONTROL.md) records exact provenance/hashes and limits. No code correction or additional software test was needed; remaining recovery/Pi/replacement gates stay open.
