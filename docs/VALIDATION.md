@@ -6,6 +6,8 @@ Status: planned; no results recorded. This is an acceptance checklist, not an ex
 
 Record meter and sensor identification, sensor calibration information, adapter model/firmware, host model/architecture/OS, Python and released dependency versions, USB cable, GPIB address, termination settings, and measurement configuration. Distinguish installed releases from unreleased backend changes.
 
+Use the [individual calibration records](EQUIPMENT.md#individual-calibration-records) for meter SN 3125U33223 and sensor SN MY41094127 when selecting calibration criteria and correction factors. Resolve the documented meter supply-check discrepancy before relying on that entry. Certificate results do not establish backend compatibility or replace local bench validation.
+
 ## Required checks
 
 1. Discover and open the adapter through PyVISA-py using the USBTMC path. Record the resource identifier; use documented 437B commands rather than assuming SCPI examples apply.

@@ -1,11 +1,11 @@
 # Open work
 
-Updated: 2026-11-09. Task identifiers HP-01 and HP-02 are retained from Generic Radio Stuff. Planning and repository setup do not authorize hardware purchases, transmission, or implementation of the logger.
+Updated: 2026-11-11. Task identifiers HP-01 and HP-02 are retained from Generic Radio Stuff. Planning and repository setup do not authorize hardware purchases, transmission, or implementation of the logger.
 
 | ID | Status | Next result |
 | --- | --- | --- |
 | SETUP-01 | ✅ Complete | Initial repository structure, copied and verified manuals, migrated plan, and links from the old notes |
-| HP-01 | ▧ Not started | Derive a bench procedure from the manuals; record individual sensor calibration data and measurement setup |
+| HP-01 | ▧ Not started | Derive a bench procedure from the manuals and [saved individual calibration records](EQUIPMENT.md#individual-calibration-records); select applicable sensor factors, record the measurement setup, and clarify the meter report’s +5 V supply discrepancy |
 | HP-02 | ▧ Awaiting adapter | Confirm adapter arrival; establish and validate control and logging on the selected host |
 | DEC-01 | ▧ Open | Choose first host and record Mac architecture/macOS or Pi model/OS |
 | DEC-02 | ▧ Open | Define initial measurement sequence, interval, duration, units, averaging/range policy, and CSV fields |

@@ -53,7 +53,7 @@ If a required operation fails, investigate configuration or a reproducible backe
 | Open-source backend | PyVISA-py is the provisional first candidate | Pass the hardware validation above on each intended host |
 | Host | Mac direct USB or Pi beside the meter, with Mac network access, are proposed options | Choose the first host and record Mac architecture/macOS or Pi model/OS |
 | Logging behavior | Timestamped CSV is proposed | Choose interval, duration, units, averaging/range policy, and output fields |
-| Measurement setup | Manuals and sensor-specific calibration data govern the procedure | Record frequency, signal path, applicable correction factors, and zero/calibration procedure before quantitative bench work |
+| Measurement setup | Manuals and [saved serial-specific calibration records](EQUIPMENT.md#individual-calibration-records) govern the procedure | Record frequency, signal path, applicable correction factors, and zero/calibration procedure before quantitative bench work |
 
 ### Resume when the adapter arrives
 

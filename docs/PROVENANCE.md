@@ -10,6 +10,10 @@ The separate [import manifest](import-manifest.json) records source paths, sizes
 
 The HP topic note in the private Generic Radio Stuff checkout, `docs/topics/hp-437b-8482a.md`, directs automation work here. The public project is [lbussy/HP-437B-Automation](https://github.com/lbussy/HP-437B-Automation), with `devel` as its initial default branch.
 
+## Owner-supplied calibration records
+
+On November 11, 2026, the owner supplied complete calibration PDFs for 437B SN 3125U33223 and 8482A SN MY41094127 and explicitly requested storage, commit, and push. They were copied byte for byte into `output/pdf/hp-437b-8482a/calibration/`, visually inspected, and compared with the supplied originals. The separate [calibration import manifest](../output/pdf/hp-437b-8482a/calibration/import-manifest.json) records original filenames, sizes, SHA-256 hashes, and certificate identifiers. The original manual manifests remain unchanged. See [equipment references](EQUIPMENT.md#individual-calibration-records) for certificate dates, page references, and evidence limits.
+
 ## Evidence limits
 
 Reference copying and repository checks establish file integrity, not equipment performance. There is no recorded adapter purchase, bench connection, software implementation, host qualification, or RF transmission in this project. Pricing, availability, and software claims preserved in the plan are dated discussion findings and must be rechecked before consequential use.

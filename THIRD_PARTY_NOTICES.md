@@ -14,6 +14,10 @@ The following publisher originals retain their embedded copyright and licensing 
 
 The [download manifest](output/pdf/hp-437b-8482a/download-manifest.json) records the original download locations, editions, sizes, and SHA-256 hashes. Preserve the original files and all embedded notices. Local possession and an official download URL do not establish a separate grant of redistribution rights; no separate redistribution permission is recorded in this collection.
 
+## Individual calibration records
+
+The complete [437B and 8482A calibration records](docs/EQUIPMENT.md#individual-calibration-records), issued by DXCONNECTION / Valley Precision Instrument Calibration Services and supplied by the equipment owner, retain their embedded notices and are excluded from the MIT grant. Each certificate permits reproduction in full and requires prior written consent for partial reproduction. The PDFs are preserved in full without modification; the separate [import manifest](output/pdf/hp-437b-8482a/calibration/import-manifest.json) records their provenance and integrity.
+
 ## Software dependencies
 
 No third-party runtime or library code is vendored in this repository. The proposed stack and linked documentation remain subject to their own licenses. Record exact versions and applicable dependency licenses when implementation is added. R&S VISA is proprietary royalty-free software, not part of this project's MIT grant, and is not bundled here.

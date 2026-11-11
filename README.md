@@ -12,7 +12,7 @@ Planning and repository setup, November 9, 2026. The proposed stack is Python, P
 | --- | --- |
 | [Plan and decision register](docs/PLAN.md) | Requirements, adapter recommendation, software candidate, unresolved decisions, and steps to resume |
 | [Open work](docs/OPEN-WORK.md) | Task status and next results |
-| [Equipment and manuals](docs/EQUIPMENT.md) | Official manual library, calibration-data limits, and operating references |
+| [Equipment and manuals](docs/EQUIPMENT.md) | Official manuals, serial-specific calibration records, and operating references |
 | [Hardware validation](docs/VALIDATION.md) | Evidence required before claiming control or unattended logging support |
 | [Project provenance](docs/PROVENANCE.md) | Migration from Generic Radio Stuff and manual verification |
 | [Contributing](CONTRIBUTING.md) | Repository conventions and review checks |
@@ -28,7 +28,7 @@ The adapter transports the meter's original HP commands. Validate read/write sup
 ## Repository layout
 
 - `docs/`: maintained requirements, decisions, references, backlog, and validation plan.
-- `output/pdf/hp-437b-8482a/`: unmodified publisher manuals and their original download manifest/checksums.
+- `output/pdf/hp-437b-8482a/`: unmodified publisher manuals and their original download manifest/checksums; `calibration/` holds complete individual calibration records and separate import checksums.
 - `.github/`: issue and pull request templates.
 - `tmp/` or `temp/`: ignored scratch files and previews.
 - `data/`, `output/logs/`, and `output/reports/`: ignored local measurement/generated output locations when needed.
@@ -37,4 +37,4 @@ Add source, tests, package metadata, dependency pins, and automation when implem
 
 ## Licensing
 
-Original work owned by lbussy is [MIT-licensed](LICENSE). Publisher manuals retain their original rights and are excluded from that grant; see [third-party notices](THIRD_PARTY_NOTICES.md).
+Original work owned by lbussy is [MIT-licensed](LICENSE). Publisher manuals and third-party calibration records retain their original rights and are excluded from that grant; see [third-party notices](THIRD_PARTY_NOTICES.md).

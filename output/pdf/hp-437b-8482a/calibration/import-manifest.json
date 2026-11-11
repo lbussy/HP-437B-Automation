@@ -1,0 +1,32 @@
+{
+  "imported_on": "2026-11-11",
+  "source": "Original calibration PDFs supplied by the equipment owner, who requested repository storage, commit, and push.",
+  "issuer": "DXCONNECTION / Valley Precision Instrument Calibration Services",
+  "preservation": "Complete original files, copied byte for byte; no OCR, annotations, or redaction applied.",
+  "files": [
+    {
+      "file": "HP-437B-SN-3125U33223-Calibration-2026-10-15.pdf",
+      "source_filename": "20261111 HP-Agilent 437B Calibration.pdf",
+      "model": "437B",
+      "serial_number": "3125U33223",
+      "certificate_number": "DXC-2026-3339-001",
+      "pages": 4,
+      "calibration_date": "2026-10-15",
+      "next_calibration_due": "2028-10-15",
+      "bytes": 974330,
+      "sha256": "9ba8e5041f676b1a2ef41091f7dacdb9ade3cc8ceb3a7444a801afca531b720b"
+    },
+    {
+      "file": "HP-8482A-SN-MY41094127-Calibration-2026-10-15.pdf",
+      "source_filename": "20261111 HP-Agilent 8482A Calibration.pdf",
+      "model": "8482A",
+      "serial_number": "MY41094127",
+      "certificate_number": "DXC-2026-3339-002",
+      "pages": 2,
+      "calibration_date": "2026-10-15",
+      "next_calibration_due": "2027-10-15",
+      "bytes": 737986,
+      "sha256": "99b12e373264a24de955b76a23a6403e9409cafce3861b0f6ea95ca7fb359199"
+    }
+  ]
+}
