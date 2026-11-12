@@ -1,6 +1,6 @@
 # WF-CATALOG-01: Transmitter test catalogue
 
-Definition v1, November 12, 2026. **Catalogue and priorities defined.** [WF-02 now has a synthetic implementation](SUSTAINED-STABILITY-V1.md); its [physical POWER REF integration](WF-02-PHYSICAL.md) is implemented/offline-tested, and the selected Mac run passed capture/audit and owner final-state confirmation. [WF-03 now has a synthetic implementation](TRANSMISSION-CYCLES-V1.md), with physical integration/exercise open. Other new implementations remain open. This document defines the recommended next work, its reports, and useful synthetic/POWER REF development paths. It changes no logger behavior and starts no hardware operation.
+Definition v1, November 12, 2026. **Catalogue and priorities defined.** [WF-02 now has a synthetic implementation](SUSTAINED-STABILITY-V1.md); its [physical POWER REF integration](WF-02-PHYSICAL.md) is implemented/offline-tested, and the selected Mac run passed capture/audit and owner final-state confirmation. [WF-03](TRANSMISSION-CYCLES-V1.md) now supports synthetic runs and a [completed current-Mac POWER REF case](WF-03-PHYSICAL.md), including owner final-state confirmation. Other new implementations remain open. This document defines the recommended next work, its reports, and useful synthetic/POWER REF development paths. It changes no logger behavior and starts no hardware operation.
 
 ## Recommended order
 
@@ -148,7 +148,7 @@ These examples have no DUT limits, so their acceptance result is **NOT EVALUATED
 | --- | --- | --- |
 | WF-CATALOG-01 | Prioritized definitions, report contracts, synthetic worked inputs, realistic POWER REF scope, and tracked implementation work | ✅ Definition complete |
 | WF-02 | [Synthetic drift runner, analysis/report, and independent checks implemented](SUSTAINED-STABILITY-V1.md); [physical integration](WF-02-PHYSICAL.md) is implemented/offline-tested and selected bench capture/audit and owner final-state confirmation passed | ✅ Complete (synthetic + current-Mac POWER REF) |
-| WF-03 | [Synthetic five-cycle runner/report and partial/failure checks implemented](TRANSMISSION-CYCLES-V1.md); supervised POWER REF integration/evidence remains separate | ⏳ Synthetic complete; physical follow-up open |
+| WF-03 | [Synthetic five-cycle runner/report and partial/failure checks implemented](TRANSMISSION-CYCLES-V1.md); [physical integration](WF-03-PHYSICAL.md) is offline-tested and selected Mac execution passed five cycles/150 plateau rows, independent audit, and owner final-state confirmation | ✅ Complete (synthetic + current-Mac POWER REF) |
 | DUT-CTRL-01 | External/manual source contract, bounded key/unkey/setting acknowledgements, safe fixture/corrections, single-point transmitter capture/report, and source shutdown evidence | ▧ Open; prerequisite to physical transmitter workflows |
 | WF-04 | Point-table power-setting workflow, targets/decision rules, reports, and fake-control acceptance; physical evidence only with a prepared source | ▧ Open |
 | WF-05 | Point-table frequency workflow, factor/loss selection policy, reports, and fake-control acceptance; physical evidence only with a prepared source | ▧ Open |

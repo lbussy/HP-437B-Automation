@@ -1,6 +1,6 @@
 # WF-03: Transmission-cycle repeatability
 
-Implemented November 12, 2026, for **synthetic capture, equal-cycle analysis, provenance, and deterministic reporting**. Physical POWER REF integration/execution remains open. This implements the second priority in the [transmitter test catalogue](TRANSMITTER-TEST-CATALOG.md#wf-03-transmission-cycle-repeatability), without changing ordinary logging or operating any hardware.
+Implemented November 12, 2026, for **synthetic capture, equal-cycle analysis, provenance, and deterministic reporting**. The [supervised POWER REF runner](WF-03-PHYSICAL.md) is integrated and offline-tested; selected bench evidence is recorded separately. This implements the second priority in the [transmitter test catalogue](TRANSMITTER-TEST-CATALOG.md#wf-03-transmission-cycle-repeatability), without changing ordinary logging or operating any hardware.
 
 ## Run a synthetic test
 
@@ -25,7 +25,7 @@ python -m hp437b.repeatability report \
   --output output/reports/new-wf03-reported-again
 ```
 
-This entry point has **no physical mode**, USB resource, source driver/factory argument, resource discovery, AI/provider, or automatic fallback. The named subject is the fictional POWER REF fixture, not a transmitter. WF-01 and WF-02 files cannot be relabeled/imported as WF-03. Normal `hp437b log`, source preservation, CSV/sidecar schema, healthy/failed-read shutdown, dependencies, and existing workflow behavior remain unchanged.
+The synthetic command has **no physical mode**, USB resource, source driver/factory argument, resource discovery, AI/provider, or automatic fallback. The named subject is the fictional POWER REF fixture, not a transmitter. WF-01 and WF-02 files cannot be relabeled/imported as WF-03. Normal `hp437b log`, source preservation, CSV/sidecar schema, healthy/failed-read shutdown, dependencies, and existing workflow behavior remain unchanged.
 
 ## Fixed cycle profile
 
@@ -109,4 +109,4 @@ Source/wheel builds, an isolated installed-wheel synthetic CLI run from outside 
 
 ## POWER REF follow-up
 
-The next step is a separate supervised physical integration/exercise using the current prepared direct sensor/reference path and existing source/uncertainty-aware shutdown policy. It needs real source/settings/identity observations, exclusive ownership, cycle/stage/outer deadlines, off-dwell evidence, and owner final-state confirmation. The synthetic command cannot operate the meter. POWER REF can exercise the slow cycle sequence without a radio or replacement meter, but its result describes the reference/meter/sensor path, not transmitter keying or calibration. External transmitter cycles still need DUT-CTRL-01, a rated fixture, and a source-specific permitted duty-cycle/settling policy.
+The [supervised physical runner](WF-03-PHYSICAL.md) now uses the prepared direct sensor/reference path and existing uncertainty-aware shutdown policy, with real identity/status observations, shared ownership, per-cycle/stage/outer deadlines, measured off-dwell evidence, and separate owner final-state confirmation. The synthetic command still cannot operate the meter. Saved reporting accepts either explicitly validated synthetic WF-03 data or the named physical POWER REF schema. POWER REF exercises slow source cycles without a radio/replacement meter; its result describes the reference/meter/sensor path, not transmitter keying or calibration. External transmitter cycles still need DUT-CTRL-01, a rated fixture, and a source-specific duty-cycle/settling policy.
