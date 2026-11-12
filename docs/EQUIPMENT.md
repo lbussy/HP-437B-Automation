@@ -27,7 +27,7 @@ Use these records alongside the manuals whenever calibration criteria or correct
 
 The meter PDF, page 2, lists **4.498 VDC** for the **+5.0 VDC bus (+/-0.25 V)**, outside the printed tolerance, while the certificate reports a pass. On November 11, 2026, the user reported that the seller/calibrator confirmed the discrepancy was unacceptable. The user plans to exchange the meter after a few development steps with the current unit. This is an owner-reported disposition; no replacement receipt, revised certificate, or project bench verification is recorded. Preserve the report as issued, and do not treat this supply entry as a passing result.
 
-Keep any development observations from the current meter associated with SN 3125U33223 and its known supply discrepancy. Record the replacement's identity and calibration documentation when it arrives, and perform hardware validation with that unit before claiming qualified measurement or automation operation. Do not assume the current meter's certificate applies to the replacement or that the sensor will also be exchanged.
+Keep any development observations from the current meter associated with SN 3125U33223 and its known supply discrepancy. Record the replacement's identity and calibration documentation when it arrives, and check relevant setup/compatibility assumptions before relying on its measurements. Record limitations in DUT test results; this equipment follow-up does not block software workflow or reporting development. See the [current project scope](PROJECT-SCOPE.md). Do not assume the current meter's certificate applies to the replacement or that the sensor will also be exchanged.
 
 ## Using these references
 

@@ -1,5 +1,7 @@
 # Replacement-meter acceptance procedure
 
+Scope update, November 12, 2026: the [owner clarification](../PROJECT-SCOPE.md) supersedes this document's earlier blanket replacement-meter/Phase 3 release gates. Retain the procedures and evidence as scoped interaction/setup work. Replacement arrival does not block workflow, provenance, analysis, or reporting development; equipment-specific checks apply when that equipment is used. This update does not enable guarded commands or authorize new hardware actions.
+
 Status: ✅ Preparation complete; ▧ Physical execution awaits the replacement meter. November 11, 2026. This procedure applies the [adopted initial policy](MEASUREMENT-POLICY.md) and reuses the reviewed current-unit cases. It does not count original meter SN 3125U33223 as replacement evidence. No physical steps in this document have been executed on a replacement.
 
 ## Arrival and shared setup gates

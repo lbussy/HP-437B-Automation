@@ -1,5 +1,7 @@
 # Phase 3 qualification batch plan
 
+Scope update, November 12, 2026: the [owner clarification](../PROJECT-SCOPE.md) supersedes this document's earlier blanket replacement-meter/Phase 3 release gates. Retain the procedures and evidence as scoped interaction/setup work. Replacement arrival does not block workflow, provenance, analysis, or reporting development; equipment-specific checks apply when that equipment is used. This update does not enable guarded commands or authorize new hardware actions.
+
 Status: ⏳ In progress, November 11, 2026. Execution was explicitly requested, including the saved prompt's scoped commit/push authorization. Starting commit: `9b8ec5c559124645140d354ef9e15289d25c34a9`, clean `devel`. See the [run record](MAC-20261111.md) and [review](PHASE-3-REVIEW.md).
 
 ## Current batch pointer

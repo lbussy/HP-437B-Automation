@@ -1,5 +1,7 @@
 # Phase 3 execution prompt: hardware qualification
 
+Scope update, November 12, 2026: the [owner clarification](../PROJECT-SCOPE.md) supersedes this document's earlier blanket replacement-meter/Phase 3 release gates. Retain the procedures and evidence as scoped interaction/setup work. Replacement arrival does not block workflow, provenance, analysis, or reporting development; equipment-specific checks apply when that equipment is used. This update does not enable guarded commands or authorize new hardware actions.
+
 Prepared November 11, 2026. Execute this prompt when the user explicitly requests Phase 3 execution. Saving, reviewing, or linking this prompt is document maintenance. The user explicitly requested execution on November 11, 2026; see the [batch plan](../validation/PHASE-3-PLAN.md) and [review](../validation/PHASE-3-REVIEW.md). Phase 3 remains in progress.
 
 ## Objective and completion boundary
