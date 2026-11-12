@@ -150,7 +150,7 @@ These examples have no DUT limits, so their acceptance result is **NOT EVALUATED
 | WF-02 | [Synthetic drift runner, analysis/report, and independent checks implemented](SUSTAINED-STABILITY-V1.md); [physical integration](WF-02-PHYSICAL.md) is implemented/offline-tested and selected bench capture/audit and owner final-state confirmation passed | ✅ Complete (synthetic + current-Mac POWER REF) |
 | WF-03 | [Synthetic five-cycle runner/report and partial/failure checks implemented](TRANSMISSION-CYCLES-V1.md); [physical integration](WF-03-PHYSICAL.md) is offline-tested and selected Mac execution passed five cycles/150 plateau rows, independent audit, and owner final-state confirmation | ✅ Complete (synthetic + current-Mac POWER REF) |
 | DUT-CTRL-01 | External/manual source contract, bounded key/unkey/setting acknowledgements, safe fixture/corrections, single-point transmitter capture/report, and source shutdown evidence | ▧ Open; prerequisite to physical transmitter workflows |
-| WF-04 | Point-table power-setting workflow, targets/decision rules, reports, and fake-control acceptance; physical evidence only with a prepared source | ▧ Open |
+| WF-04 | [Synthetic point-table power-setting workflow](POWER-SETTING-V1.md), targets/decision rules, reports, and fake-control cases implemented; physical evidence requires a prepared source and DUT-CTRL-01 | ✅ Synthetic; ▧ Physical open |
 | WF-05 | Point-table frequency workflow, factor/loss selection policy, reports, and fake-control acceptance; physical evidence only with a prepared source | ▧ Open |
 | WF-06 | Voltage-control/observation/restoration contract, synthetic acceptance, and later DUT/supply integration | ▧ Later priority |
 

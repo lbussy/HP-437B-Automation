@@ -69,3 +69,19 @@ The [adopted initial policy](validation/MEASUREMENT-POLICY.md), [replacement acc
 ## First application-profile acceptance
 
 [E2E-01 / VAL-01](validation/PIPELINE-ACCEPTANCE.md) records explicit assertions and a 16-case workflow/provenance/analysis/report acceptance campaign. It completes the first WF-01 v1 software profile without new hardware I/O; equipment provenance, measurement limits, and named host evidence retain their original scopes.
+
+## WF-04 synthetic output versus setting — November 12, 2026
+
+[WF-04 v1](workflows/POWER-SETTING-V1.md) now implements a finite synthetic external-transmitter point sweep, sensor/DUT-plane comparisons, supplied target/loss mapping, configurable operator, reusable PROV-01 records, and deterministic HTML/Markdown/JSON reports with optional PNG/SVG. No meter, USB, native backend, RF source, or provider was accessed. Production logger, instrument/transport, existing physical workflow runners, runtime dependencies, and CLI defaults are unchanged.
+
+Validation evidence is local and ignored under `tmp/wf04/` and `output/reports/wf04-synthetic-20261112-v2/`:
+
+- Full regression: **814 tests passed**, including stress-enabled cases, behind `tools/offline_qa.py`; targeted WF-04 tests cover 53 cases. Subsequent presentation/strict-outcome checks also receive the targeted suite.
+- Fourteen synthetic scenarios were captured and reported: nominal, compressed, nonmonotonic, missing target, missing loss, sensor plane, zero output, timeout, malformed response, complete instrument error, cancellation, source-off failure, acknowledgement mismatch, and missing point. Fresh no-plot reimports reproduced results and preserved all source bytes.
+- Independent catalogue oracle: 1/4.8/9.5 mW sensor means, fictional 30 dB loss, 1/4.8/9.5 W DUT-plane means versus 1/5/10 W targets, errors 0/−4/−5%. Inclusive fictional 5% limits pass; a stricter point-specific bound fails. No limits means NOT EVALUATED. Missing corrections/targets, zero power outside the nominal measurement range, and incomplete execution cannot yield overall PASS.
+- Tests verify no simulator-truth substitution, no fixture double correction, source order/unkeyed setting changes, unknown final source state after uncertain faults, no retry after failed off, retained partial/skipped coverage, evidence hashes and semantic joins, symlink/output protections, publication failure preservation, and CLI exits.
+- Source distribution and wheel build passed under the offline guard. A fresh installed wheel, invoked outside the checkout without Matplotlib, generated a capture/report with full producer commit/source metadata. Optional plot tests verify actual PNG/SVG signatures.
+- Every scenario's one-page sheet and the five-point repeated-anchor example were rendered for Letter and A4 (30 one-page outputs), with success and failed-source-state sheets visually inspected. The main sheet includes signed pre-RF zero, transmitter/operator/time, declared frequency/mode/plane, point results, acceptance, and final synthetic source state. Full evidence remains in the appendix.
+- Ruff, formatting, Markdown links/anchors/tables, five publisher PDF hashes, and `git diff --check` passed. New reporting tests are included in the existing Python 3.11/3.14 hosted reporting matrix, but **WF-04 hosted CI remains pending commit/push**.
+
+The generator creates virtual sample evidence directly; it does not exercise production `Instrument`/`collect` or reproduce actual native timeout behavior. This evidence establishes synthetic orchestration/analysis/report behavior only. Physical multi-level transmitter work remains **DUT-CTRL-01**; POWER REF can supply a fixed point, not a level sweep. Equipment replacement remains a separate provenance/onboarding follow-up.
