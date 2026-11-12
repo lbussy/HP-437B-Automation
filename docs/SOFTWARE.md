@@ -12,11 +12,13 @@ From a checkout:
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.lock
 .venv/bin/python -m pip install --no-build-isolation -e .
-.venv/bin/ruff check src tests
-.venv/bin/ruff format --check src tests
-.venv/bin/python -m pytest -q
-.venv/bin/python -m build --no-isolation
+.venv/bin/ruff check src tests tools
+.venv/bin/ruff format --check src tests tools
+.venv/bin/python tools/offline_qa.py -- .venv/bin/python -m pytest -q
+.venv/bin/python tools/offline_qa.py -- .venv/bin/python -m build --no-isolation
 ```
+
+The offline QA launcher blocks inspected VISA/USB/serial entry points before Python application imports, inherits protection in ordinary exec/spawn children, disables automatic pytest plugins, and supervises the owned process group. It is an accident guard, not containment of arbitrary native code. The suite requires this launcher. Set `HP437B_STRESS=1` to opt into bounded synthetic campaigns. `HP437B_QA_DEADLINE` can impose a shared Unix-time task deadline; campaigns stop before a thirty-minute reserve, and `--final` permits final verification within that reserve. The default command ceiling is 180 seconds. See the [offline qualification record](validation/OFFLINE-QUALIFICATION-RESULTS.md).
 
 Runtime pins are PyVISA 1.16.2, PyVISA-py 0.8.1, and PyUSB 1.3.1. `requirements-dev.lock` also pins transitive and development packages for the software-check environment. The project uses the `@py` backend exclusively. A working libusb installation and appropriate device permissions are prerequisites for USB access. On a Mac, prepare libusb for the Python architecture in use; on Raspberry Pi OS, prepare libusb and appropriate USB device permissions. Those are Phase 3 host setup tasks. Keep any Linux kernel USBTMC driver contention distinct from device permissions and record the actual solution.
 

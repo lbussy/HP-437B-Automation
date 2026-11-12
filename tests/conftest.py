@@ -1,9 +1,12 @@
+import os
 from collections import deque
 
 import pytest
 
-from hp437b.instrument import Instrument
-from hp437b.transport import remaining
+assert os.environ.get("HP437B_OFFLINE_GUARD") == "active", "Run tests through tools/offline_qa.py"
+
+from hp437b.instrument import Instrument  # noqa: E402 - guard must precede app imports
+from hp437b.transport import remaining  # noqa: E402
 
 
 class Scripted:

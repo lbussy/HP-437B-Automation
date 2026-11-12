@@ -88,3 +88,7 @@ The owner requested removing the manual PRESET/LOCAL step after runs. The [proje
 ## Pre-arrival completion boundary
 
 The owner selected the initial reference-bench logging policy and directed completing all available Phase 3 work without further input before replacement arrival. [Pre-arrival review](validation/PRE-ARRIVAL-REVIEW.md) closes current-setup metadata, policy, local evidence auditing, matrix/status reconciliation, and [replacement execution preparation](validation/REPLACEMENT-ACCEPTANCE.md). No new production change or current-meter experiment is required for this preparation. HP-01, PHASE-03, and VAL-01 stay open for actual replacement identity/calibration/setup, mandatory cases on both hosts, and final acceptance review. Exact PCB revision is an accepted unknown, and the lack of an external radio does not block the adopted internal-reference profile.
+
+## Hardware-free software qualification
+
+The [offline software campaign](validation/OFFLINE-QUALIFICATION-RESULTS.md) extends parameter, parser, synthetic logger, storage-fault, process/deadline, and clean-install evidence on an isolated local branch. It changes no runtime source or physical qualification status. Replacement identity/setup and declared-profile acceptance on both hosts remain required.
