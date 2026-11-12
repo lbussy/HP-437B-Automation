@@ -1,6 +1,6 @@
 """WF-02 saved-run validation, provenance, drift analysis, and deterministic reports.
 
-Only the synthetic v1 capture schema is accepted. No device discovery or I/O.
+Synthetic and supervised POWER REF v1 captures are accepted. No device I/O here.
 """
 
 import argparse
@@ -200,14 +200,17 @@ D = Decimal
 def load(source):
     """Validate hashes, closed capture semantics, and run/session joins before reporting."""
     bundle = p.Bundle(source)
-    inventory = bundle.inventory("artifacts.json", "synthetic")
+    header = p._json(bundle.read("artifacts.json"))
+    mode = header.get("mode")
+    p.require(mode in ("synthetic", "physical"), "Unsupported WF-02 capture mode")
+    inventory = bundle.inventory("artifacts.json", mode)
     record = bundle.json("workflow.json")
     p.require(
         record.get("schema") == SCHEMA
         and record.get("workflow_id") == WORKFLOW
-        and record.get("mode") == "synthetic"
-        and record.get("simulation") is True,
-        "Only explicit synthetic WF-02 captures are supported",
+        and record.get("mode") == mode
+        and record.get("simulation") is (mode == "synthetic"),
+        "Only explicit WF-02 capture schemas are supported",
     )
     p.require(
         inventory.get("run_id") == record["run_id"]
@@ -225,18 +228,27 @@ def load(source):
         record["status"] in ("completed", "failed", "interrupted"), "Unsealed/running workflow"
     )
     p.require(
-        record["final_state"]["source"] in ("off", "unknown")
-        and record["final_state"]["local"] in ("true", "unknown"),
+        record["final_state"]["source"]
+        in (("off", "unknown") if mode == "synthetic" else ("off", "on", "unknown"))
+        and isinstance(record["final_state"]["local"], str),
         "Invalid final state",
     )
     p.require(
         record["status"] != "completed"
         or (
             all(record["stages"][s]["status"] == "completed" for s in STAGES)
-            and record["final_state"] == {"source": "off", "local": "true"}
+            and record["final_state"]["source"] == "off"
+            and (
+                record["final_state"]["local"] == "true"
+                if mode == "synthetic"
+                else record["final_state"]["local"]
+                == "USB488 GTL accepted; front panel not yet confirmed"
+            )
         ),
         "Completed workflow lacks completed stages/cleanup",
     )
+    if mode == "physical":
+        validate_physical(record)
     started, finished = r.timestamp(record["started_utc"]), r.timestamp(record["finished_utc"])
     p.require(
         0 <= (finished - started).total_seconds() <= PROFILE["whole_run_ceiling_s"],
@@ -252,6 +264,15 @@ def load(source):
             p.require(
                 name not in bundle.entries and name + ".session.json" not in bundle.entries,
                 "Skipped stage has capture",
+            )
+            continue
+        if (
+            state in ("failed", "interrupted")
+            and name not in bundle.entries
+            and name + ".session.json" not in bundle.entries
+        ):
+            p.require(
+                bool(record["stages"][stage].get("error")), "Absent capture needs a failure reason"
             )
             continue
         metadata = bundle.json(name + ".session.json")
@@ -278,7 +299,8 @@ def load(source):
         else:
             planned_duration = 20 if stage == "settling" else 1800
             partial_endpoint = (
-                stage == "plateau"
+                mode == "synthetic"
+                and stage == "plateau"
                 and state == "interrupted"
                 and record.get("scenario") in ("missing-first", "missing-last")
             )
@@ -287,7 +309,7 @@ def load(source):
                 and settings.get("duration_s") == (1500 if partial_endpoint else planned_duration),
                 "Acquisition bounds/profile mismatch",
             )
-        stages[stage] = r.stage_result(bundle.read(name), metadata, "synthetic", stage, state)
+        stages[stage] = r.stage_result(bundle.read(name), metadata, mode, stage, state)
         for field in ("started_utc", "finished_utc"):
             p.require(
                 started <= r.timestamp(metadata[field]) <= finished,
@@ -334,10 +356,65 @@ def load(source):
     )
     points = stages.get("plateau", {}).get("points", [])
     results = analyze(points, execution=record["status"], criteria=record.get("criteria"))
-    results.update(run_id=record["run_id"], mode="synthetic", stages=stages)
+    results.update(run_id=record["run_id"], mode=mode, stages=stages)
     provenance = make_provenance(record, bundle)
     p.verify(provenance, source)
     return record, results, provenance, bundle
+
+
+def validate_physical(record):
+    setup = record.get("setup", {})
+    required = (
+        "adapter_on_mac",
+        "direct_sensor_reference_path",
+        "reference_off",
+        "warmed_up",
+        "other_apps_closed",
+        "operator_available",
+    )
+    p.require(all(setup.get(key) is True for key in required), "Physical prepared setup missing")
+    p.require(
+        record["subject"] == "POWER REF output (internal reference source)"
+        and isinstance(setup.get("known_issues"), list)
+        and all(isinstance(note, str) for note in setup["known_issues"]),
+        "Physical reference/issue declaration missing",
+    )
+    for role in ("meter", "sensor"):
+        p.require(
+            isinstance(setup.get(role + "_serial"), str)
+            and setup[role + "_serial"]
+            and setup[role + "_serial"] in record["equipment"][role],
+            "Physical label identity mismatch",
+        )
+    controls = record.get("control_stages", {})
+    p.require(
+        set(controls) == {"preflight", "source-on", "source-off", "free-run"}
+        and all(
+            item["status"] in ("completed", "failed", "interrupted", "skipped")
+            for item in controls.values()
+        ),
+        "Unfinalized physical controls",
+    )
+    p.require(isinstance(record.get("sessions"), list), "Physical session observations missing")
+    if record["status"] == "completed":
+        p.require(
+            all(item["status"] == "completed" for item in controls.values())
+            and record.get("free_run_check", {}).get("passed") is True,
+            "Physical completion lacks controls/free-run evidence",
+        )
+    for session in record["sessions"]:
+        identity = session.get("identity")
+        if identity is not None:
+            decoded = protocol.identification(bytes.fromhex(identity["raw"]))
+            p.require(
+                decoded.model == "437B"
+                and decoded.firmware == identity["firmware"]
+                and (
+                    not setup.get("expected_firmware")
+                    or decoded.firmware == setup["expected_firmware"]
+                ),
+                "Physical returned identity mismatch",
+            )
 
 
 def make_provenance(record, bundle):
@@ -346,7 +423,9 @@ def make_provenance(record, bundle):
             value,
             basis="supplied",
             refs=[{"evidence_id": "workflow.json", "pointer": pointer}],
-            note="Synthetic fixture declaration, not physical observation",
+            note="Synthetic fixture declaration, not physical observation"
+            if record["mode"] == "synthetic"
+            else "Supplied setup/run declaration; returned protocol identities are recorded separately",
         )
 
     facts = {
@@ -355,19 +434,36 @@ def make_provenance(record, bundle):
     }
     if record.get("operator") is not None:
         facts["operator"] = copied(record["operator"], "/operator")
+    mode = record["mode"]
+    identities = {
+        role: (
+            "synthetic:" + role
+            if mode == "synthetic"
+            else mode + ":" + role + ":" + r.digest(identity.encode())[:16]
+        )
+        for role, identity in record["equipment"].items()
+    }
     devices = [
-        p.equipment(f"synthetic:{role}", role, {"identity": copied(identity, f"/equipment/{role}")})
+        p.equipment(identities[role], role, {"identity": copied(identity, f"/equipment/{role}")})
         for role, identity in record["equipment"].items()
     ]
+    if mode == "physical":
+        facts["setup"] = copied(record["setup"], "/setup")
+        facts["instrument_sessions"] = p.fact(
+            record["sessions"],
+            basis="observed",
+            refs=[{"evidence_id": "workflow.json", "pointer": "/sessions"}],
+            note="Protocol session observations; label serials remain supplied",
+        )
     subject = p.dut(
-        "synthetic:reference",
+        "synthetic:reference" if mode == "synthetic" else identities["source"] + ":reference",
         "reference_signal",
-        ["synthetic:source"],
+        [identities["source"]],
         {"name": copied(record["subject"], "/subject")},
     )
     return p.record(
         record["run_id"],
-        "synthetic",
+        mode,
         WORKFLOW,
         facts,
         subject,
@@ -416,7 +512,7 @@ def plot(results, output):
             figure.savefig(
                 output / f"power-trend.{extension}",
                 dpi=150,
-                metadata={"Title": "SYNTHETIC sustained output stability"},
+                metadata={"Title": results["mode"].upper() + " sustained output stability"},
             )
         figure.clear()
 
@@ -427,6 +523,12 @@ def render(record, results, producer, operator, plots):
     def n(value, scale=1, suffix=""):
         return f"{D(value) * D(str(scale)):.6g}{suffix}" if value is not None else "Not available"
 
+    physical = record["mode"] == "physical"
+    equipment_text = (
+        " | ".join(record["equipment"][role] for role in ("meter", "sensor"))
+        if physical
+        else "Fictional 437B, 8482A, and POWER REF source; see appendix."
+    )
     metrics, coverage = results["metrics"], results["coverage"]
     baseline = results["stages"].get("baseline-before", {})
     zero = baseline.get("metrics", {}).get("mean_W")
@@ -457,7 +559,13 @@ def render(record, results, producer, operator, plots):
     started = r.timestamp(record["started_utc"])
     finished = r.timestamp(record["finished_utc"])
     when = (
-        started.strftime("%d %b %Y, %H:%M:%S") + " – " + finished.strftime("%H:%M:%S UTC (virtual)")
+        started.strftime("%d %b %Y, %H:%M:%S")
+        + " – "
+        + finished.strftime(
+            ("%d %b %Y, " if started.date() != finished.date() else "")
+            + "%H:%M:%S UTC"
+            + ("" if physical else " (virtual)")
+        )
     )
     meta = [
         ("Device / source", record["subject"]),
@@ -467,22 +575,30 @@ def render(record, results, producer, operator, plots):
             "When",
             when,
         ),
-        ("Frequency", "50 MHz (declared, synthetic)"),
+        ("Frequency", "50 MHz (declared)" if physical else "50 MHz (declared, synthetic)"),
         ("Window", "30 minutes; six 5-minute bins"),
     ]
     acceptance = results["acceptance"]
     notes = [
-        "Synthetic reference/meter/sensor path; no transmitter was measured.",
+        "Internal POWER REF/meter/sensor path; no transmitter was measured."
+        if physical
+        else "Synthetic reference/meter/sensor path; no transmitter was measured.",
         "Receipt-time drift includes the measurement path and filtering; it is not RF waveform timing or transmitter-only drift.",
         "No baseline subtraction, fixture correction, or measurement uncertainty is applied.",
     ]
+    if physical:
+        notes.extend(record["setup"]["known_issues"])
+        if record["final_state"]["source"] != "off":
+            notes.append("Reference-off state is not confirmed; see failure/cleanup evidence.")
     if acceptance["criteria"] is not None:
         notes.append("Fictional/supplied comparison only: " + acceptance["reason"])
     if coverage["bins_present"] < coverage["bins_expected"]:
         notes.append("Missing bins: endpoint drift may be unavailable; gaps are not interpolated.")
     body = [
         "<h1>RF Output Power Test</h1>",
-        "<p class='simulation'>SYNTHETIC — simulated readings; no physical transmitter was measured.</p>",
+        ""
+        if physical
+        else "<p class='simulation'>SYNTHETIC — simulated readings; no physical transmitter was measured.</p>",
         "<table class='meta'>"
         + "".join(f"<tr><th scope='row'>{esc(k)}</th><td>{esc(v)}</td></tr>" for k, v in meta)
         + "</table>",
@@ -493,13 +609,15 @@ def render(record, results, producer, operator, plots):
     ]
     if plots:
         body.append(
-            "<figure><img src='power-trend.png' alt='Synthetic power samples and five-minute bin means over thirty minutes'><figcaption>Dots: individual readings. Squares: bin means. No interpolation across gaps.</figcaption></figure>"
+            "<figure><img src='power-trend.png' alt='Power samples and five-minute bin means over thirty minutes'><figcaption>Dots: individual readings. Squares: bin means. No interpolation across gaps.</figcaption></figure>"
         )
     body += [
         "<h2>Notes affecting interpretation</h2><ul class='notes'>"
         + "".join(f"<li>{esc(note)}</li>" for note in notes)
         + "</ul>",
-        "<footer><p><strong>Equipment traceability:</strong> Fictional 437B, 8482A, and POWER REF source; see appendix.</p><p>"
+        "<footer><p><strong>Equipment traceability:</strong> "
+        + esc(equipment_text)
+        + "</p><p>"
         + esc(report_sheet.producer_note(producer))
         + f"</p><p>Record: {esc(record['run_id'])}</p><p class='screen-links'><a href='evidence.html'>Technical appendix and full traceability</a></p></footer>",
     ]
@@ -513,7 +631,7 @@ def render(record, results, producer, operator, plots):
     md = [
         "# RF Output Power Test",
         "",
-        "**SYNTHETIC — no physical transmitter was measured.**",
+        "" if physical else "**SYNTHETIC — no physical transmitter was measured.**",
         "",
         *[f"**{k}:** {report_sheet._markdown(v)}" for k, v in meta],
         "",
@@ -524,7 +642,7 @@ def render(record, results, producer, operator, plots):
         "",
         *[f"- {note}" for note in notes],
         "",
-        "Equipment traceability: fictional 437B/8482A/POWER REF",
+        "Equipment traceability: " + equipment_text,
         report_sheet.producer_note(producer),
         "Record: " + record["run_id"],
         "",
@@ -585,7 +703,7 @@ def publish(source, output, *, plots=True, operator=None):
             {
                 "schema": "hp437b.stability-report-export.v1",
                 "run_id": record["run_id"],
-                "mode": "synthetic",
+                "mode": record["mode"],
                 "capture_inventory_sha256": source_hash,
                 "report_producer": producer,
                 "report_context": {"operator": attribution},

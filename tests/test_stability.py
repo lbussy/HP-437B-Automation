@@ -383,3 +383,17 @@ def test_resealed_session_join_mismatch_is_rejected(tmp_path):
     reseal(capture, lambda record: None)
     with pytest.raises(ValueError, match="join mismatch"):
         s.load(capture)
+
+
+def test_synthetic_provenance_ids_remain_compatible_with_initial_v1(tmp_path):
+    capture = tmp_path / "capture"
+    sim.run(capture)
+    provenance = s.load(capture)[2]
+    assert provenance["dut"]["dut_id"] == "synthetic:reference"
+    assert provenance["dut"]["equipment_refs"] == ["synthetic:source"]
+    assert {item["equipment_id"] for item in provenance["equipment"]} == {
+        "synthetic:source",
+        "synthetic:meter",
+        "synthetic:sensor",
+        "synthetic:adapter",
+    }

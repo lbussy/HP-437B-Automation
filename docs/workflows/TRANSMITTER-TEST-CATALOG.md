@@ -1,6 +1,6 @@
 # WF-CATALOG-01: Transmitter test catalogue
 
-Definition v1, November 12, 2026. **Catalogue and priorities defined.** [WF-02 now has a synthetic implementation](SUSTAINED-STABILITY-V1.md); its physical POWER REF integration/exercise and the other new implementations remain open. WF-01 remains the only physically exercised workflow. This document defines the recommended next work, its reports, and useful synthetic/POWER REF development paths. It changes no logger behavior and starts no hardware operation.
+Definition v1, November 12, 2026. **Catalogue and priorities defined.** [WF-02 now has a synthetic implementation](SUSTAINED-STABILITY-V1.md); its [physical POWER REF integration](WF-02-PHYSICAL.md) is implemented/offline-tested, and the selected Mac run passed capture/audit and owner final-state confirmation. Other new implementations remain open. This document defines the recommended next work, its reports, and useful synthetic/POWER REF development paths. It changes no logger behavior and starts no hardware operation.
 
 ## Recommended order
 
@@ -14,7 +14,7 @@ Keep the existing **RF Output Power Test** page title. The **Test** row names th
 | 4 | WF-05: Output power versus frequency | How consistent is output across selected frequencies/bands? | Synthetic frequency points, factor/path tables, and missing points; POWER REF supplies one nominal 50 MHz anchor only | Recorded tuning control/acknowledgement; sensor factors and fixture loss at each frequency |
 | 5 | WF-06: Supply-voltage sensitivity | Does output change as the transmitter supply changes within its allowed range? | Synthetic voltage/power pairs; no POWER REF voltage-sensitivity experiment | Suitable controlled supply, independently observed voltage, DUT supply limits, and RF fixture |
 
-WF-02 was selected first because it adds useful analysis and reporting with the least new control machinery; its synthetic implementation is now available, with POWER REF integration/exercise next. WF-03 then adds repeated-condition orchestration. WF-04/05 add reusable point tables and comparisons; WF-06 is a later extension because it needs another instrument/control path. These priorities are engineering recommendations within the owner's request, not adopted DUT acceptance limits.
+WF-02 was selected first because it adds useful analysis and reporting with the least new control machinery; its synthetic implementation is now available, with physical POWER REF integration implemented/offline-tested and bench execution tracked separately. WF-03 then adds repeated-condition orchestration. WF-04/05 add reusable point tables and comparisons; WF-06 is a later extension because it needs another instrument/control path. These priorities are engineering recommendations within the owner's request, not adopted DUT acceptance limits.
 
 ## Measurement scope and references
 
@@ -147,7 +147,7 @@ These examples have no DUT limits, so their acceptance result is **NOT EVALUATED
 | Work item | Deliverable / acceptance boundary | Current status |
 | --- | --- | --- |
 | WF-CATALOG-01 | Prioritized definitions, report contracts, synthetic worked inputs, realistic POWER REF scope, and tracked implementation work | ✅ Definition complete |
-| WF-02 | [Synthetic drift runner, analysis/report, and independent checks implemented](SUSTAINED-STABILITY-V1.md); separately recorded supervised POWER REF integration/evidence remains open | ⏳ Synthetic complete; physical follow-up open |
+| WF-02 | [Synthetic drift runner, analysis/report, and independent checks implemented](SUSTAINED-STABILITY-V1.md); [physical integration](WF-02-PHYSICAL.md) is implemented/offline-tested and selected bench capture/audit and owner final-state confirmation passed | ✅ Complete (synthetic + current-Mac POWER REF) |
 | WF-03 | Versioned cycle runner/report, partial-cycle/final-state checks, then separately recorded slow POWER REF evidence | ▧ Open |
 | DUT-CTRL-01 | External/manual source contract, bounded key/unkey/setting acknowledgements, safe fixture/corrections, single-point transmitter capture/report, and source shutdown evidence | ▧ Open; prerequisite to physical transmitter workflows |
 | WF-04 | Point-table power-setting workflow, targets/decision rules, reports, and fake-control acceptance; physical evidence only with a prepared source | ▧ Open |

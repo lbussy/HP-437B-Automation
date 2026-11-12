@@ -1,6 +1,6 @@
 # WF-02: Sustained output stability
 
-Implemented November 12, 2026, for **synthetic capture, provenance, analysis, and deterministic reporting**. Physical POWER REF integration/execution remains open. Normal logging is unchanged. This implements the first priority in the [transmitter test catalogue](TRANSMITTER-TEST-CATALOG.md#wf-02-sustained-output-stability); it does not claim a transmitter measurement or hardware acceptance.
+Implemented November 12, 2026, for **synthetic capture, provenance, analysis, and deterministic reporting**. The [physical POWER REF runner](WF-02-PHYSICAL.md) is now integrated and tested with explicit fakes; the selected Mac bench run is recorded separately. Normal logging is unchanged. This implements the first priority in the [transmitter test catalogue](TRANSMITTER-TEST-CATALOG.md#wf-02-sustained-output-stability); it does not claim a transmitter measurement or hardware acceptance.
 
 ## Run a synthetic test
 
@@ -15,7 +15,7 @@ python tools/offline_qa.py --seconds 120 -- \
   --report-output output/reports/new-wf02-report
 ```
 
-Open `output/reports/new-wf02-report/report.html`. The new capture and report directories must be separate, non-nested, and nonexistent. The simulated thirty minutes run on a virtual clock, without a thirty-minute wall-clock wait. There is no hardware resource argument, driver/factory injection, resource discovery, provider, model call, or synthetic-to-physical fallback. The path uses the existing `Instrument` and `collect` APIs with an explicit fake wire; it does not modify their behavior.
+Open `output/reports/new-wf02-report/report.html`. The new capture and report directories must be separate, non-nested, and nonexistent. The simulated thirty minutes run on a virtual clock, without a thirty-minute wall-clock wait. The synthetic command has no hardware resource argument, driver/factory injection, resource discovery, provider, model call, or synthetic-to-physical fallback. The path uses the existing `Instrument` and `collect` APIs with an explicit fake wire; it does not modify their behavior.
 
 `--no-plots` produces text/HTML/JSON without requiring Matplotlib. `--operator` and `HP437B_OPERATOR` use the established attribution policy; a captured name takes precedence over an environment default when reporting later. A supplied override is separately attributed in report metadata, without changing capture provenance.
 
@@ -27,7 +27,7 @@ python -m hp437b.stability report \
   --output output/reports/new-wf02-reported-again
 ```
 
-Reporting verifies saved evidence and performs no acquisition or source action. It accepts only the synthetic WF-02 v1 schema today. WF-01 bundles remain WF-01; no import relabels them as stability experiments. The existing WF-01 report commands remain unchanged.
+Reporting verifies saved evidence and performs no acquisition or source action. It accepts sealed synthetic WF-02 v1 captures and the explicit [physical POWER REF schema/contract](WF-02-PHYSICAL.md), with mode-specific validation and presentation. WF-01 bundles remain WF-01; no import relabels them as stability experiments. The existing WF-01 report commands remain unchanged.
 
 ## Fixed v1 profile and evidence
 
@@ -113,6 +113,6 @@ Local verification: **687 tests passed with stress enabled**, including 42 WF-02
 
 ## POWER REF follow-up
 
-The next step is a separately authorized physical integration/exercise, using the current prepared sensor/reference path, actual equipment/provenance, source/settings verification, exclusive control, outer/stage deadlines, and existing uncertainty-aware shutdown. The synthetic runner has no physical mode and cannot be used to activate POWER REF. The physical adapter must accept/report the real schema explicitly, preserve the current meter's known supply discrepancy, and retain operator final-state evidence. Twenty seconds remains a declared observation allowance, not a universal settling specification.
+The [supervised physical integration](WF-02-PHYSICAL.md) uses the prepared current sensor/reference path, actual equipment/provenance, source/settings verification, shared exclusive ownership, outer/stage deadlines, and existing uncertainty-aware shutdown. It is a separate runner: the synthetic command still has no physical mode and cannot activate POWER REF. The physical importer checks explicit setup/control/session/free-run evidence and separates protocol cleanup from operator front-panel confirmation. It preserves the current meter's supply discrepancy. Twenty seconds remains a declared observation allowance, not a universal settling specification.
 
-A thirty-minute POWER REF result would describe slow changes in the combined source/meter/sensor path. It would not measure a transmitter, establish absolute calibration, or isolate which component drifts. No radio or replacement meter is needed for that scoped reference exercise. External transmitter workflows still require DUT-CTRL-01 and their prepared source/fixture policy.
+The recorded thirty-minute POWER REF result describes slow changes in the combined source/meter/sensor path. It does not measure a transmitter, establish absolute calibration, or isolate which component drifts. No radio or replacement meter is needed for that scoped reference exercise. External transmitter workflows still require DUT-CTRL-01 and their prepared source/fixture policy.
