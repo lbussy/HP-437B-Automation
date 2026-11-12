@@ -20,7 +20,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation, localcontext
 from pathlib import Path
 
-from . import protocol
+from . import protocol, report_sheet
 from . import provenance as p
 from .errors import ProtocolError
 
@@ -454,6 +454,47 @@ def plot(results, output):
     figure.savefig(output / "power.png", dpi=160)
     figure.savefig(output / "power.svg", metadata={"Date": None})
     figure.clear()
+    # The result sheet gets one compact signal plot; phase/baseline plots stay in the appendix.
+    trend = Figure(figsize=(7.2, 1.8), layout="constrained", facecolor="white")
+    FigureCanvasAgg(trend)
+    axis = trend.subplots()
+    stage = next((name for name in ("S40", "S30") if results["stages"][name].get("valid", 0)), None)
+    if stage:
+        points = results["stages"][stage]["points"]
+        mean = Decimal(results["stages"][stage]["metrics"]["mean_W"])
+        factor, unit = (1, "W") if abs(mean) >= 1 else (1000, "mW")
+        if abs(mean) < Decimal("0.000001"):
+            factor, unit = 1000000, "µW"
+        axis.plot(
+            [v["elapsed_s"] for v in points],
+            [
+                float(v["value_W"]) * factor if v["value_W"] is not None else math.nan
+                for v in points
+            ],
+            ".",
+            color="#244e63",
+            markersize=2.5,
+        )
+        for point in points:
+            if point["status"] != "ok":
+                axis.axvline(point["elapsed_s"], color="#8a3829", linestyle=":", linewidth=1)
+        axis.set_ylabel(f"Power ({unit})", fontsize=9)
+        axis.set_xlabel("Elapsed time (s)", fontsize=9)
+        axis.tick_params(labelsize=8)
+        axis.ticklabel_format(axis="y", style="plain", useOffset=False)
+        axis.grid(alpha=0.2)
+    else:
+        axis.text(
+            0.5,
+            0.5,
+            "No RF power readings captured",
+            transform=axis.transAxes,
+            ha="center",
+            va="center",
+        )
+        axis.set_axis_off()
+    trend.savefig(output / "power-trend.png", dpi=180)
+    trend.clear()
 
 
 def literal(value):
@@ -473,7 +514,7 @@ def display(value):
     return format(Decimal(str(value)), ".6g")
 
 
-def render(results, record, packet, agent, plots):
+def render_evidence(results, record, packet, agent, plots):
     """Parallel accessible Markdown and standalone HTML, with no remote resources/scripts."""
     md = [
         "# WF-01 measurement report",
@@ -663,7 +704,10 @@ def export(source, provenance_path, output, *, analysis_path=None, plots=True):
         (output / "agent-analysis.json").write_bytes(encoded(agent))
     if plots:
         plot(results, output)
-    md, page = render(results, record, packet, agent, plots)
+    evidence_md, evidence_page = render_evidence(results, record, packet, agent, plots)
+    (output / "evidence.md").write_text(evidence_md, encoding="utf-8")
+    (output / "evidence.html").write_text(evidence_page, encoding="utf-8")
+    md, page = report_sheet.render(results, record, plots=plots)
     (output / "report.md").write_text(md, encoding="utf-8")
     (output / "report.html").write_text(page, encoding="utf-8")
     p.verify(record, source)
@@ -702,6 +746,8 @@ def export(source, provenance_path, output, *, analysis_path=None, plots=True):
         "plots": plots,
         "agent_analysis": "draft" if agent else "not_supplied",
         "generator_sha256": digest(Path(__file__).read_bytes()),
+        "presentation": "rf-result-sheet.v1",
+        "presentation_sha256": digest(Path(report_sheet.__file__).read_bytes()),
         "artifacts": files,
     }
     temporary = output / ".artifacts.tmp"

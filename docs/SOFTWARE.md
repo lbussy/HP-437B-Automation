@@ -192,3 +192,7 @@ Use the separate [REPORT-01 reporting module](REPORTING.md) for existing WF-01 b
 ## Offline pipeline acceptance
 
 The [E2E-01/VAL-01 runner](validation/PIPELINE-ACCEPTANCE.md) executes seven fresh synthetic cases and can replay explicit retained bundles through provenance, analysis, and reports. Use `tools/offline_qa.py` with a finite deadline. Scripted analysis fixtures test the handoff; supplied agent drafts retain their exact bindings and attribution. Ordinary runtime and defaults remain unchanged.
+
+## Human-started deterministic reports
+
+Use [RUN-01](workflows/DETERMINISTIC-RUN.md) for the optional `--report-output` workflow argument or `python -m hp437b.workflow_report` saved-bundle command. It generates provenance and a richer report automatically after capture closes. No model/provider integration is involved; normal logger behavior and defaults remain unchanged.

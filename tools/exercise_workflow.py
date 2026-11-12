@@ -541,8 +541,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--scenario", choices=SCENARIOS, default="nominal")
+    parser.add_argument(
+        "--report-output",
+        type=Path,
+        help="Publish provenance and a richer deterministic report after the capture closes",
+    )
+    parser.add_argument("--report-no-plots", action="store_true")
     args = parser.parse_args()
+    if args.report_no_plots and args.report_output is None:
+        parser.error("--report-no-plots requires --report-output")
+    if args.report_output is not None:
+        from hp437b.workflow_report import preflight, publish
+
+        preflight(args.output, args.report_output, plots=not args.report_no_plots)
     result = run(args.output, args.scenario)
+    if args.report_output is not None:
+        publish(args.output, args.report_output, plots=not args.report_no_plots)
     print(
         json.dumps(
             {

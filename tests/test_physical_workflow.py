@@ -224,3 +224,137 @@ def test_close_failure_does_not_reopen_for_blind_source_off(tmp_path, harness):
     assert result["status"] == "failed" and result["final_state"]["source"] == "unknown"
     assert not any(e.get("raw_hex") == b"OC0".hex() for e in harness.bench.trace)
     assert result["stages"]["S30"]["status"] == "skipped"
+
+
+@pytest.mark.parametrize("scenario", ["nominal", "timeout"])
+def test_opt_in_report_runs_only_after_physical_capture_closed(
+    tmp_path, harness, monkeypatch, scenario
+):
+    import sys
+
+    from hp437b import workflow_report
+
+    output, report = tmp_path / "capture", tmp_path / "published"
+    setup_path = tmp_path / "setup.json"
+    setup_path.write_text(json.dumps(setup()))
+    executions = []
+
+    def fake_execute(path, resource, prepared, confirmed):
+        executions.append(True)
+        return harness.run(path, scenario)
+
+    original_publish = workflow_report.publish
+
+    def checked_publish(source, target, **kwargs):
+        assert all(wire.closed for wire in harness.wires)
+        assert (source / "artifacts.json").exists() and (source / "workflow.json").exists()
+        return original_publish(source, target, **kwargs)
+
+    monkeypatch.setitem(MODULE["main"].__globals__, "execute", fake_execute)
+    monkeypatch.setattr(workflow_report, "publish", checked_publish)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "physical-runner",
+            "--resource",
+            RESOURCE,
+            "--setup",
+            str(setup_path),
+            "--output",
+            str(output),
+            "--confirm-prepared-reference",
+            "--child",
+            "--report-output",
+            str(report),
+            "--report-no-plots",
+        ],
+    )
+    code = MODULE["main"]()
+    assert code == (0 if scenario == "nominal" else 1) and executions == [True]
+    job = json.loads((report / "job.json").read_text())
+    assert job["mode"] == "physical" and job["analysis"] == "deterministic_only"
+    assert not (report / "report/agent-analysis.json").exists()
+
+
+def test_report_preflight_conflict_prevents_physical_execute(tmp_path, monkeypatch):
+    import sys
+
+    output = tmp_path / "precious"
+    output.mkdir()
+    monkeypatch.setitem(
+        MODULE["main"].__globals__,
+        "execute",
+        lambda *a, **kw: pytest.fail("device capture must not start"),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "physical-runner",
+            "--resource",
+            RESOURCE,
+            "--setup",
+            str(tmp_path / "missing.json"),
+            "--output",
+            str(tmp_path / "capture"),
+            "--confirm-prepared-reference",
+            "--child",
+            "--report-output",
+            str(output),
+            "--report-no-plots",
+        ],
+    )
+    with pytest.raises(ValueError, match="already exists"):
+        MODULE["main"]()
+
+
+def test_report_failure_after_physical_close_never_restarts_measurement(
+    tmp_path, harness, monkeypatch
+):
+    import sys
+
+    from hp437b import workflow_report
+
+    output, report = tmp_path / "capture", tmp_path / "published"
+    setup_path = tmp_path / "setup.json"
+    setup_path.write_text(json.dumps(setup()))
+    executions = []
+    last_trace_length = []
+
+    def fake_execute(path, resource, prepared, confirmed):
+        executions.append(True)
+        result = harness.run(path)
+        last_trace_length.append(len(harness.bench.trace))
+        return result
+
+    def fail_report(*args, **kwargs):
+        assert all(wire.closed for wire in harness.wires)
+        raise OSError("injected post-capture report failure")
+
+    monkeypatch.setitem(MODULE["main"].__globals__, "execute", fake_execute)
+    monkeypatch.setattr(workflow_report.r, "export", fail_report)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "physical-runner",
+            "--resource",
+            RESOURCE,
+            "--setup",
+            str(setup_path),
+            "--output",
+            str(output),
+            "--confirm-prepared-reference",
+            "--child",
+            "--report-output",
+            str(report),
+            "--report-no-plots",
+        ],
+    )
+    with pytest.raises(OSError, match="post-capture"):
+        MODULE["main"]()
+    assert executions == [True] and len(harness.bench.trace) == last_trace_length[0]
+    assert all(wire.closed for wire in harness.wires) and not harness.bench.source
+    assert json.loads((output / "workflow.json").read_text())["status"] == "completed"
+    assert not (report / "artifacts.json").exists()

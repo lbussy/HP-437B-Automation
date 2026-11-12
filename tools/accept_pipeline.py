@@ -120,9 +120,11 @@ def verify_report(source, provenance, output, *, plots):
         "agent-analysis.json",
         "report.md",
         "report.html",
+        "evidence.md",
+        "evidence.html",
     }
     if plots:
-        required |= {"power.png", "power.svg"}
+        required |= {"power.png", "power.svg", "power-trend.png"}
     p.require(set(manifest["artifacts"]) == required, "Missing/unexpected report artifacts")
     p.require(set(snapshot(output)) == required | {"artifacts.json"}, "Uninventoried report files")
     result, packet = checked.json("results.json"), checked.json("analysis-packet.json")
@@ -191,7 +193,9 @@ def verify_report(source, provenance, output, *, plots):
     parser.feed(page)
     p.require(all((output / name).is_file() for name in parser.assets), "Broken local report asset")
     p.require(
-        mode.upper() in page and "NOT EVALUATED" in page and "DRAFT" in page,
+        mode.upper() in page
+        and "NOT EVALUATED" in page
+        and "DRAFT" in (output / "evidence.html").read_text(),
         "Report boundaries missing",
     )
     if plots:

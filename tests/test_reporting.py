@@ -294,8 +294,10 @@ def test_agent_import_and_literal_prose(capture, tmp_path):
     analysis.write_bytes(r.encoded(agent))
     out = tmp_path / "agent-report"
     r.export(root, provenance, out, analysis_path=analysis, plots=False)
-    page = (out / "report.html").read_text()
-    assert "DRAFT" in page and "<img src=https" not in page and "href='https" not in page
+    appendix = (out / "evidence.html").read_text()
+    assert (
+        "DRAFT" in appendix and "<img src=https" not in appendix and "href='https" not in appendix
+    )
     assert json.loads((out / "artifacts.json").read_text())["agent_analysis"] == "draft"
 
 

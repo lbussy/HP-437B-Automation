@@ -666,11 +666,25 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--confirm-prepared-reference", action="store_true")
     parser.add_argument("--child", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--report-output",
+        type=Path,
+        help="Publish a richer deterministic report only after execute() has closed and sealed the capture",
+    )
+    parser.add_argument("--report-no-plots", action="store_true")
     args = parser.parse_args()
+    if args.report_no_plots and args.report_output is None:
+        parser.error("--report-no-plots requires --report-output")
+    if args.report_output is not None:
+        from hp437b.workflow_report import preflight, publish
+
+        preflight(args.output, args.report_output, plots=not args.report_no_plots)
     setup = json.loads(args.setup.read_text())
     validate_setup(args.resource, setup, args.confirm_prepared_reference)
     if args.child:
         result = execute(args.output, args.resource, setup, confirmed=True)
+        if args.report_output is not None:
+            publish(args.output, args.report_output, plots=not args.report_no_plots)
         print(
             json.dumps(
                 {

@@ -114,3 +114,19 @@ The [offline campaign](validation/OFFLINE-QUALIFICATION-RESULTS.md) strengthened
 ## First end-to-end application acceptance
 
 [E2E-01 / VAL-01](validation/PIPELINE-ACCEPTANCE.md) accepts the complete WF-01/PROV-01/REPORT-01 v1 profile using seven fresh synthetic and nine retained inputs. Tests preserve original evidence and failed/interrupted outcomes, check analysis bindings and plots/reports, and leave normal logging unchanged. Phase 3 is complete within this declared profile; additional workflows, DUT-specific criteria, external providers, and unattended operation require their own scoped work.
+
+## Human-started deterministic reporting decision
+
+The owner selected human-started tests with deterministic reports only for now; AI/provider automation is deferred. [RUN-01](workflows/DETERMINISTIC-RUN.md) adds opt-in post-capture provenance and richer reports, plus saved-bundle publication, without model calls, normal logging changes, or new physical I/O. The physical CLI hook is verified with explicit fakes; this change does not broaden host or unattended-operation claims.
+
+## Human-readable RF result sheet
+
+The owner requires a concise report about the equipment being tested: DUT identity, time/conditions, measured RF output, and acceptance outcome, with the measurement fixture retained as traceability. The [result-sheet contract](REPORTING.md#reader-facing-rf-report-contract) replaces a diagnostic dump as the primary report; full evidence remains in an appendix. POWER REF demonstration data remains explicitly identified as reference-source data.
+
+## Additional DUT test workflows
+
+**WF-CATALOG-01 — Open, requested by the owner.** Only the fixed WF-01 output-power/repeatability process is implemented today. Its seven synthetic scenarios exercise success/failure behavior of that one test; they are not seven test types. Interface/logger/host qualification cases are foundation checks, not additional DUT workflows.
+
+Create a test catalogue and prioritize additional transmitter/DUT tests. Candidate proposals include power versus configured frequency, power versus transmitter setting, and output drift during a longer run. These are proposals, not adopted protocols or implemented capabilities. A power-versus-frequency test records or controls the transmitter's frequency; the 437B itself does not measure frequency. Define the supported control path and sampling limits before promising any timed/keyed-signal test.
+
+For each chosen test, capture DUT model/name/serial, purpose, configuration and signal conditions, measurement point/fixture corrections, start/finish time, pre-RF baseline, results, supplied acceptance limits, failure/cleanup behavior, and the reader-facing report. Develop synthetic inputs and retained-data checks without waiting for a radio; add targeted physical evidence when the chosen test requires it. Preserve normal logging behavior.
