@@ -36,6 +36,7 @@ Available [Phase 3 pre-arrival preparation](docs/validation/PRE-ARRIVAL-REVIEW.m
 | [Phase 2 review](docs/PHASE-2-REVIEW.md) | Implementation evidence, adversarial corrections, and deferred coverage |
 | [Capability inventory](docs/inventory/README.md) | Command and bus references, coverage matrix, source ambiguities, and review results |
 | [Equipment and manuals](docs/EQUIPMENT.md) | Official manuals, serial-specific calibration records, and operating references |
+| [Sensor compatibility by family](docs/SENSOR-COMPATIBILITY.md) | Documented 437B-compatible sensor families, applications, frequency coverage, and measurement ranges |
 | [Hardware validation](docs/VALIDATION.md) | Evidence required before claiming control or unattended logging support |
 | [Project provenance](docs/PROVENANCE.md) | Migration from Generic Radio Stuff and manual verification |
 | [Contributing](CONTRIBUTING.md) | Repository conventions and review checks |
