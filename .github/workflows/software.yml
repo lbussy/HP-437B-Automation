@@ -23,3 +23,18 @@ jobs:
       - run: python tools/offline_qa.py -- python -m pytest -q
       - run: python tools/offline_qa.py -- python -m build --no-isolation
       - run: git diff --check
+  reporting:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.14']
+    env:
+      MPLCONFIGDIR: /tmp/hp437b-report-mpl
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -r requirements-dev.lock
+      - run: python -m pip install --no-build-isolation -e '.[reports]'
+      - run: python tools/offline_qa.py -- python -m pytest -q tests/test_reporting.py

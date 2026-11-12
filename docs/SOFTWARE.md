@@ -184,3 +184,7 @@ The matching [Mac physical verification](validation/MAC-FAILED-READ-SHUTDOWN.md)
 ## Reusable provenance
 
 The hardware-free [PROV-01 module](RUN-PROVENANCE.md) adds reusable run/DUT/equipment records and a separate `python -m hp437b.provenance --bundle EXISTING_WF01_BUNDLE --output NEW_DIRECTORY` command. This reads finalized evidence and creates a detached export. New WF-01 runners emit a sibling `.provenance` directory after sealing the capture. Ordinary logger/demo behavior, CLI defaults, CSV/session schema, and dependency pins are unchanged.
+
+## Offline reports and agent-assisted analysis
+
+Use the separate [REPORT-01 reporting module](REPORTING.md) for existing WF-01 bundles and PROV-01 records. The optional `reports` extra provides plotting; ordinary logger dependencies, CLI behavior, CSV output, and physical workflow capture remain unchanged. Reports and analysis drafts are derived artifacts with their own inventories.

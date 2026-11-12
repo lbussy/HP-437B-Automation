@@ -22,9 +22,11 @@ The [adapter-internal USB query](docs/validation/ADAPTER-IDENTIFICATION.md) now 
 
 Available [Phase 3 pre-arrival preparation](docs/validation/PRE-ARRIVAL-REVIEW.md) is complete: adapter readiness, the owner-selected [initial logging policy](docs/validation/MEASUREMENT-POLICY.md), evidence/matrix reconciliation, and a [replacement acceptance procedure](docs/validation/REPLACEMENT-ACCEPTANCE.md). Replacement identity/setup checks remain equipment onboarding work; development and acceptance of the workflow/reporting software can continue now.
 
-The first application design is [WF-01 POWER REF measurement and repeatability](docs/workflows/POWER-REFERENCE-V1.md), with a [worked synthetic report](docs/workflows/examples/POWER-REFERENCE-V1-SYNTHETIC.md). Its [synthetic prototype exercise](docs/workflows/WF-01-EXERCISE.md) produced seven scenario bundles/reports; the [first physical POWER REF workflow](docs/workflows/WF-01-PHYSICAL.md#current-meter-physical-result) also completed on the current Mac/meter with generated report and owner final-state confirmation. The complete reporting product remains open.
+The first application design is [WF-01 POWER REF measurement and repeatability](docs/workflows/POWER-REFERENCE-V1.md), with a [worked synthetic report](docs/workflows/examples/POWER-REFERENCE-V1-SYNTHETIC.md). Its [synthetic prototype exercise](docs/workflows/WF-01-EXERCISE.md) produced seven scenario bundles/reports; the [first physical POWER REF workflow](docs/workflows/WF-01-PHYSICAL.md#current-meter-physical-result) also completed on the current Mac/meter with generated report and owner final-state confirmation. The [REPORT-01 v1 reporting layer](docs/REPORTING.md) adds verified saved-run statistics, plots, richer reports, and file-based agent-assisted analysis. Broader application acceptance remains open.
 
 [PROV-01 v1](docs/RUN-PROVENANCE.md) provides reusable run, DUT, and equipment records, evidence validation, equipment history, and detached WF-01 exports. New workflow runs add provenance sidecars while ordinary logging stays unchanged.
+
+[REPORT-01 v1](docs/REPORTING.md) produces PNG/SVG plots and HTML/Markdown/JSON reports from existing WF-01/PROV-01 evidence, with attributed draft agent findings and source preservation. It performs no device I/O and leaves ordinary logging unchanged.
 
 ## Start here
 

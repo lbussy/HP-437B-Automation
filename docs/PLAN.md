@@ -5,7 +5,7 @@ Saved from the November 8, 2026 discussion at the user's request, and amended No
 
 ## Current product direction
 
-Updated November 12, 2026: the owner's [scope clarification](PROJECT-SCOPE.md) governs this plan. The product orchestrates measurement/test processes using the meter/sensor and provides agent-assisted analysis and reports about the equipment being tested. Control/logging and host-interaction validation are foundations. Equipment identity/calibration/known issues provide provenance; replacement arrival is not a project gate. Next software work is WF-01, PROV-01, REPORT-01, and E2E-01 in the [open-work register](OPEN-WORK.md).
+Updated November 12, 2026: the owner's [scope clarification](PROJECT-SCOPE.md) governs this plan. The product orchestrates measurement/test processes using the meter/sensor and provides agent-assisted analysis and reports about the equipment being tested. Control/logging and host-interaction validation are foundations. Equipment identity/calibration/known issues provide provenance; replacement arrival is not a project gate. WF-01, PROV-01, and REPORT-01 v1 are implemented; broader E2E-01/VAL-01 application acceptance is next in the [open-work register](OPEN-WORK.md).
 
 Earlier bench-profile decisions and procedures below retain their limited scopes. They do not narrow the product to reference-bench logging or supersede the owner's clarified goal.
 
@@ -106,3 +106,7 @@ The [offline campaign](validation/OFFLINE-QUALIFICATION-RESULTS.md) strengthened
 ## Reusable provenance
 
 [PROV-01 v1](RUN-PROVENANCE.md) provides run, DUT, and equipment models with explicit fact bases, evidence paths/hashes/JSON pointers, history, detached legacy WF-01 imports, and new-workflow sidecars. The nine reviewed bundles were imported with all 165 source files unchanged; no new physical run or normal logger change is involved.
+
+## Saved-run reporting and analysis
+
+[REPORT-01 v1](REPORTING.md) adds independent saved-CSV calculations, coverage/failure treatment, PNG/SVG plots, richer HTML/Markdown/JSON reports, and a validated file-based handoff for attributed agent drafts. Nine retained physical/synthetic bundles were exercised without device I/O or source changes. External provider automation, additional workflows, and broader E2E/VAL acceptance remain follow-ups; normal logging is unchanged.
