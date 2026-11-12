@@ -14,6 +14,7 @@ The direct query completed successfully at 18:53:54 CST (November 12, 00:53:54 U
 
 | Field | Observed value | Interpretation |
 | --- | --- | --- |
+| Owner-reported marking | `V2` | Owner reported this marking after exterior-identification guidance; recorded as model designation, without assuming an exact PCB revision |
 | Adapter firmware reply | `V2.4` | Adapter-reported firmware version; not a firmware-image hash or proof of a specific source commit |
 | USB vendor/product | `03eb:2065` | Identified XyphroLabs adapter profile |
 | Manufacturer/product strings | `XyphroLabs` / `GpibUsb` | USB descriptor strings |
@@ -26,3 +27,5 @@ The direct query completed successfully at 18:53:54 CST (November 12, 00:53:54 U
 The publisher [descriptor source](https://github.com/xyphro/UsbGpib/blob/88a13830eea3e2d8bf9f6e33123cc1523f42c70a/SW/TestAndMeasurement/Descriptors.c) defines the release number as `VERSION_BCD(0,0,1)`, independently of the firmware query. Do not promote the USB release value, firmware version, model family, or inferred connector style into a verified PCB revision.
 
 Ignored raw evidence: `output/logs/adapter-identification-20261111/usb-identification.json`, SHA-256 `ed2bdf9fe12c35f4d47362cc22060d744103601e9edff0042f5826d24c978e88`. Source review and exact query/reply framing support this firmware-version claim; they do not expand the named recovery or bus-capability acceptance. Hardware revision remains open under HP-02. No production code or logging behavior changed.
+
+The owner subsequently reported the marking `V2`. Record the adapter model designation as USBGpib V2, owner-reported. The exact PCB revision remains unverified; the reported `V2` model marking and confirmed `V2.4` firmware are recorded separately.
