@@ -125,11 +125,9 @@ The owner requires a concise report about the equipment being tested: DUT identi
 
 ## Additional DUT test workflows
 
-**WF-CATALOG-01 — Open, requested by the owner.** Only the fixed WF-01 output-power/repeatability process is implemented today. Its seven synthetic scenarios exercise success/failure behavior of that one test; they are not seven test types. Interface/logger/host qualification cases are foundation checks, not additional DUT workflows.
+**WF-CATALOG-01 — Definition complete, November 12, 2026.** The [transmitter test catalogue](workflows/TRANSMITTER-TEST-CATALOG.md) prioritizes WF-02 sustained output stability, WF-03 transmission-cycle repeatability, WF-04 output versus setting, WF-05 output versus frequency, and WF-06 supply-voltage sensitivity. It defines inputs, finite draft profiles, calculations, one-page reports, criteria/coverage treatment, source cleanup, synthetic examples, and POWER REF's useful scope. These are definitions, not implemented or physically accepted workflows. WF-01 remains the only runnable test.
 
-Create a test catalogue and prioritize additional transmitter/DUT tests. Candidate proposals include power versus configured frequency, power versus transmitter setting, and output drift during a longer run. These are proposals, not adopted protocols or implemented capabilities. A power-versus-frequency test records or controls the transmitter's frequency; the 437B itself does not measure frequency. Define the supported control path and sampling limits before promising any timed/keyed-signal test.
-
-For each chosen test, capture DUT model/name/serial, purpose, configuration and signal conditions, measurement point/fixture corrections, start/finish time, pre-RF baseline, results, supplied acceptance limits, failure/cleanup behavior, and the reader-facing report. Develop synthetic inputs and retained-data checks without waiting for a radio; add targeted physical evidence when the chosen test requires it. Preserve normal logging behavior.
+Recommended next implementation: **WF-02**, using synthetic time series first and a separately supervised POWER REF run later. Follow with WF-03 slow cycles. External transmitter control/manual acknowledgements, safe fixture/correction records, and single-point transmitter reporting are tracked as **DUT-CTRL-01**. WF-04/05 can be developed with synthetic point tables now; WF-06 needs a future controlled supply/voltage observation path for physical work. Equipment exchange is not a software gate, and normal logging remains unchanged.
 
 ## Report harness release identity
 

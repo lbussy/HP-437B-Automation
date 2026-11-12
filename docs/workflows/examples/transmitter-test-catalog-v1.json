@@ -1,0 +1,49 @@
+{
+  "schema": "hp437b.workflow-catalog-examples.v1",
+  "mode": "synthetic",
+  "purpose": "Short calculation fixtures, not completed workflow executions or measured transmitter results",
+  "dut": "Fictional transmitter",
+  "operator": "Fictional operator",
+  "criteria": null,
+  "acceptance": "not_evaluated",
+  "sensor_factor_basis": "Fictional unity factors already applied to sensor readings; no additional sensor-factor correction",
+  "examples": [
+    {
+      "workflow": "WF-02",
+      "bin_seconds": 60,
+      "elapsed_seconds": [0, 60, 120, 180],
+      "sensor_power_W": [0.001, 0.00101, 0.00102, 0.00103],
+      "expected": {"mean_W": 0.001015, "endpoint_change_percent": 3, "slope_W_per_minute": 0.00001}
+    },
+    {
+      "workflow": "WF-03",
+      "cycles_sensor_power_W": [[0.000999, 0.001001], [0.000989, 0.000991], [0.001009, 0.001011]],
+      "off_baseline_W": [-0.00000002, 0.00000001, -0.00000001, 0.00000002],
+      "expected": {"cycle_means_W": [0.001, 0.00099, 0.00101], "equal_cycle_mean_W": 0.001, "cycle_spread_W": 0.00002, "cycle_spread_percent": 2, "cycle_sample_sd_W": 0.00001}
+    },
+    {
+      "workflow": "WF-04",
+      "declared_frequency_Hz": 14000000,
+      "setting_labels": ["low", "medium", "high"],
+      "target_DUT_W": [1, 5, 10],
+      "sensor_mean_W": [0.001, 0.0048, 0.0095],
+      "fixture_loss_dB": [30, 30, 30],
+      "expected": {"DUT_mean_W": [1, 4.8, 9.5], "error_percent": [0, -4, -5]}
+    },
+    {
+      "workflow": "WF-05",
+      "declared_frequency_Hz": [1800000, 3500000, 7000000, 14000000, 28000000],
+      "sensor_mean_W": [0.0048, 0.005, 0.0051, 0.0049, 0.0047],
+      "fixture_loss_dB": [30, 30, 30, 30, 30],
+      "expected": {"DUT_mean_W": [4.8, 5, 5.1, 4.9, 4.7], "spread_dB_formula": "10*log10(5.1/4.7)"}
+    },
+    {
+      "workflow": "WF-06",
+      "observed_supply_V": [11, 12, 13],
+      "nominal_supply_V": 12,
+      "sensor_mean_W": [0.0045, 0.005, 0.0052],
+      "fixture_loss_dB": [30, 30, 30],
+      "expected": {"DUT_mean_W": [4.5, 5, 5.2], "change_from_nominal_percent": [-10, 0, 4], "endpoint_secant_W_per_V": 0.35}
+    }
+  ]
+}
