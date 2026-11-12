@@ -180,3 +180,7 @@ The matching [Mac physical verification](validation/MAC-FAILED-READ-SHUTDOWN.md)
 ## Adopted initial run profile
 
 [DEC-02](validation/MEASUREMENT-POLICY.md) records the owner-selected initial supervised profile: explicit W, automatic range/filter, requested interval one second, three-row preflight and finite 300-second sustained runs, ten-second normal operation timeout, existing CSV/sidecar, and actual achieved timing. This uses explicit options and does not change CLI defaults. Range/filter/correction/source state are prepared and verified per case; the generic logger preserves source state. [Pre-arrival review](validation/PRE-ARRIVAL-REVIEW.md) and the [replacement procedure](validation/REPLACEMENT-ACCEPTANCE.md) distinguish completed software/current-unit evidence from required new-unit acceptance. No new hardware run or software change is implied by adopting/documenting the profile.
+
+## Reusable provenance
+
+The hardware-free [PROV-01 module](RUN-PROVENANCE.md) adds reusable run/DUT/equipment records and a separate `python -m hp437b.provenance --bundle EXISTING_WF01_BUNDLE --output NEW_DIRECTORY` command. This reads finalized evidence and creates a detached export. New WF-01 runners emit a sibling `.provenance` directory after sealing the capture. Ordinary logger/demo behavior, CLI defaults, CSV/session schema, and dependency pins are unchanged.

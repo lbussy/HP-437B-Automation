@@ -27,6 +27,7 @@ from runpy import run_path
 from hp437b.errors import OperationTimeout, ProtocolError
 from hp437b.instrument import Instrument
 from hp437b.logger import _atomic_json, collect
+from hp437b.provenance import export_wf01, sidecar_path
 from hp437b.transport import VisaTransport
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -386,6 +387,8 @@ def execute(
     validate_setup(resource, setup, confirmed)
     with ownership(resource):
         output = Path(output)
+        if sidecar_path(output).exists():
+            raise FileExistsError("Provenance sidecar path already exists")
         output.mkdir()
         (output / "stages").mkdir()
         record = {
@@ -652,6 +655,7 @@ def execute(
         }
         _atomic_json(output / "artifacts.json", {"mode": "physical", "artifacts": inventory})
         _atomic_json(output / "workflow.json", record)
+        export_wf01(output, sidecar_path(output))
         return record
 
 

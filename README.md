@@ -24,6 +24,8 @@ Available [Phase 3 pre-arrival preparation](docs/validation/PRE-ARRIVAL-REVIEW.m
 
 The first application design is [WF-01 POWER REF measurement and repeatability](docs/workflows/POWER-REFERENCE-V1.md), with a [worked synthetic report](docs/workflows/examples/POWER-REFERENCE-V1-SYNTHETIC.md). Its [synthetic prototype exercise](docs/workflows/WF-01-EXERCISE.md) produced seven scenario bundles/reports; the [first physical POWER REF workflow](docs/workflows/WF-01-PHYSICAL.md#current-meter-physical-result) also completed on the current Mac/meter with generated report and owner final-state confirmation. The complete reporting product remains open.
 
+[PROV-01 v1](docs/RUN-PROVENANCE.md) provides reusable run, DUT, and equipment records, evidence validation, equipment history, and detached WF-01 exports. New workflow runs add provenance sidecars while ordinary logging stays unchanged.
+
 ## Start here
 
 | Document | Purpose |

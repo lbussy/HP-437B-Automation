@@ -11,6 +11,7 @@ import json
 import platform
 import statistics
 import subprocess
+import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, localcontext
 from importlib.metadata import version
@@ -20,6 +21,7 @@ from hp437b import protocol
 from hp437b.errors import OperationTimeout, ProtocolError, TransportError
 from hp437b.instrument import Instrument
 from hp437b.logger import collect
+from hp437b.provenance import export_wf01, sidecar_path
 from hp437b.simulation import status_fixture
 
 SCENARIOS = (
@@ -313,6 +315,8 @@ def run(output, scenario="nominal"):
     if scenario not in SCENARIOS:
         raise ValueError("Choose an explicit supported synthetic scenario")
     output = Path(output)
+    if sidecar_path(output).exists():
+        raise FileExistsError("Provenance sidecar path already exists")
     output.mkdir()  # Refuse existing directories, before constructing any session.
     (output / "stages").mkdir()
     bench = Bench(scenario)
@@ -323,6 +327,7 @@ def run(output, scenario="nominal"):
         "mode": "synthetic",
         "simulation": True,
         "workflow_id": "power-reference-v1",
+        "run_id": str(uuid.uuid4()),
         "scenario": scenario,
         "status": "running",
         "started_utc": bench.utc().isoformat(),
@@ -412,6 +417,7 @@ def run(output, scenario="nominal"):
                 utcnow=bench.utc,
                 context={
                     "workflow_id": record["workflow_id"],
+                    "workflow_run_id": record["run_id"],
                     "stage_id": stage,
                     "mode": "synthetic",
                     "sensor_serial": "SYNTHETIC-8482A-001",
@@ -527,6 +533,7 @@ def run(output, scenario="nominal"):
     }
     save(output / "artifacts.json", {"mode": "synthetic", "artifacts": inventory})
     save(output / "workflow.json", record)
+    export_wf01(output, sidecar_path(output))
     return record
 
 

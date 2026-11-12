@@ -102,3 +102,7 @@ The [offline campaign](validation/OFFLINE-QUALIFICATION-RESULTS.md) strengthened
 ## First application workflow
 
 [WF-01 POWER REF measurement and repeatability](workflows/POWER-REFERENCE-V1.md) defines a finite off/on/off sequence, short and sustained captures, stop/cleanup behavior, provenance, and deterministic/agent-assisted report boundaries. A [shortened synthetic worked report](workflows/examples/POWER-REFERENCE-V1-SYNTHETIC.md) makes the inputs/calculations/output concrete without hardware. Definition is prepared, and the [synthetic prototype exercise](workflows/WF-01-EXERCISE.md) produced seven real synthetic output bundles/reports. The [first fixed physical POWER REF workflow](workflows/WF-01-PHYSICAL.md#current-meter-physical-result) then completed on the current Mac/meter with generated report and owner final-state confirmation. Wider workflow scope and the complete reporting product remain implementation work. Normal logger behavior stays unchanged.
+
+## Reusable provenance
+
+[PROV-01 v1](RUN-PROVENANCE.md) provides run, DUT, and equipment models with explicit fact bases, evidence paths/hashes/JSON pointers, history, detached legacy WF-01 imports, and new-workflow sidecars. The nine reviewed bundles were imported with all 165 source files unchanged; no new physical run or normal logger change is involved.

@@ -112,6 +112,11 @@ def test_full_physical_path_with_fake_adapter(tmp_path, harness):
     assert all(wire.closed for wire in harness.wires)
     analysis = json.loads((out / "analysis.json").read_text())
     assert analysis["mode"] == "physical" and analysis["integrity"] == "pass"
+    from hp437b.provenance import load, sidecar_path, verify
+
+    provenance = load(sidecar_path(out) / "provenance.json")
+    assert provenance["run"]["mode"] == "physical"
+    assert verify(provenance, out)
     assert analysis["stages"]["S40"]["valid"] == 300
     assert analysis["stages"]["S40"]["metrics"]["mean_W"] == "0.00098800"
     for name, metadata in json.loads((out / "artifacts.json").read_text())["artifacts"].items():
