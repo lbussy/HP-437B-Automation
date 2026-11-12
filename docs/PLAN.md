@@ -5,7 +5,7 @@ Saved from the November 8, 2026 discussion at the user's request, and amended No
 
 ## Current product direction
 
-Updated November 12, 2026: the owner's [scope clarification](PROJECT-SCOPE.md) governs this plan. The product orchestrates measurement/test processes using the meter/sensor and provides agent-assisted analysis and reports about the equipment being tested. Control/logging and host-interaction validation are foundations. Equipment identity/calibration/known issues provide provenance; replacement arrival is not a project gate. WF-01, PROV-01, and REPORT-01 v1 are implemented; broader E2E-01/VAL-01 application acceptance is next in the [open-work register](OPEN-WORK.md).
+Updated November 12, 2026: the owner's [scope clarification](PROJECT-SCOPE.md) governs this plan. The product orchestrates measurement/test processes using the meter/sensor and provides agent-assisted analysis and reports about the equipment being tested. Control/logging and host-interaction validation are foundations. Equipment identity/calibration/known issues provide provenance; replacement arrival is not a project gate. WF-01, PROV-01, and REPORT-01 v1 are implemented, and [E2E-01/VAL-01 acceptance](validation/PIPELINE-ACCEPTANCE.md) is complete for that first profile. Future capabilities keep separate scopes in the [open-work register](OPEN-WORK.md).
 
 Earlier bench-profile decisions and procedures below retain their limited scopes. They do not narrow the product to reference-bench logging or supersede the owner's clarified goal.
 
@@ -75,7 +75,7 @@ If a required operation fails, investigate configuration or a reproducible backe
 
 1. ✅ Complete — Phase 1: Inventory; use the [command and GPIB reference](inventory/README.md) and [coverage matrix](inventory/COVERAGE.md).
 2. ✅ Complete — Phase 2: Implement; the [software milestone](SOFTWARE.md) provides the interface/logger and records deferred coverage in the [review](PHASE-2-REVIEW.md). The [execution prompt](prompts/phase-2-implementation.md) is retained. Resolve transport requirements using the [released-backend evidence](inventory/GPIB.md#transport-evidence-profiles) and [source questions](inventory/AMBIGUITIES.md).
-3. ⏳ In progress — Phase 3: Qualify; execution started November 11 with the [communication-only batch](validation/PHASE-3-PLAN.md). Verify software interactions and application workflows with recorded results/limits; extend acceptance through analysis/reporting. Equipment exchange is not a software gate.
+3. ✅ Complete (WF-01 v1 profile) — Phase 3: Qualify; the [pipeline acceptance](validation/PIPELINE-ACCEPTANCE.md) joins the scoped hardware interactions started November 11 with synthetic and retained workflow/provenance/analysis/report evidence. New capabilities require their own acceptance scope. Equipment exchange is not a software gate.
 
 The [Phase 1 review](inventory/REVIEW.md) recommends the first batch and documents command sequencing constraints. Preserve separate documentation, implementation, software-test, Mac, and Pi statuses. PyVISA-py remains provisional for complete bus control.
 
@@ -110,3 +110,7 @@ The [offline campaign](validation/OFFLINE-QUALIFICATION-RESULTS.md) strengthened
 ## Saved-run reporting and analysis
 
 [REPORT-01 v1](REPORTING.md) adds independent saved-CSV calculations, coverage/failure treatment, PNG/SVG plots, richer HTML/Markdown/JSON reports, and a validated file-based handoff for attributed agent drafts. Nine retained physical/synthetic bundles were exercised without device I/O or source changes. External provider automation, additional workflows, and broader E2E/VAL acceptance remain follow-ups; normal logging is unchanged.
+
+## First end-to-end application acceptance
+
+[E2E-01 / VAL-01](validation/PIPELINE-ACCEPTANCE.md) accepts the complete WF-01/PROV-01/REPORT-01 v1 profile using seven fresh synthetic and nine retained inputs. Tests preserve original evidence and failed/interrupted outcomes, check analysis bindings and plots/reports, and leave normal logging unchanged. Phase 3 is complete within this declared profile; additional workflows, DUT-specific criteria, external providers, and unattended operation require their own scoped work.

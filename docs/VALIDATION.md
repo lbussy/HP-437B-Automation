@@ -65,3 +65,7 @@ The [Mac repetition](validation/MAC-FAILED-READ-SHUTDOWN.md) subsequently passed
 ## Pre-arrival readiness
 
 The [adopted initial policy](validation/MEASUREMENT-POLICY.md), [replacement acceptance procedure](validation/REPLACEMENT-ACCEPTANCE.md), and [pre-arrival evidence review](validation/PRE-ARRIVAL-REVIEW.md) complete the available preparation. Scope is supervised internal-reference/readback logging with explicit wider-operation exclusions. These records do not complete the automation/reporting product. The earlier replacement-gate policy is superseded: equipment onboarding and applicable measurement limitations are separate from workflow-to-report software acceptance.
+
+## First application-profile acceptance
+
+[E2E-01 / VAL-01](validation/PIPELINE-ACCEPTANCE.md) records explicit assertions and a 16-case workflow/provenance/analysis/report acceptance campaign. It completes the first WF-01 v1 software profile without new hardware I/O; equipment provenance, measurement limits, and named host evidence retain their original scopes.

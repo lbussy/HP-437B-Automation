@@ -188,3 +188,7 @@ The hardware-free [PROV-01 module](RUN-PROVENANCE.md) adds reusable run/DUT/equi
 ## Offline reports and agent-assisted analysis
 
 Use the separate [REPORT-01 reporting module](REPORTING.md) for existing WF-01 bundles and PROV-01 records. The optional `reports` extra provides plotting; ordinary logger dependencies, CLI behavior, CSV output, and physical workflow capture remain unchanged. Reports and analysis drafts are derived artifacts with their own inventories.
+
+## Offline pipeline acceptance
+
+The [E2E-01/VAL-01 runner](validation/PIPELINE-ACCEPTANCE.md) executes seven fresh synthetic cases and can replay explicit retained bundles through provenance, analysis, and reports. Use `tools/offline_qa.py` with a finite deadline. Scripted analysis fixtures test the handoff; supplied agent drafts retain their exact bindings and attribution. Ordinary runtime and defaults remain unchanged.
