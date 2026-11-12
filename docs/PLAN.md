@@ -49,10 +49,10 @@ If a required operation fails, investigate configuration or a reproducible backe
 | Decision | Current position | Still needed |
 | --- | --- | --- |
 | Instrument and goal | User wants automated 437B data collection from Mac or Pi; remote control is also of interest | Define the initial measurement sequence and any other instruments to coordinate |
-| Adapter | Arrived: XyphroLabs GpibUsb, USB `03eb:2065`, detected on this Mac November 11 | Exact hardware revision, adapter firmware, cable, and GPIB address remain unverified; USB identification content is not adapter firmware |
+| Adapter | Arrived: XyphroLabs GpibUsb, USB `03eb:2065`, detected on this Mac November 11 | Adapter firmware `V2.4` was read through the [documented internal query](validation/ADAPTER-IDENTIFICATION.md); exact hardware revision, cable details, and GPIB address remain unverified. Instrument USB identification content is not adapter firmware |
 | Language and API | Python/PyVISA with pinned open-source PyVISA-py is implemented | Qualify actual device/host behavior |
 | Open-source backend | PyVISA-py 0.8.1 is the pinned byte-I/O backend with explicit bus guards | Resolve required bus gaps and qualify each intended host |
-| Host | First identification batch uses this MacBook Pro Mac17,8, Apple M5 Pro, ARM64, macOS 27.0.1 | Pi 5/aarch64 Debian 13.7 software and scoped physical cases recorded, including manual recovery without Mac; integrated failed-read shutdown passed its named Pi case; already-wedged repair, firmware/revision, and replacement acceptance remain pending |
+| Host | First identification batch uses this MacBook Pro Mac17,8, Apple M5 Pro, ARM64, macOS 27.0.1 | Pi 5/aarch64 Debian 13.7 software and scoped physical cases recorded, including manual recovery without Mac; integrated failed-read shutdown passed its named Pi case; adapter firmware V2.4 is recorded; already-wedged repair, hardware revision, and replacement acceptance remain pending |
 | Logging behavior | Timestamped CSV and session metadata are implemented with overridable defaults | Select the initial bench settings and averaging/range policy under DEC-02 |
 | Measurement setup | Manuals and [saved serial-specific calibration records](EQUIPMENT.md#individual-calibration-records) govern the procedure | Record frequency, signal path, applicable correction factors, and zero/calibration procedure before quantitative bench work |
 

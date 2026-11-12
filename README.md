@@ -10,6 +10,8 @@ The [Pi-only recovery investigation](docs/validation/PI-ONLY-RECOVERY.md) is in 
 
 Equipment update, November 11: the user reports that the seller/calibrator confirmed the current meter's [+5 V supply discrepancy](docs/EQUIPMENT.md#individual-calibration-records) was unacceptable. An exchange is planned after a few development steps with this unit. Replacement receipt and qualification remain pending.
 
+The [adapter-internal USB query](docs/validation/ADAPTER-IDENTIFICATION.md) now confirms adapter-reported firmware **V2.4**. The USB serial string's 1.8 is the meter firmware; physical adapter hardware revision remains unverified and is not identified by the documented USB fields.
+
 ## Start here
 
 | Document | Purpose |
