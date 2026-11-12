@@ -1,6 +1,6 @@
 # Adapter firmware and hardware identification
 
-Status: ✅ Adapter-reported firmware captured; ▧ Physical hardware revision unverified. November 11, 2026. The owner requested reading both over USB, with the adapter already connected to the Mac after the completed timeout verification. Meter power, GPIB, sensor/RF path, and POWER REF-off setup were retained. No new measurement, fault injection, firmware update, reset, or persistent configuration change was included.
+Status: ✅ Current-setup adapter identification/readiness complete: model, firmware, cable, and meter GPIB address recorded; exact PCB revision retained as an accepted metadata limitation. November 11, 2026. The owner requested reading both over USB, with the adapter already connected to the Mac after the completed timeout verification. Meter power, GPIB, sensor/RF path, and POWER REF-off setup were retained. No new measurement, fault injection, firmware update, reset, or persistent configuration change was included.
 
 ## Documented procedure
 
@@ -22,10 +22,20 @@ The direct query completed successfully at 18:53:54 CST (November 12, 00:53:54 U
 | `bcdDevice` | `0x0001` | USB device release value 0.01; not the reported V2.4 firmware or an established hardware revision |
 | `bcdUSB` | `0x0110` | USB specification descriptor value, not a hardware revision |
 | Interface | 0, class `fe`, subclass 3, protocol 1 | USB488 interface profile |
-| Physical hardware revision | Unverified | No revision-specific field in the documented queries/descriptors; obtain a label/PCB marking or manufacturer confirmation |
+| Cable | Anker USB-C | Owner-reported cable brand/type |
+| Meter GPIB primary address | 13 | Owner read the current meter's SPECIAL → HP-IB ADRS display; not inferred from the factory default or read over USB |
+| Physical hardware revision | Unmarked/unverified | Owner reports no revision marking and elected to stop pursuing it; accepted metadata limitation, not a Phase 3 blocker |
 
 The publisher [descriptor source](https://github.com/xyphro/UsbGpib/blob/88a13830eea3e2d8bf9f6e33123cc1523f42c70a/SW/TestAndMeasurement/Descriptors.c) defines the release number as `VERSION_BCD(0,0,1)`, independently of the firmware query. Do not promote the USB release value, firmware version, model family, or inferred connector style into a verified PCB revision.
 
-Ignored raw evidence: `output/logs/adapter-identification-20261111/usb-identification.json`, SHA-256 `ed2bdf9fe12c35f4d47362cc22060d744103601e9edff0042f5826d24c978e88`. Source review and exact query/reply framing support this firmware-version claim; they do not expand the named recovery or bus-capability acceptance. Hardware revision remains open under HP-02. No production code or logging behavior changed.
+Ignored raw evidence: `output/logs/adapter-identification-20261111/usb-identification.json`, SHA-256 `ed2bdf9fe12c35f4d47362cc22060d744103601e9edff0042f5826d24c978e88`. Source review and exact query/reply framing support this firmware-version claim; they do not expand the named recovery or bus-capability acceptance. The owner subsequently closed further PCB-revision investigation as an accepted metadata limitation under HP-02. No production code or logging behavior changed.
 
 The owner subsequently reported the marking `V2`. Record the adapter model designation as USBGpib V2, owner-reported. The exact PCB revision remains unverified; the reported `V2` model marking and confirmed `V2.4` firmware are recorded separately.
+
+## Owner scope correction and address lookup
+
+The owner reports no hardware-revision marking, elected to stop pursuing PCB revision, and identified the cable as Anker USB-C. Retain exact PCB revision as unknown; it is not a Phase 3 acceptance blocker. Model USBGpib V2, reported firmware V2.4, USB identity, and qualified host behavior remain recorded separately.
+
+The reviewed V2.4 parser supports `!addr <primary> [secondary]` as a target setter, with no documented `!addr?` readback. The meter [command inventory boundary](../inventory/COMMANDS.md#physical-and-service-boundaries), derived from operating manual printed 3-98–99/PDF 128–129, identifies its HP-IB address as a local setting. No guessed address query, target change, or scan was sent. A front-panel readout was requested through SPECIAL → `4 HP-IB ADRS` → ENTER, followed by ENTER without editing to retain the existing address. The owner subsequently reported the displayed address as **13**. Record it as front-panel evidence for the current meter, not a USB readback or an assumption from the factory default. Python remained closed during the menu operation. Recheck the replacement meter's address when it arrives.
+
+HP-02 is complete for the current adapter and tested supervised Mac/Pi profile: model USBGpib V2, firmware V2.4, Anker USB-C cable, front-panel meter address 13, and the previously recorded control/logging/shutdown evidence. The unmarked PCB revision is an accepted unknown. Replacement-meter compatibility remains PHASE-03/HP-01; this closure does not accept unrelated bus capabilities, already-wedged repair, or unattended operation.

@@ -10,7 +10,9 @@ The [Pi-only recovery investigation](docs/validation/PI-ONLY-RECOVERY.md) is in 
 
 Equipment update, November 11: the user reports that the seller/calibrator confirmed the current meter's [+5 V supply discrepancy](docs/EQUIPMENT.md#individual-calibration-records) was unacceptable. An exchange is planned after a few development steps with this unit. Replacement receipt and qualification remain pending.
 
-The [adapter-internal USB query](docs/validation/ADAPTER-IDENTIFICATION.md) now confirms adapter-reported firmware **V2.4**. The USB serial string's 1.8 is the meter firmware; physical adapter hardware revision remains unverified and is not identified by the documented USB fields.
+The [adapter-internal USB query](docs/validation/ADAPTER-IDENTIFICATION.md) now confirms adapter-reported firmware **V2.4**. The USB serial string's 1.8 is the meter firmware; the owner reports an Anker USB-C cable, meter GPIB address 13 read from the front panel, and no hardware-revision marking. Exact PCB revision is retained as an accepted metadata limitation, not a Phase 3 blocker.
+
+Available [Phase 3 pre-arrival preparation](docs/validation/PRE-ARRIVAL-REVIEW.md) is complete: adapter readiness, the owner-selected [initial logging policy](docs/validation/MEASUREMENT-POLICY.md), evidence/matrix reconciliation, and a [replacement acceptance procedure](docs/validation/REPLACEMENT-ACCEPTANCE.md). Final Phase 3 acceptance still requires the arriving meter and actual sensor on both hosts.
 
 ## Start here
 
@@ -18,6 +20,8 @@ The [adapter-internal USB query](docs/validation/ADAPTER-IDENTIFICATION.md) now 
 | --- | --- |
 | [Plan and decision register](docs/PLAN.md) | Requirements, adapter recommendation, software candidate, unresolved decisions, and steps to resume |
 | [Open work](docs/OPEN-WORK.md) | Task status and next results |
+| [Initial measurement policy](docs/validation/MEASUREMENT-POLICY.md) | Adopted W/automatic-range/filter/one-second-request/five-minute profile and limits |
+| [Replacement procedure](docs/validation/REPLACEMENT-ACCEPTANCE.md) | Arrival gates, both-host physical cases, budgets, restoration, and final acceptance |
 | [Release checklist](docs/RELEASE-CHECKLIST.md) | Three-phase readiness and prepared execution prompts |
 | [Software usage](docs/SOFTWARE.md) | Installation, API/CLI, output schema, guards, and recovery |
 | [Phase 2 review](docs/PHASE-2-REVIEW.md) | Implementation evidence, adversarial corrections, and deferred coverage |
@@ -31,7 +35,7 @@ The [adapter-internal USB query](docs/validation/ADAPTER-IDENTIFICATION.md) now 
 
 Python logger → PyVISA → PyVISA-py → PyUSB/libusb → USBGpib V2 → HP 437B
 
-The Pi could remain beside the meter and write timestamped CSV files, with the Mac used for network access and retrieval. Direct USB operation on the Mac is another option. The first host, measurement sequence, and logging settings remain open decisions.
+The Pi could remain beside the meter and write timestamped CSV files, with the Mac used for network access and retrieval. Direct USB operation on the Mac is another option. Both hosts are selected, and the initial measurement sequence/settings are adopted in DEC-02; actual replacement qualification remains pending.
 
 The adapter transports the meter's original HP commands. Validate read/write support and the required triggering, status checks, and recovery on each host.
 

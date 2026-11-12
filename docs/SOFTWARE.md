@@ -4,7 +4,7 @@ Phase 2 software milestone, November 11, 2026. The package provides validated co
 
 ## Installation and checks
 
-Python 3.11+ is the project baseline. Local software checks used Python 3.14.10 on macOS ARM64. The CI workflow targets Linux Python 3.11 and 3.14; consult its actual run before claiming CI success. Current-unit Mac measurement/logging and named recovery cases are recorded below. Pi software preflight and identification now pass; later Pi physical cases and replacement acceptance remain pending.
+Python 3.11+ is the project baseline. Local software checks used Python 3.14.10 on macOS ARM64. The CI workflow targets Linux Python 3.11 and 3.14; consult its actual run before claiming CI success. Current-unit Mac measurement/logging and named recovery cases are recorded below. Current-unit Pi physical cases are recorded separately; actual replacement acceptance on both hosts remains pending.
 
 From a checkout:
 
@@ -174,3 +174,7 @@ The observed route worked, but the long operator-response gap prevents a necessi
 The [installed integration case](validation/PI-ONLY-RECOVERY.md#integrated-failed-read-shutdown-result) passed 261 local and installed-Pi software tests, ordinary three-row logging, one original 0.5-second forced deadline, actual backend USB abort completion, fresh-session acquisition, independent free-run, and owner live/RMT-off/reference-off confirmation. During that failed read, shutdown waited about 52 milliseconds within the one-second allowance; total failed acquisition time was about 0.554 seconds. The failed row remained failed and the uncertain connection was not reused. No cable action, clear, reset, or sample retry was needed. Normal CLI/defaults/CSV are unchanged. This named current-Pi result does not establish repair of an already wedged adapter, a universal abort-time guarantee, replacement acceptance, or unattended continuation.
 
 The matching [Mac physical verification](validation/MAC-FAILED-READ-SHUTDOWN.md) also passed using committed runtime `d399dcf` through the Mac project venv: ordinary three-row logging, one original forced deadline, complete actual USB abort, fresh acquisition/free-run, and owner live/RMT-off/reference-off confirmation. Failed-read shutdown used about 102 milliseconds of its one-second allowance; total failed acquisition time was about 0.606 seconds. No post-timeout cable action or reset was needed. This closes the current-unit Mac repetition, with the same already-wedged, broader-fault, timing, replacement, and unattended limits.
+
+## Adopted initial run profile
+
+[DEC-02](validation/MEASUREMENT-POLICY.md) records the owner-selected initial supervised profile: explicit W, automatic range/filter, requested interval one second, three-row preflight and finite 300-second sustained runs, ten-second normal operation timeout, existing CSV/sidecar, and actual achieved timing. This uses explicit options and does not change CLI defaults. Range/filter/correction/source state are prepared and verified per case; the generic logger preserves source state. [Pre-arrival review](validation/PRE-ARRIVAL-REVIEW.md) and the [replacement procedure](validation/REPLACEMENT-ACCEPTANCE.md) distinguish completed software/current-unit evidence from required new-unit acceptance. No new hardware run or software change is implied by adopting/documenting the profile.
