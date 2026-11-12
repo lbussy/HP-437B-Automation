@@ -99,6 +99,6 @@ Fourteen scenarios: nominal, compressed, nonmonotonic, missing-target, missing-l
 
 The compressed example reproduces the catalogue: sensor means 1.0/4.8/9.5 mW, fictional 30 dB correction, DUT-plane means 1.0/4.8/9.5 W, errors 0/−4/−5%. Default acceptance remains NOT EVALUATED. With the explicitly fictional 5% criterion, the result passes inclusively; this says nothing about actual equipment.
 
-Synthetic captures and reports are retained locally under ignored `output/reports/wf04-synthetic-20261112-v2/`. Validation totals and sample-sheet review are recorded in [VALIDATION](../VALIDATION.md). New WF-04 work remains local until separately committed/pushed and checked in hosted CI.
+Synthetic captures and reports are retained locally under ignored `output/reports/wf04-synthetic-20261112-v2/`. Validation totals and sample-sheet review are recorded in [VALIDATION](../VALIDATION.md). Delivered to `devel` at `db45dbc`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43313033157).
 
 Next physical work requires **DUT-CTRL-01**: a prepared rated RF path, DUT-specific source controls/manual acknowledgements, observed condition policy, independent shutdown behavior, and safe correction records. POWER REF can rehearse a fixed single point but cannot create the multi-level sweep. No replacement meter or radio is required to finish this synthetic software milestone.
