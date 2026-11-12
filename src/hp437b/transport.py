@@ -1,4 +1,4 @@
-"""Explicit USBTMC opening in a subprocess: an expired RPC terminates its worker.
+"""Explicit USBTMC opening with bounded worker disposal after a failed RPC.
 
 The parent never issues a retry or instrument recovery command. Clean local
 return uses a project-local USB488 extension; other bus operations stay guarded.
@@ -114,6 +114,7 @@ class VisaTransport:
         self._lock = threading.RLock()
         self.metadata: dict[str, str] = {}
         self.local_return: dict | None = None
+        self.read_deadline_cleanup: dict | None = None
 
     def open(self, timeout: float = 10.0) -> None:
         if not math.isfinite(timeout) or timeout <= 0:
@@ -123,6 +124,7 @@ class VisaTransport:
                 raise TransportError("Transport is already open")
             self.capabilities = type(self).capabilities
             self.local_return = None
+            self.read_deadline_cleanup = None
             context = multiprocessing.get_context("spawn")
             parent, child = context.Pipe()
             self._pipe = parent
@@ -159,22 +161,51 @@ class VisaTransport:
                     process.join(timeout=0.5)
             process.close()
 
+    def _finish_expired_read(self) -> None:
+        """Allow existing backend abort handling to finish; never accept a late result.
+
+        This is a separate, one-second failure-cleanup allowance, not an extended
+        measurement deadline or proof that the USB abort completed successfully.
+        No new worker request or instrument command is sent.
+        """
+        started = time.monotonic()
+        result = self.read_deadline_cleanup = {"budget_s": 1.0, "status": "worker_still_busy"}
+        try:
+            if self._pipe.poll(1.0):
+                outcome, detail = self._pipe.recv()
+                result["status"] = (
+                    "worker_error_received" if outcome == "error" else "late_result_discarded"
+                )
+                if outcome == "error":
+                    result["worker_error"] = str(detail)
+        except (EOFError, OSError):
+            result["status"] = "worker_disconnected"
+        finally:
+            result["elapsed_s"] = time.monotonic() - started
+
     def _rpc(self, operation: str, payload: bytes | None, deadline: float):
         with self._lock:
             if self._pipe is None:
                 raise TransportError("Explicitly open the transport before I/O")
+            read_pending = False
             try:
                 timeout = remaining(deadline)
                 self._pipe.send((operation, payload, max(1, math.ceil(timeout * 1000))))
+                read_pending = operation == "read"
                 if not self._pipe.poll(remaining(deadline)):
                     raise OperationTimeout(f"{operation} deadline expired; no automatic retry")
                 outcome, result = self._pipe.recv()
+                read_pending = False
                 if outcome != "ok":
                     raise TransportError(result)
                 remaining(deadline)
                 return result
             except BaseException as exc:
-                self._stop()
+                try:
+                    if read_pending and isinstance(exc, OperationTimeout):
+                        self._finish_expired_read()
+                finally:
+                    self._stop()
                 if isinstance(exc, (EOFError, OSError)):
                     raise TransportError(
                         "VISA worker disconnected; device state uncertain"
