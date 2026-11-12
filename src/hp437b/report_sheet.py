@@ -249,8 +249,24 @@ def _markdown(value):
     )
 
 
-def render(results, record, *, plots):
+def producer_note(producer):
+    producer = producer or {}
+    commit = producer.get("commit")
+    release = producer.get("release_version")
+    if release and commit and producer.get("dirty") is False:
+        identity = f"v{release}"
+    else:
+        identity = f"commit {commit[:12]}" if commit else "development build (commit unavailable)"
+    if producer.get("dirty") is True:
+        identity += " (modified working tree)"
+    elif commit and producer.get("dirty") is None and producer.get("basis") == "source_checkout":
+        identity += " (working-tree state unknown)"
+    return f"Report Harness: HP 437B Automation {identity}"
+
+
+def render(results, record, *, plots, producer=None, operator=None):
     model = build(results, record)
+    provenance_note = producer_note(producer)
     esc = lambda text: html.escape(str(text), quote=True)  # noqa: E731
     meta = [
         (
@@ -258,6 +274,7 @@ def render(results, record, *, plots):
             model["subject"] + (f" | S/N {model['subject_id']}" if model["subject_id"] else ""),
         ),
         ("Test", model["test"]),
+        ("Operator", operator or _text(_value(record["run"], "operator"))),
         ("When", model["when"]),
         ("Frequency", model["frequency"]),
     ]
@@ -267,9 +284,6 @@ def render(results, record, *, plots):
         line = "SYNTHETIC - simulated readings; no physical transmitter was measured."
         body.append(f"<p class='simulation'>{line}</p>")
         md += [f"**{line}**", ""]
-    if model["mode"] == "physical":
-        body.append("<p>PHYSICAL - recorded test</p>")
-        md += ["PHYSICAL - recorded test", ""]
     body.append(
         "<table class='meta'>"
         + "".join(f"<tr><th scope='row'>{esc(k)}</th><td>{esc(v)}</td></tr>" for k, v in meta)
@@ -313,11 +327,13 @@ def render(results, record, *, plots):
         f"- {_markdown(note)}" for note in model["notes"]
     ]
     body.append(
-        f"<footer><p><strong>Equipment traceability:</strong> {esc(model['equipment'])}</p><p>Record: {esc(model['run_id'])}</p><p class='screen-links'><a href='evidence.html'>Technical appendix and full traceability</a></p></footer>"
+        f"<footer><p><strong>Equipment traceability:</strong> {esc(model['equipment'])}</p><p>{esc(provenance_note)}</p><p>Record: {esc(model['run_id'])}</p><p class='screen-links'><a href='evidence.html'>Technical appendix and full traceability</a></p></footer>"
     )
     md += [
         "",
         f"**Equipment traceability:** {_markdown(model['equipment'])}",
+        "",
+        _markdown(provenance_note),
         "",
         f"Record: {_markdown(model['run_id'])}",
         "",

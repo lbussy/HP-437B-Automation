@@ -311,7 +311,10 @@ def render(record, analysis):
     return "\n".join(lines)
 
 
-def run(output, scenario="nominal"):
+def run(output, scenario="nominal", *, operator=None):
+    from hp437b.report_context import validate_operator
+
+    operator = validate_operator(operator)
     if scenario not in SCENARIOS:
         raise ValueError("Choose an explicit supported synthetic scenario")
     output = Path(output)
@@ -358,6 +361,8 @@ def run(output, scenario="nominal"):
             "known_equipment_issues": "not applicable to synthetic equipment",
         },
     }
+    if operator is not None:
+        record["operator"] = operator
     # A crash leaves an explicit starting/running checkpoint, not a completed run.
     save(output / "starting.json", record)
     for name, source in (
@@ -547,6 +552,7 @@ def main():
         help="Publish provenance and a richer deterministic report after the capture closes",
     )
     parser.add_argument("--report-no-plots", action="store_true")
+    parser.add_argument("--operator", help="Operator name; defaults to HP437B_OPERATOR")
     args = parser.parse_args()
     if args.report_no_plots and args.report_output is None:
         parser.error("--report-no-plots requires --report-output")
@@ -554,7 +560,13 @@ def main():
         from hp437b.workflow_report import preflight, publish
 
         preflight(args.output, args.report_output, plots=not args.report_no_plots)
-    result = run(args.output, args.scenario)
+    from hp437b.report_context import resolve_operator
+
+    try:
+        operator = resolve_operator(args.operator)["value"]
+    except ValueError as exc:
+        parser.error(str(exc))
+    result = run(args.output, args.scenario, operator=operator)
     if args.report_output is not None:
         publish(args.output, args.report_output, plots=not args.report_no_plots)
     print(

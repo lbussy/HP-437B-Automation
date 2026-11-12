@@ -185,3 +185,24 @@ def test_rf_off_zero_is_measured_before_rf_and_never_invented(example, mean, val
     assert model["rows"][0] == ('RF-off baseline ("zero")', expected)
     assert dict(model["rows"])["Average RF power"] == "2 W"
     assert results["stages"]["S10"]["metrics"]["mean_W"] == mean
+
+
+def test_operator_in_header_physical_label_removed_and_synthetic_warning_preserved(example):
+    results, record = example
+    results["mode"] = "physical"
+    md, page = s.render(results, record, plots=False, operator="A. O'Neil <operator>")
+    assert "<th scope='row'>Operator</th><td>A. O&#x27;Neil &lt;operator&gt;</td>" in page
+    assert "PHYSICAL - recorded test" not in page and "PHYSICAL - recorded test" not in md
+    results["mode"] = "synthetic"
+    _, synthetic = s.render(results, record, plots=False)
+    assert "SYNTHETIC - simulated readings" in synthetic
+    assert "Operator</th><td>Not recorded" in synthetic
+
+
+def test_harness_line_precedes_record_and_release_hides_only_display_commit(example):
+    producer = {"version": "0.1.0", "commit": "c" * 40, "dirty": False, "release_version": "1.2.3"}
+    md, page = s.render(*example, plots=False, producer=producer)
+    assert page.index("Report Harness:") < page.index("Record:")
+    assert md.index("Report Harness:") < md.index("Record:")
+    assert "HP 437B Automation v1.2.3" in page and "cccccccccccc" not in page
+    assert producer["commit"] == "c" * 40

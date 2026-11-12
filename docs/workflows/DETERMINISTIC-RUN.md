@@ -80,3 +80,7 @@ Automated checks cover all seven scenarios; root/child inventories and source pr
 The primary HTML/Markdown report now presents what was tested, when, the measured output power, and the acceptance outcome. A compact plot and equipment traceability complete the sheet; the full diagnostic/provenance content is in `report/evidence.html` and `report/evidence.md`. See the [reader-facing report contract](../REPORTING.md#reader-facing-rf-report-contract). Existing source measurements are not relabeled as transmitter measurements.
 
 Presentation verification uses the retained real POWER REF run plus synthetic/failure cases. The primary sheet prints on one page; the separate appendix retains all machine evidence. Ordinary logging and the measurement sequence remain unchanged.
+
+## Operator name
+
+Configure a persistent shell default with `export HP437B_OPERATOR="Your Name"`, or add `--operator "Your Name"` to a workflow invocation. The physical setup JSON can also supply an `operator` field. CLI overrides setup/captured attribution, which takes precedence over the environment; original saved captures are never modified by a report-time override. Both `python -m hp437b.workflow_report` and `python -m hp437b.reporting` accept `--operator` for saved inputs. The top section shows **Not recorded** when no name is available. See [operator attribution and precedence](../REPORTING.md#configurable-operator).

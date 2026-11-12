@@ -83,14 +83,14 @@ def harness(monkeypatch):
         wires.append(wire)
         return wire
 
-    def run(output, scenario="nominal", **options):
+    def run(output, scenario="nominal", setup_override=None, **options):
         nonlocal fail_off_status
         fail_off_status = scenario == "off-not-applied"
         bench.scenario = scenario
         return MODULE["execute"](
             output,
             RESOURCE,
-            setup(),
+            setup_override if setup_override is not None else setup(),
             confirmed=True,
             factory=factory,
             clock=clock,
@@ -358,3 +358,49 @@ def test_report_failure_after_physical_close_never_restarts_measurement(
     assert all(wire.closed for wire in harness.wires) and not harness.bench.source
     assert json.loads((output / "workflow.json").read_text())["status"] == "completed"
     assert not (report / "artifacts.json").exists()
+
+
+def test_operator_configuration_is_captured_before_physical_report(tmp_path, harness, monkeypatch):
+    import sys
+
+    from hp437b import provenance
+
+    monkeypatch.setenv("HP437B_OPERATOR", "Environment Operator")
+    prepared = {**setup(), "operator": "Setup Operator"}
+    setup_path = tmp_path / "setup.json"
+    setup_path.write_text(json.dumps(prepared))
+    source, output = tmp_path / "capture", tmp_path / "published"
+
+    def fake_execute(path, resource, configured, confirmed):
+        assert configured["operator"] == "CLI Operator"
+        return harness.run(path, setup_override=configured)
+
+    monkeypatch.setitem(MODULE["main"].__globals__, "execute", fake_execute)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "physical-runner",
+            "--resource",
+            RESOURCE,
+            "--setup",
+            str(setup_path),
+            "--output",
+            str(source),
+            "--confirm-prepared-reference",
+            "--child",
+            "--report-output",
+            str(output),
+            "--report-no-plots",
+            "--operator",
+            "CLI Operator",
+        ],
+    )
+    assert MODULE["main"]() == 0
+    assert json.loads((source / "workflow.json").read_text())["setup"]["operator"] == "CLI Operator"
+    assert json.loads(setup_path.read_text())["operator"] == "Setup Operator"
+    record = provenance.load(output / "provenance/provenance.json")
+    assert record["run"]["facts"]["operator"]["basis"] == "supplied"
+    assert record["run"]["facts"]["operator"]["refs"][0]["pointer"] == "/setup/operator"
+    page = (output / "report/report.html").read_text()
+    assert "Operator</th><td>CLI Operator" in page and "PHYSICAL - recorded test" not in page

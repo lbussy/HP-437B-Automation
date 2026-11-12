@@ -25,8 +25,14 @@ def test_deterministic_job_preserves_capture_and_execution(tmp_path, scenario, m
     capture = SYNTHETIC["run"](source, scenario)
     before = tree(source)
     sidecar_before = tree(p.sidecar_path(source))
-    # Publication must not launch any subprocess, including an AI CLI.
-    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: pytest.fail("publication subprocess"))
+    # Only bounded local Git identity queries may run; no model/provider process.
+    original_popen = subprocess.Popen
+
+    def local_git_only(args, *positional, **kwargs):
+        assert args[0] == "git", "unexpected publication/provider subprocess"
+        return original_popen(args, *positional, **kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", local_git_only)
     result = w.publish(source, output, plots=False)
     assert result["execution"] == capture["status"]
     assert result["analysis"] == "deterministic_only"

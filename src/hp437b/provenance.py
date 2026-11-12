@@ -626,6 +626,21 @@ def import_wf01(source_bundle):
             ("stage_outcomes", "stages", "observed"),
         )
     }
+    # Add the supplied operator only when recorded, preserving legacy imports byte-for-byte.
+    operator_pointer = (
+        "/operator"
+        if "operator" in workflow
+        else "/setup/operator"
+        if isinstance(workflow.get("setup"), dict) and "operator" in workflow["setup"]
+        else None
+    )
+    if operator_pointer:
+        facts["operator"] = copied(
+            "workflow.json",
+            operator_pointer,
+            "supplied",
+            "Supplied human operator identity; not independently verified",
+        )
     facts["run_identity_basis"] = fact(
         "original run_id"
         if workflow.get("run_id")

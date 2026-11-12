@@ -193,7 +193,7 @@ def verify_report(source, provenance, output, *, plots):
     parser.feed(page)
     p.require(all((output / name).is_file() for name in parser.assets), "Broken local report asset")
     p.require(
-        mode.upper() in page
+        (mode == "physical" or "SYNTHETIC - simulated readings" in page)
         and "NOT EVALUATED" in page
         and "DRAFT" in (output / "evidence.html").read_text(),
         "Report boundaries missing",

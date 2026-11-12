@@ -20,7 +20,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation, localcontext
 from pathlib import Path
 
-from . import protocol, report_sheet
+from . import protocol, report_context, report_identity, report_sheet
 from . import provenance as p
 from .errors import ProtocolError
 
@@ -514,7 +514,7 @@ def display(value):
     return format(Decimal(str(value)), ".6g")
 
 
-def render_evidence(results, record, packet, agent, plots):
+def render_evidence(results, record, packet, agent, plots, operator_context=None):
     """Parallel accessible Markdown and standalone HTML, with no remote resources/scripts."""
     md = [
         "# WF-01 measurement report",
@@ -546,6 +546,10 @@ def render_evidence(results, record, packet, agent, plots):
         md.append("| " + " | ".join(literal(c) for c in cells) + " |")
         body.append("<tr>" + "".join(f"<td>{literal(c)}</td>" for c in cells) + "</tr>")
     body.append("</tbody></table></div>")
+    if operator_context is not None:
+        note = "Operator attribution: " + json.dumps(operator_context, ensure_ascii=False)
+        md += ["", literal(note), ""]
+        body.append(f"<p>{literal(note)}</p>")
     md += ["", "## Execution and setup context", ""]
     body.append("<h2>Execution and setup context</h2>")
     for stage, detail in packet["facts"]["workflow/stages"]["value"].items():
@@ -670,7 +674,7 @@ def render_evidence(results, record, packet, agent, plots):
     return "\n".join(md), page
 
 
-def export(source, provenance_path, output, *, analysis_path=None, plots=True):
+def export(source, provenance_path, output, *, analysis_path=None, plots=True, operator=None):
     source, provenance_path, output = (
         Path(source).resolve(),
         Path(provenance_path).resolve(),
@@ -686,6 +690,8 @@ def export(source, provenance_path, output, *, analysis_path=None, plots=True):
     )
     p.require(not output.exists(), "Report output already exists")
     record, results, packet = prepare(source, provenance_path)
+    captured_operator = record["run"]["facts"].get("operator", {}).get("value")
+    operator_context = report_context.resolve_operator(operator, captured_operator)
     agent = (
         validate_agent(p._json(p.Bundle(analysis_path.parent).read(analysis_path.name)), packet)
         if analysis_path
@@ -704,10 +710,15 @@ def export(source, provenance_path, output, *, analysis_path=None, plots=True):
         (output / "agent-analysis.json").write_bytes(encoded(agent))
     if plots:
         plot(results, output)
-    evidence_md, evidence_page = render_evidence(results, record, packet, agent, plots)
+    evidence_md, evidence_page = render_evidence(
+        results, record, packet, agent, plots, operator_context
+    )
     (output / "evidence.md").write_text(evidence_md, encoding="utf-8")
     (output / "evidence.html").write_text(evidence_page, encoding="utf-8")
-    md, page = report_sheet.render(results, record, plots=plots)
+    producer = report_identity.identify()
+    md, page = report_sheet.render(
+        results, record, plots=plots, producer=producer, operator=operator_context["value"]
+    )
     (output / "report.md").write_text(md, encoding="utf-8")
     (output / "report.html").write_text(page, encoding="utf-8")
     p.verify(record, source)
@@ -741,6 +752,8 @@ def export(source, provenance_path, output, *, analysis_path=None, plots=True):
         "plot_dependencies": versions,
         "schema": "hp437b.report-export.v1",
         "report_schema": SCHEMA,
+        "report_producer": producer,
+        "report_context": {"operator": operator_context},
         "mode": results["mode"],
         "run_id": results["run_id"],
         "plots": plots,
@@ -766,6 +779,9 @@ def main(argv=None):
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--analysis", type=Path)
     parser.add_argument("--no-plots", action="store_true")
+    parser.add_argument(
+        "--operator", help="Operator name; defaults to captured name, then HP437B_OPERATOR"
+    )
     args = parser.parse_args(argv)
     try:
         export(
@@ -774,9 +790,10 @@ def main(argv=None):
             args.output,
             analysis_path=args.analysis,
             plots=not args.no_plots,
+            operator=args.operator,
         )
     except (
-        p.ProvenanceError,
+        ValueError,
         OSError,
         UnicodeError,
         csv.Error,

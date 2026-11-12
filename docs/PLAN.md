@@ -130,3 +130,7 @@ The owner requires a concise report about the equipment being tested: DUT identi
 Create a test catalogue and prioritize additional transmitter/DUT tests. Candidate proposals include power versus configured frequency, power versus transmitter setting, and output drift during a longer run. These are proposals, not adopted protocols or implemented capabilities. A power-versus-frequency test records or controls the transmitter's frequency; the 437B itself does not measure frequency. Define the supported control path and sampling limits before promising any timed/keyed-signal test.
 
 For each chosen test, capture DUT model/name/serial, purpose, configuration and signal conditions, measurement point/fixture corrections, start/finish time, pre-RF baseline, results, supplied acceptance limits, failure/cleanup behavior, and the reader-facing report. Develop synthetic inputs and retained-data checks without waiting for a radio; add targeted physical evidence when the chosen test requires it. Preserve normal logging behavior.
+
+## Report harness release identity
+
+The report footer places Report Harness before Record. Clean exact semantic-version releases show their tag version; development builds show the commit, while full commit identity remains in metadata. Wheels/source archives carry build identity for installed use without a checkout. This does not change package-version policy, create/publish release tags, or alter normal logging. See the [tag-aware report policy](REPORTING.md#tagged-releases-and-development-builds).

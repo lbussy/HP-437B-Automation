@@ -123,3 +123,35 @@ Local verification for the result-sheet revision: **591 full-suite tests** passe
 The sheet title is **RF Output Power Test**. A single **RF-off baseline ("zero")** row displays the mean of valid S10 readings taken before RF activation, in µW, with the sample count. Small negative values are preserved; a missing baseline is “Not captured,” not zero. This is the recorded RF-off indication, not a claim that a zero-adjustment procedure was performed, and it is not subtracted from the RF-on results. Additional DUT test types are tracked in [WF-CATALOG-01](PLAN.md#additional-dut-test-workflows).
 
 The final title/RF-off-baseline revision passed 114 targeted presentation/pipeline tests and one-page Letter/A4 checks. Implementation and the additional-workflow TODO were delivered in `786d7a5`; normal logger/instrument/transport source and dependency pins remain unchanged.
+
+## Report harness footnote
+
+The result sheet places **Report Harness** above **Record** in the footer. A clean, unambiguously tagged release shows its semantic version; a development build shows its 12-character commit and modification state. This identifies the software generating this report; the software recorded during the original measurement stays unchanged in capture provenance. The report inventory retains the full commit, declared package version, semantic tags, release identity, identity basis, and modification state.
+
+For a source checkout, identity comes from the package’s own project directory, not the current working directory or an input bundle. Bounded, read-only local Git queries identify the commit, modification state, and semantic tags pointing exactly to that commit. Uncommitted changes are labeled **modified working tree**, and an unavailable status is not reported as clean. Built distributions preserve this snapshot as described below. Older VCS-install metadata can supply a recorded commit; an unstamped package without VCS information explicitly shows **commit unavailable**. It never borrows a nearby repository or capture commit. Existing report hashes remain available for exact artifact verification. No credentials, origin URLs, model calls, or device operations are included in the identity query.
+
+## Configurable operator
+
+An **Operator** row appears in the top section. Pass `--operator "Your Name"` to either workflow CLI or the saved-bundle/report commands. For a host-level default, set `HP437B_OPERATOR` in your shell environment. No login, Git author, account profile, or hostname is used to infer an operator.
+
+For new captures, the workflow records the selected name before device work: CLI argument overrides a physical setup file's `operator` value, which overrides the environment default. Synthetic captures store the name in `workflow.operator`; physical captures store it in `workflow.setup.operator`. PROV-01 retains it as a supplied fact with an evidence pointer. Names are trimmed, single-line, nonempty, and limited to 120 characters; invalid configured names fail before a new CLI capture starts.
+
+For reporting, precedence is an explicit argument, then the captured operator, then the environment default. Without any name, the sheet says **Not recorded**. Attribution supplied while reporting a historical capture is recorded separately in report context, with its origin/basis; it does not rewrite original capture provenance or claim independent identity verification. The selected report attribution is included in the report inventory and deterministic job summary.
+
+The redundant **PHYSICAL - recorded test** line is removed from the primary sheet. Mode stays in the source, provenance, report inventory, and technical appendix. Synthetic reports retain the prominent simulation warning so examples cannot be confused with measured transmitter results.
+
+Local operator/header verification: **620 tests passed with stress enabled**, including CLI-to-capture-to-provenance attribution, fake physical setup precedence, unchanged legacy imports, and rendering. Physical and synthetic samples remain one page on Letter/A4; no hardware or model calls were performed. Source/wheel builds, lint, Markdown links, PDF checksums, and `git diff --check` passed. Hosted CI for these local changes is pending.
+
+The **Report Harness** label identifies the generator using the tag-aware policy below. Tagging/publishing and changing the Python package version remain explicit release actions; this feature performs none of those actions itself.
+
+## Tagged releases and development builds
+
+- A clean checkout at an exact semantic-version tag shows, for example, **Report Harness: HP 437B Automation v1.2.3**. Annotated and lightweight tags are supported. Tags may use `v1.2.3` or `1.2.3`, including valid prerelease/build identifiers.
+- Untagged commits, commits after a tag, modified tagged sources, unavailable cleanliness, or ambiguous distinct semantic versions at one commit use the **commit** development label. A nearest/older tag is never presented as the current release. Non-semantic tags are ignored. Two spellings of the same version (`1.2.3` and `v1.2.3`) are treated as aliases.
+- The full Git commit remains in `artifacts.json` under `report_producer.commit`, including when the displayed release label omits it. The captured measurement's software identity is independent.
+- Wheels and source archives include `_report_build.json`, generated only in build staging directories. This carries the full producer identity and Python-source checksums. An installed copy can identify its release without Git or the original checkout; changed package sources fall back to development identity. Editable checkouts continue to use live source metadata. The build does not write generated metadata into the live source package.
+- Package identity checks are consistency checks, not artifact authentication. The declared Python package version remains controlled by `pyproject.toml`; align it during release preparation. This feature changes report labeling and preserves build provenance, without automatically bumping versions, creating tags, publishing artifacts, or changing normal logging.
+
+The build hooks subclass the existing [Setuptools build/sdist commands](https://setuptools.pypa.io/en/latest/userguide/extension.html). Existing dependency pins remain unchanged. CI checkout fetches full history/tags so exact tag information is available to the checks. Release tests create tags only in disposable test repositories; no tag was created in this project.
+
+Local tag-aware verification: **645 tests passed with stress enabled**, including clean annotated/lightweight release tags, untagged/dirty/ambiguous cases, full-commit retention, source-archive → wheel → installed identity, and modified installed-source fallback. Source/wheel builds, lint, formatting, Markdown links, PDF checksums, and `git diff --check` passed. A newly rendered retained-data report stays one page on Letter and A4, with Report Harness above Record. No hardware access, normal-logger changes, project tags, or publication were involved. Hosted CI remains pending for these uncommitted changes.

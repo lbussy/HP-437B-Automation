@@ -49,9 +49,10 @@ def _seal(output, metadata):
     os.replace(temporary, output / "artifacts.json")
 
 
-def publish(source, output, *, plots=True):
+def publish(source, output, *, plots=True, operator=None):
     """Import provenance and build a complete report in one invocation after closure."""
     source, output = preflight(source, output, plots=plots)
+    r.report_context.validate_operator(operator)
     # Refuse unsealed/running captures before allocating a job output.
     original = p.import_wf01(source)
     p.verify(original, source)
@@ -61,7 +62,13 @@ def publish(source, output, *, plots=True):
         provenance = output / "provenance"
         record = p.export_wf01(source, provenance)
         p.require(record == original, "Source changed before provenance export")
-        result = r.export(source, provenance / "provenance.json", output / "report", plots=plots)
+        result = r.export(
+            source,
+            provenance / "provenance.json",
+            output / "report",
+            plots=plots,
+            operator=operator,
+        )
         p.verify(original, source)
         p.require(
             r.digest(p.Bundle(source).read("artifacts.json")) == source_inventory,
@@ -74,6 +81,9 @@ def publish(source, output, *, plots=True):
             "execution": result["status"],
             "report_status": "completed",
             "analysis": "deterministic_only",
+            "operator": p._json((output / "report/artifacts.json").read_bytes())["report_context"][
+                "operator"
+            ],
             "measurement_criteria": "not_evaluated",
             "capture_inventory_sha256": source_inventory,
             "provenance_inventory_sha256": r.digest((provenance / "artifacts.json").read_bytes()),
@@ -103,9 +113,12 @@ def main(argv=None):
     parser.add_argument("--bundle", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--no-plots", action="store_true")
+    parser.add_argument(
+        "--operator", help="Operator name; defaults to captured name, then HP437B_OPERATOR"
+    )
     args = parser.parse_args(argv)
     try:
-        result = publish(args.bundle, args.output, plots=not args.no_plots)
+        result = publish(args.bundle, args.output, plots=not args.no_plots, operator=args.operator)
         print(r.encoded(result).decode(), end="")
         return 0 if result["execution"] == "completed" else 1
     except (ValueError, OSError, KeyError, TypeError) as exc:

@@ -375,3 +375,55 @@ def test_packet_records_original_and_normalized_provenance(capture):
     _, _, packet = r.prepare(*capture)
     assert packet["input_provenance_sha256"] == r.digest(provenance.read_bytes())
     assert packet["provenance_sha256"] == r.digest(r.encoded(p.load(provenance)))
+
+
+def test_report_producer_identity_is_separate_from_capture_and_bound_in_inventory(
+    capture, tmp_path, monkeypatch
+):
+    root, provenance = capture
+    workflow = p._json((root / "workflow.json").read_bytes())
+    workflow["software"] = {"commit": "a" * 40, "version": "capture-version"}
+    (root / "workflow.json").write_bytes(r.encoded(workflow))
+    reimport(root, provenance)
+    identity = {
+        "project": "HP 437B Automation",
+        "version": "0.1.0",
+        "commit": "b" * 40,
+        "dirty": True,
+        "basis": "source_checkout",
+    }
+    monkeypatch.setattr(r.report_identity, "identify", lambda: identity)
+    output = tmp_path / "producer-report"
+    r.export(*capture, output, plots=False)
+    page = (output / "report.html").read_text()
+    md = (output / "report.md").read_text()
+    assert "HP 437B Automation commit bbbbbbbbbbbb" in page
+    assert "modified working tree" in page and "Report Harness" in md
+    inventory = p._json((output / "artifacts.json").read_bytes())
+    assert inventory["report_producer"] == identity
+    assert (
+        p.load(output / "provenance.json")["run"]["facts"]["software"]["value"]
+        == workflow["software"]
+    )
+
+
+def test_tagged_release_keeps_full_commit_in_metadata_but_not_sheet(capture, tmp_path, monkeypatch):
+    identity = {
+        "project": "HP 437B Automation",
+        "version": "0.1.0",
+        "commit": "f" * 40,
+        "dirty": False,
+        "basis": "source_checkout",
+        "release_tag": "v1.2.3",
+        "release_version": "1.2.3",
+        "semantic_tags": ["v1.2.3"],
+    }
+    monkeypatch.setattr(r.report_identity, "identify", lambda: identity)
+    output = tmp_path / "release-report"
+    r.export(*capture, output, plots=False)
+    page = (output / "report.html").read_text()
+    assert "Report Harness: HP 437B Automation v1.2.3" in page
+    assert "ffffffffffff" not in page
+    assert (
+        p._json((output / "artifacts.json").read_bytes())["report_producer"]["commit"] == "f" * 40
+    )

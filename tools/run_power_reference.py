@@ -53,6 +53,10 @@ def validate_setup(resource, setup, confirmed):
         raise ValueError("Record the meter label identity")
     if not isinstance(setup.get("sensor_serial"), str) or not setup["sensor_serial"]:
         raise ValueError("Record the sensor label identity")
+    if "operator" in setup:
+        from hp437b.report_context import validate_operator
+
+        validate_operator(setup["operator"])
     if not isinstance(setup.get("known_issues"), list):
         raise ValueError("Record known equipment issues (empty list only if none reported)")
     if setup.get("select_adapter_target") is True:
@@ -672,6 +676,9 @@ def main():
         help="Publish a richer deterministic report only after execute() has closed and sealed the capture",
     )
     parser.add_argument("--report-no-plots", action="store_true")
+    parser.add_argument(
+        "--operator", help="Operator name; defaults to setup.operator, then HP437B_OPERATOR"
+    )
     args = parser.parse_args()
     if args.report_no_plots and args.report_output is None:
         parser.error("--report-no-plots requires --report-output")
@@ -680,6 +687,14 @@ def main():
 
         preflight(args.output, args.report_output, plots=not args.report_no_plots)
     setup = json.loads(args.setup.read_text())
+    from hp437b.report_context import resolve_operator
+
+    try:
+        operator = resolve_operator(args.operator, setup.get("operator"))["value"]
+    except ValueError as exc:
+        parser.error(str(exc))
+    if operator is not None:
+        setup["operator"] = operator
     validate_setup(args.resource, setup, args.confirm_prepared_reference)
     if args.child:
         result = execute(args.output, args.resource, setup, confirmed=True)
