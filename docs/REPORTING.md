@@ -159,3 +159,7 @@ Local tag-aware verification: **645 tests passed with stress enabled**, includin
 ## Sustained output stability reports
 
 [WF-02 v1](workflows/SUSTAINED-STABILITY-V1.md) adds its own synthetic capture/import/report entry point, reusing strict saved-CSV validation, PROV-01 models, operator/harness identity, and the one-page RF report style. It reports six time bins, endpoint drift, actual-time slope, and coverage with explicit missing metrics and optional supplied comparisons. It does not relabel WF-01 captures or change the existing reporting or ordinary logging paths. [Physical POWER REF integration](workflows/WF-02-PHYSICAL.md) now supports mode-specific import/provenance/reporting; physical bench results remain separately recorded.
+
+## Transmission-cycle repeatability reports
+
+[WF-03 v1](workflows/TRANSMISSION-CYCLES-V1.md) adds a synthetic five-cycle capture/import/report command. The one-page RF result sheet shows the pre-RF baseline, completed/requested cycles, equally weighted completed-cycle mean/spread/sample SD, every requested cycle, and partial/failed-cycle data without promoting it into aggregate statistics. It reuses strict CSV validation, PROV-01 models, operator/harness identity, and the existing report style. Physical POWER REF integration/execution remains open; no other workflow or normal logger behavior changes.
