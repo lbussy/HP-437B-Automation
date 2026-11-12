@@ -4,5 +4,6 @@ recursive-include tests *.py
 recursive-include config/udev *.rules
 recursive-include tools *.py
 include docs/workflows/examples/power-reference-v1-synthetic.json
+include docs/workflows/examples/transmitter-test-catalog-v1.json
 
 include setup.py
