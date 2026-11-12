@@ -22,6 +22,8 @@ The [adapter-internal USB query](docs/validation/ADAPTER-IDENTIFICATION.md) now 
 
 Available [Phase 3 pre-arrival preparation](docs/validation/PRE-ARRIVAL-REVIEW.md) is complete: adapter readiness, the owner-selected [initial logging policy](docs/validation/MEASUREMENT-POLICY.md), evidence/matrix reconciliation, and a [replacement acceptance procedure](docs/validation/REPLACEMENT-ACCEPTANCE.md). Replacement identity/setup checks remain equipment onboarding work; development and acceptance of the workflow/reporting software can continue now.
 
+The first application design is [WF-01 POWER REF measurement and repeatability](docs/workflows/POWER-REFERENCE-V1.md), with a [worked synthetic report](docs/workflows/examples/POWER-REFERENCE-V1-SYNTHETIC.md). Its [synthetic prototype exercise](docs/workflows/WF-01-EXERCISE.md) produced seven scenario bundles/reports; the [first physical POWER REF workflow](docs/workflows/WF-01-PHYSICAL.md#current-meter-physical-result) also completed on the current Mac/meter with generated report and owner final-state confirmation. The complete reporting product remains open.
+
 ## Start here
 
 | Document | Purpose |

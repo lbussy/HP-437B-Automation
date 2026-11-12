@@ -31,6 +31,8 @@ The following breakdown is a development proposal derived from the owner's state
 | REPORT-01 | Analysis and agent-assisted reporting | Define a report contract and produce a report from an existing or synthetic run: traceable calculations, summaries/plots where useful, failure/incomplete-data treatment, and narrative conclusions tied to evidence. User-defined criteria govern DUT comparisons; no invented thresholds or measurement claims |
 | E2E-01 | Automated process acceptance | Reproduce a workflow-to-data-to-analysis-to-report result, exercise cancellation/failures, and preserve evidence links. Use synthetic cases now, existing bench data within its limits, and targeted physical cases when necessary |
 
+The first concrete design is [POWER REF measurement and repeatability](workflows/POWER-REFERENCE-V1.md), with a [worked synthetic report](workflows/examples/POWER-REFERENCE-V1-SYNTHETIC.md). A [synthetic prototype](workflows/WF-01-EXERCISE.md) now exercises the first workflow/report boundary. The [first physical POWER REF workflow](workflows/WF-01-PHYSICAL.md#current-meter-physical-result) also completed on the current Mac/meter with generated report, independent audit, and owner final-state confirmation. Richer provenance/reporting and broader application acceptance remain open.
+
 These workstreams can proceed now. A radio or replacement meter is needed only for a particular physical experiment that depends on it. They do not block implementing and testing the software pipeline. Broader recovery, additional instruments, and every guarded command are not automatically required by this scope clarification.
 
 ## Existing foundation and change boundary

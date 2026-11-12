@@ -3,3 +3,4 @@ recursive-include docs *.md
 recursive-include tests *.py
 recursive-include config/udev *.rules
 recursive-include tools *.py
+include docs/workflows/examples/power-reference-v1-synthetic.json

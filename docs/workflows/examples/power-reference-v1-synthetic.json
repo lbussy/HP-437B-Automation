@@ -1,0 +1,340 @@
+{
+  "schema": "hp437b.workflow.design-fixture.v1",
+  "artifact_kind": "design_fixture",
+  "mode": "synthetic",
+  "simulation": true,
+  "workflow_id": "power-reference-v1",
+  "workflow_definition_version": 1,
+  "run_id": "synthetic-wf01-example-001",
+  "execution_status": "not_run",
+  "illustrated_execution_outcome": "completed",
+  "profile": {
+    "name": "shortened-example",
+    "unit": "W",
+    "requested_interval_s": 1,
+    "operation_timeout_s": 10,
+    "source_on_observation_allowance_s": 20,
+    "sustained_stage": {
+      "count": 6,
+      "duration_s": null
+    },
+    "default_sustained_profile_not_executed": {
+      "count": null,
+      "duration_s": 300
+    }
+  },
+  "provenance": {
+    "origin": "all equipment and observations are fictional fixtures",
+    "meter": "SYNTHETIC-437B-001",
+    "sensor": "SYNTHETIC-8482A-001",
+    "adapter": "SYNTHETIC-USBGPIB-001",
+    "calibration_records": null,
+    "calibration_records_reason": "no actual equipment used",
+    "nominal_source": {
+      "kind": "POWER REF fixture",
+      "frequency_Hz": 50000000,
+      "power_W": "0.001",
+      "origin": "declared nominal, not measured frequency/accuracy"
+    },
+    "report_authoring": "illustrative deterministic report; no external agent/model called"
+  },
+  "stages": [
+    {
+      "stage_id": "S10",
+      "mode": "synthetic",
+      "illustrated_status": "completed",
+      "session_id": "00000000-0000-4000-8000-000000000010",
+      "planned_count": 3,
+      "source_on": false,
+      "source_state_evidence": "fixture-declared start/end state, not physical observation",
+      "setup_excluded_from_rows": true,
+      "rows": [
+        {
+          "session_id": "00000000-0000-4000-8000-000000000010",
+          "sequence": 1,
+          "received_utc": "2026-11-12T00:00:00+00:00",
+          "elapsed_s": 0,
+          "overrun_s": 0,
+          "value": "-0.00000005",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2d352e30303030452d30380d0a"
+        },
+        {
+          "session_id": "00000000-0000-4000-8000-000000000010",
+          "sequence": 2,
+          "received_utc": "2026-11-12T00:00:01+00:00",
+          "elapsed_s": 1,
+          "overrun_s": 0,
+          "value": "-0.00000004",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2d342e30303030452d30380d0a"
+        },
+        {
+          "session_id": "00000000-0000-4000-8000-000000000010",
+          "sequence": 3,
+          "received_utc": "2026-11-12T00:00:02+00:00",
+          "elapsed_s": 2,
+          "overrun_s": 0,
+          "value": "-0.00000006",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2d362e30303030452d30380d0a"
+        }
+      ]
+    },
+    {
+      "stage_id": "S30",
+      "mode": "synthetic",
+      "illustrated_status": "completed",
+      "session_id": "00000000-0000-4000-8000-000000000030",
+      "planned_count": 3,
+      "source_on": true,
+      "source_state_evidence": "fixture-declared start/end state, not physical observation",
+      "setup_excluded_from_rows": true,
+      "rows": [
+        {
+          "session_id": "00000000-0000-4000-8000-000000000030",
+          "sequence": 1,
+          "received_utc": "2026-11-12T00:00:23+00:00",
+          "elapsed_s": 0,
+          "overrun_s": 0,
+          "value": "0.000988",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2b392e38383030452d30340d0a"
+        },
+        {
+          "session_id": "00000000-0000-4000-8000-000000000030",
+          "sequence": 2,
+          "received_utc": "2026-11-12T00:00:24+00:00",
+          "elapsed_s": 1,
+          "overrun_s": 0,
+          "value": "0.000989",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2b392e38393030452d30340d0a"
+        },
+        {
+          "session_id": "00000000-0000-4000-8000-000000000030",
+          "sequence": 3,
+          "received_utc": "2026-11-12T00:00:25+00:00",
+          "elapsed_s": 2,
+          "overrun_s": 0,
+          "value": "0.000987",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2b392e38373030452d30340d0a"
+        }
+      ]
+    },
+    {
+      "stage_id": "S40",
+      "mode": "synthetic",
+      "illustrated_status": "completed",
+      "session_id": "00000000-0000-4000-8000-000000000040",
+      "planned_count": 6,
+      "source_on": true,
+      "source_state_evidence": "fixture-declared start/end state, not physical observation",
+      "setup_excluded_from_rows": true,
+      "rows": [
+        {
+          "session_id": "00000000-0000-4000-8000-000000000040",
+          "sequence": 1,
+          "received_utc": "2026-11-12T00:00:27+00:00",
+          "elapsed_s": 0,
+          "overrun_s": 0,
+          "value": "0.000987",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2b392e38373030452d30340d0a"
+        },
+        {
+          "session_id": "00000000-0000-4000-8000-000000000040",
+          "sequence": 2,
+          "received_utc": "2026-11-12T00:00:28+00:00",
+          "elapsed_s": 1,
+          "overrun_s": 0,
+          "value": "0.000988",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2b392e38383030452d30340d0a"
+        },
+        {
+          "session_id": "00000000-0000-4000-8000-000000000040",
+          "sequence": 3,
+          "received_utc": "2026-11-12T00:00:29+00:00",
+          "elapsed_s": 2,
+          "overrun_s": 0,
+          "value": "0.000989",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2b392e38393030452d30340d0a"
+        },
+        {
+          "session_id": "00000000-0000-4000-8000-000000000040",
+          "sequence": 4,
+          "received_utc": "2026-11-12T00:00:30+00:00",
+          "elapsed_s": 3,
+          "overrun_s": 0,
+          "value": "0.000988",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2b392e38383030452d30340d0a"
+        },
+        {
+          "session_id": "00000000-0000-4000-8000-000000000040",
+          "sequence": 5,
+          "received_utc": "2026-11-12T00:00:31+00:00",
+          "elapsed_s": 4,
+          "overrun_s": 0,
+          "value": "0.000987",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2b392e38373030452d30340d0a"
+        },
+        {
+          "session_id": "00000000-0000-4000-8000-000000000040",
+          "sequence": 6,
+          "received_utc": "2026-11-12T00:00:32+00:00",
+          "elapsed_s": 5,
+          "overrun_s": 0,
+          "value": "0.000989",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2b392e38393030452d30340d0a"
+        }
+      ]
+    },
+    {
+      "stage_id": "S60",
+      "mode": "synthetic",
+      "illustrated_status": "completed",
+      "session_id": "00000000-0000-4000-8000-000000000060",
+      "planned_count": 3,
+      "source_on": false,
+      "source_state_evidence": "fixture-declared start/end state, not physical observation",
+      "setup_excluded_from_rows": true,
+      "rows": [
+        {
+          "session_id": "00000000-0000-4000-8000-000000000060",
+          "sequence": 1,
+          "received_utc": "2026-11-12T00:00:34+00:00",
+          "elapsed_s": 0,
+          "overrun_s": 0,
+          "value": "-0.00000004",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2d342e30303030452d30380d0a"
+        },
+        {
+          "session_id": "00000000-0000-4000-8000-000000000060",
+          "sequence": 2,
+          "received_utc": "2026-11-12T00:00:35+00:00",
+          "elapsed_s": 1,
+          "overrun_s": 0,
+          "value": "-0.00000005",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2d352e30303030452d30380d0a"
+        },
+        {
+          "session_id": "00000000-0000-4000-8000-000000000060",
+          "sequence": 3,
+          "received_utc": "2026-11-12T00:00:36+00:00",
+          "elapsed_s": 2,
+          "overrun_s": 0,
+          "value": "-0.00000003",
+          "unit": "W",
+          "status": "ok",
+          "instrument_error": "",
+          "error": "",
+          "raw_hex": "2d332e30303030452d30380d0a"
+        }
+      ]
+    }
+  ],
+  "analysis": {
+    "S10": {
+      "n": 3,
+      "mean_W": "-5E-8",
+      "min_W": "-6E-8",
+      "max_W": "-4E-8",
+      "p2p_W": "2E-8",
+      "sample_sd_W": "1E-8",
+      "receipt_span_s": 2,
+      "median_spacing_s": 1
+    },
+    "S30": {
+      "n": 3,
+      "mean_W": "0.000988",
+      "min_W": "0.000987",
+      "max_W": "0.000989",
+      "p2p_W": "0.000002",
+      "sample_sd_W": "0.000001",
+      "receipt_span_s": 2,
+      "median_spacing_s": 1
+    },
+    "S40": {
+      "n": 6,
+      "mean_W": "0.000988",
+      "min_W": "0.000987",
+      "max_W": "0.000989",
+      "p2p_W": "0.000002",
+      "sample_sd_W": "8.944271909999158785636694674925105E-7",
+      "receipt_span_s": 5,
+      "median_spacing_s": 1
+    },
+    "S60": {
+      "n": 3,
+      "mean_W": "-4E-8",
+      "min_W": "-5E-8",
+      "max_W": "-3E-8",
+      "p2p_W": "2E-8",
+      "sample_sd_W": "1E-8",
+      "receipt_span_s": 2,
+      "median_spacing_s": 1
+    },
+    "nominal_delta_W": "-0.000012",
+    "nominal_delta_percent": "-1.200",
+    "relative_p2p_percent": "0.2024291497975708502024291497975709"
+  },
+  "criteria": {
+    "outcome": "not_evaluated",
+    "reason": "no externally supplied measurement limits"
+  },
+  "final_state": {
+    "reference_on": false,
+    "local": true,
+    "origin": "fixture-declared, not physical observation"
+  }
+}

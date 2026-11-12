@@ -12,10 +12,10 @@ Updated: 2026-11-12. ✅ Complete, ⏳ In progress, and ▧ Open/deferred. The [
 | Adapter and initial logging policy | ✅ Complete | [Adapter](validation/ADAPTER-IDENTIFICATION.md) recorded; [initial policy](validation/MEASUREMENT-POLICY.md) adopted as a test profile |
 | Offline software campaign | ✅ Complete | [Results](validation/OFFLINE-QUALIFICATION-RESULTS.md): 421 tests with stress enabled, clean installs, parameter/parser/logger/process checks, and three reviews |
 | Qualification branch integration | ✅ Complete | `devel` at `6bda91d`, pushed; [CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43214328205) on Python 3.11 and 3.14; normal logging/runtime unchanged |
-| WF-01: Workflow orchestration | ▧ Open | Define and implement a representative automated measurement/test process over the existing meter interface |
+| WF-01: First fixed workflow | ✅ Complete | [Current-Mac physical POWER REF workflow](workflows/WF-01-PHYSICAL.md#current-meter-physical-result) and synthetic scenarios exercised; 299 sustained/308 total valid physical rows, report/audit, and owner final-state confirmation |
 | PROV-01: Run/equipment provenance | ▧ Open | Link DUT/test intent, workflow/software versions, meter/sensor records, settings/path, known issues, and evidence |
-| REPORT-01: Analysis and agent-assisted reports | ▧ Open | Implement evidence-linked calculations, result presentation, and agent-assisted narrative with explicit limits |
-| E2E-01 / VAL-01: End-to-end software acceptance | ▧ Open | Validate workflow execution through a reproducible report, including partial/failure cases; synthetic and retained bench evidence can be used now |
+| REPORT-01: Analysis and agent-assisted reports | ⏳ In progress | Deterministic synthetic/physical reports produced; fuller presentation, plots, and external agent-assisted integration remain open |
+| E2E-01 / VAL-01: End-to-end software acceptance | ⏳ In progress | First fixed current-Mac physical and synthetic workflow/report paths passed; broader application acceptance remains open |
 | HP-01: Equipment exchange/onboarding | ▧ Equipment follow-up | Record replacement identity/records and check relevant setup assumptions when used; does not block the software work above |
 | Wider bus capabilities and unattended hardware recovery | ▧ Deferred | Enable only when a selected workflow requires them and appropriate evidence supports them |
 

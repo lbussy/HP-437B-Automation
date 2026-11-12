@@ -98,3 +98,7 @@ The [pre-arrival review](validation/PRE-ARRIVAL-REVIEW.md) and [replacement proc
 ## Hardware-free software qualification
 
 The [offline campaign](validation/OFFLINE-QUALIFICATION-RESULTS.md) strengthened parameter, parser, logger, storage-fault, process/deadline, and clean-install evidence. Integrated and pushed to `devel` at `6bda91d`, with [Python 3.11/3.14 CI passing](https://github.com/lbussy/HP-437B-Automation/actions/runs/43214328205). Runtime source and pins are unchanged. This validates software foundations, not DUT accuracy or the unimplemented orchestration/reporting product.
+
+## First application workflow
+
+[WF-01 POWER REF measurement and repeatability](workflows/POWER-REFERENCE-V1.md) defines a finite off/on/off sequence, short and sustained captures, stop/cleanup behavior, provenance, and deterministic/agent-assisted report boundaries. A [shortened synthetic worked report](workflows/examples/POWER-REFERENCE-V1-SYNTHETIC.md) makes the inputs/calculations/output concrete without hardware. Definition is prepared, and the [synthetic prototype exercise](workflows/WF-01-EXERCISE.md) produced seven real synthetic output bundles/reports. The [first fixed physical POWER REF workflow](workflows/WF-01-PHYSICAL.md#current-meter-physical-result) then completed on the current Mac/meter with generated report and owner final-state confirmation. Wider workflow scope and the complete reporting product remain implementation work. Normal logger behavior stays unchanged.
