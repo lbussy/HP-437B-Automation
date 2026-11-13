@@ -1,5 +1,7 @@
 # WF-05: Output power versus frequency, v1
 
+The additive [shared DUT-CTRL-01 fake-control path](CONTROLLED-SWEEPS-V1.md) executes these point plans through guarded controls and the production logger with a fake meter. Use `controlled` for that path; `synthetic` retains the original fixture generator. Physical drivers remain open.
+
 Status: synthetic implementation, November 12, 2026. Physical transmitter tuning, correction selection/readback, and RF shutdown remain **DUT-CTRL-01**. Production logging, meter/transport commands, existing workflows, dependencies, and CLI defaults are unchanged.
 
 This human-started workflow compares output across explicit frequency points while the declared transmitter power setting/mode stays fixed. It produces a one-page **RF Output Power Test**, plots, deterministic results, a technical appendix, and PROV-01 provenance. It neither measures frequency accuracy nor establishes spectral purity, modulation-channel flatness, or continuous all-band performance.

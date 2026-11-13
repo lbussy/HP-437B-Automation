@@ -43,7 +43,7 @@ A session adopts the setup only after matching three expected identities, observ
 
 Condition changes require adopted, known source-off state. Configure current limit with readback, set voltage and observe it, configure frequency/setting and reread transmitter state, then permit keying. Acknowledged keying must be followed by an on-state readback; after settling, frequency/setting/on-state and voltage are checked again before plateau capture. Controller status does not independently measure RF frequency or prove absence of RF energy. A current-limit setting/readback is not a current measurement or proof of actual compliance.
 
-These interfaces/guards are reusable for future drivers and workflows. WF-04–WF-06 are not silently migrated to a new runner; their existing synthetic implementations and evidence stay unchanged. This v1 controller deliberately represents one finite, adopted condition per session.
+These interfaces/guards are reusable for future drivers and workflows. WF-04–WF-06 now offer an explicit [shared-control fake sweep](CONTROLLED-SWEEPS-V1.md) command. Their existing synthetic fixture commands and evidence remain readable and unchanged. This v1 controller deliberately represents one finite, adopted condition per session.
 
 ## Configuration and operating bounds
 

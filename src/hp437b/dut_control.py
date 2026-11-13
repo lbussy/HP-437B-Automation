@@ -479,11 +479,13 @@ class Controls:
         )
 
 
-def execute(controls, capture_stage):
+def execute(controls, capture_stage, *, prepare_capture=None):
     """Reusable single-condition sequence; callback owns capture or saved-data loading."""
     status, error = "completed", None
     try:
         controls.preflight()
+        if prepare_capture is not None:
+            prepare_capture()
         capture_stage("baseline-before")
         controls.configure()
         controls.activate()

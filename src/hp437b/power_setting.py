@@ -350,6 +350,10 @@ def load(source):
     bundle = p.Bundle(source)
     inventory = bundle.inventory("artifacts.json", "synthetic")
     capture = bundle.json("workflow.json")
+    from . import controlled_sweep
+
+    if capture.get("schema") == controlled_sweep.SCHEMA:
+        return controlled_sweep.load("WF-04", source)
     p._keys(
         capture,
         (
@@ -713,13 +717,14 @@ def analyze(capture, rows):
         points=results,
         completed_points=sum(row["status"] == "completed" for row in results),
         requested_points=len(results),
-        zero_mean_W=str(sum(baseline) / len(baseline)),
+        zero_mean_W=str(sum(baseline) / len(baseline)) if baseline else None,
+        zero_samples=len(baseline),
         acceptance=overall,
         criteria=criteria,
     )
 
 
-def provenance(capture, bundle):
+def _fixture_provenance(capture, bundle):
     def fact(value, pointer):
         return p.fact(
             value, basis="supplied", refs=[{"evidence_id": "workflow.json", "pointer": pointer}]
@@ -765,6 +770,22 @@ def provenance(capture, bundle):
         devices,
         list(bundle.entries.values()),
     )
+
+
+def provenance(capture, bundle):
+    result = _fixture_provenance(capture, bundle)
+    if capture.get("backend") == "dut-ctrl01-fake":
+        from .controlled_sweep import augment_provenance
+
+        return augment_provenance(capture, bundle, result)
+    return result
+
+
+def controlled(output, **kwargs):
+    """Capture ordered points with shared fake DUT controls and the existing logger."""
+    from .controlled_sweep import run
+
+    return run("WF-04", output, **kwargs)
 
 
 def publish(source, output, *, plots=True):
@@ -865,8 +886,8 @@ def publish(source, output, *, plots=True):
 <strong>Measurement plane:</strong> {e(result["measurement_plane"].replace("_", " "))}</p>
 <p><strong>Execution:</strong> {e(result["execution"])}; {result["completed_points"]}/{result["requested_points"]} points complete.
 <strong>Acceptance:</strong> {e(result["acceptance"])}</p>
-<p><strong>Final external source:</strong> {"off acknowledged (synthetic)" if capture["final_state"]["external_source_off"] else "UNKNOWN (synthetic); recovery not asserted"}.</p>
-<p><strong>Pre-RF zero:</strong> {fmt(D(result["zero_mean_W"]) * 1000000)} µW (3 source-off samples; no subtraction).</p>
+<p><strong>Final external source:</strong> {"off acknowledged (synthetic)" if capture["final_state"]["external_source_off"] else "ON (synthetic); source-off readback failed" if capture["final_state"].get("rf_state") == "on" else "UNKNOWN (synthetic); recovery not asserted"}.</p>
+<p><strong>Pre-RF zero:</strong> {fmt(D(result["zero_mean_W"]) * 1000000 if result["zero_mean_W"] is not None else None)} µW ({result["zero_samples"]} source-off samples; no subtraction).</p>
 <table><thead><tr><th>Setting</th><th>Target W</th><th>Measured W</th><th>Error %</th><th>Error dB</th><th>Valid</th><th>State</th></tr></thead><tbody>{table}</tbody></table>
 {'<img src="power-setting.svg" alt="Target and measured power at each requested setting">' if plots else ""}
 <p>{e(criteria_note)}</p><p>Missing values are unavailable, not zero. Partial-point values are descriptive only. See the technical appendix for point reasons and decision criteria.</p>
@@ -914,7 +935,7 @@ def publish(source, output, *, plots=True):
             + f"When: {capture['started_utc']}. Declared frequency: {capture['plan']['frequency_Hz']} Hz. "
             + f"Signal: {report_sheet._markdown(capture['plan']['signal_mode'])}. "
             + f"Plane: {result['measurement_plane']}.\n\n"
-            + f"Pre-RF zero: {fmt(D(result['zero_mean_W']) * 1000000)} µW (three samples; no subtraction).\n\n"
+            + f"Pre-RF zero: {fmt(D(result['zero_mean_W']) * 1000000 if result['zero_mean_W'] is not None else None)} µW ({result['zero_samples']} samples; no subtraction).\n\n"
             + f"Execution: {result['execution']}; {result['completed_points']}/{result['requested_points']} points complete. "
             + f"Acceptance: {result['acceptance']}. "
             + (
@@ -926,6 +947,9 @@ def publish(source, output, *, plots=True):
             + f"{report_sheet._markdown(harness)}\n\nRecord: {capture['run_id']}. Complete evidence: appendix.html.\n",
             encoding="utf-8",
         )
+        from .controlled_sweep import annotate_report
+
+        annotate_report(output, capture)
         p.verify(record, source)
         p.require(
             r.digest(p.Bundle(source).read("artifacts.json")) == source_hash,
@@ -954,15 +978,29 @@ def main(argv=None):
     run.add_argument("--criteria", type=Path)
     run.add_argument("--operator")
     run.add_argument("--report-output", type=Path)
+    controlled_run = commands.add_parser(
+        "controlled", help="Shared fake DUT-CTRL-01 capture-to-report"
+    )
+    controlled_run.add_argument("--scenario", choices=SCENARIOS, default="nominal")
+    controlled_run.add_argument("--plan", type=Path)
+    controlled_run.add_argument("--criteria", type=Path)
+    controlled_run.add_argument("--operator")
+    controlled_run.add_argument("--report-output", type=Path)
+    from .controlled_sweep import FAULTS
+
+    controlled_run.add_argument("--fault", choices=FAULTS)
+    controlled_run.add_argument("--fault-point")
+    controlled_run.add_argument("--stop-before")
     report = commands.add_parser("report")
     report.add_argument("--bundle", required=True, type=Path)
-    for sub in (run, report):
+    for sub in (run, controlled_run, report):
         sub.add_argument("--output", required=True, type=Path)
         sub.add_argument("--no-plots", action="store_true")
     args = parser.parse_args(argv)
     try:
-        if args.command == "synthetic":
-            capture = simulate(
+        if args.command in ("synthetic", "controlled"):
+            runner = controlled if args.command == "controlled" else simulate
+            capture = runner(
                 args.output,
                 scenario=args.scenario,
                 plan=p._json(p.Bundle(args.plan.parent).read(args.plan.name))
@@ -974,6 +1012,13 @@ def main(argv=None):
                 operator=args.operator,
                 report_output=args.report_output,
                 plots=not args.no_plots,
+                **(
+                    dict(
+                        fault=args.fault, fault_point=args.fault_point, stop_before=args.stop_before
+                    )
+                    if args.command == "controlled"
+                    else {}
+                ),
             )
             return 0 if capture["status"] == "completed" else 1
         publish(args.bundle, args.output, plots=not args.no_plots)

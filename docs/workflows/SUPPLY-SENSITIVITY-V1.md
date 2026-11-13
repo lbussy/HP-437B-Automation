@@ -1,5 +1,7 @@
 # WF-06: Supply-voltage sensitivity, v1
 
+The additive [shared DUT-CTRL-01 fake-control path](CONTROLLED-SWEEPS-V1.md) executes these point plans through guarded controls and the production logger with a fake meter. Use `controlled` for that path; `synthetic` retains the original fixture generator. Physical drivers remain open.
+
 Status: synthetic implementation, November 12, 2026. Physical transmitter/supply control, voltage observation, and restoration remain **DUT-CTRL-01**. Normal logging, meter/transport commands, existing workflows, dependencies, and CLI defaults are unchanged.
 
 This human-started workflow compares RF output at explicit supply voltages while declared RF frequency, power setting, and signal mode remain fixed. It produces a one-page **RF Output Power Test**, deterministic results, plots, a technical appendix, and reusable PROV-01 provenance. No real supply, voltage observer, transmitter, meter, or AI provider is accessed.

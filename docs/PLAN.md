@@ -136,3 +136,7 @@ The report footer places Report Harness before Record. Clean exact semantic-vers
 ## External transmitter control foundation
 
 [DUT-CTRL-01 fake-control v1](workflows/EXTERNAL-TRANSMITTER-V1.md) now supplies reusable transmitter/supply/voltage-observer contracts and guarded single-condition orchestration. The fake-only workflow uses the existing Instrument/logger, captures source-off zero/settling/plateau/final baseline, verifies owned-source shutdown/restoration, and publishes provenance and deterministic reports. Saved receipt replay validates controls without device calls or reacquisition. Physical drivers, manual acknowledgement flows, independent shutdown qualification, and hardware acceptance remain open. Existing WF-01–WF-06 implementations, normal logging, dependencies, and CLI defaults are unchanged.
+
+## Shared controls for WF-04–WF-06
+
+The [shared-control fake sweeps](workflows/CONTROLLED-SWEEPS-V1.md) now integrate DUT-CTRL-01 into ordered setting, frequency, and supply-voltage runs. Each point uses guarded transmitter/supply/observer operations and production logger capture through explicit fakes, carries shared fake hardware state, verifies shutdown/restoration, and stops on failure. Native point evidence feeds existing analyses, provenance, and reports. Legacy fixture commands and saved bundles remain supported. Implementation is complete; delivery and hosted CI are tracked in the validation record. Physical drivers and normal logging remain unchanged.

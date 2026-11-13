@@ -477,6 +477,10 @@ def load(source):
     bundle = p.Bundle(source)
     inventory = bundle.inventory("artifacts.json", "synthetic")
     capture = bundle.json("workflow.json")
+    from . import controlled_sweep
+
+    if capture.get("schema") == controlled_sweep.SCHEMA:
+        return controlled_sweep.load("WF-06", source)
     p._keys(
         capture,
         (
@@ -983,7 +987,8 @@ def analyze(capture, rows):
         eligible_points=len(eligible),
         full_point_coverage=full_points,
         full_coverage=full,
-        zero_mean_W=str(sum(baseline) / len(baseline)),
+        zero_mean_W=str(sum(baseline) / len(baseline)) if baseline else None,
+        zero_samples=len(baseline),
         nominal_point_id=nominal_id,
         nominal_mean_W=str(nominal_mean) if nominal_mean is not None else None,
         nominal_requested_V=nominal["requested_V"] if nominal else None,
@@ -1007,7 +1012,7 @@ def analyze(capture, rows):
     )
 
 
-def provenance(capture, bundle):
+def _fixture_provenance(capture, bundle):
     def fact(value, pointer):
         return p.fact(
             value, basis="supplied", refs=[dict(evidence_id="workflow.json", pointer=pointer)]
@@ -1067,6 +1072,22 @@ def provenance(capture, bundle):
     )
 
 
+def provenance(capture, bundle):
+    result = _fixture_provenance(capture, bundle)
+    if capture.get("backend") == "dut-ctrl01-fake":
+        from .controlled_sweep import augment_provenance
+
+        return augment_provenance(capture, bundle, result)
+    return result
+
+
+def controlled(output, **kwargs):
+    """Capture ordered points with shared fake DUT controls and the existing logger."""
+    from .controlled_sweep import run
+
+    return run("WF-06", output, **kwargs)
+
+
 def render(capture, result, producer, *, plots):
     def fmt(value):
         return "—" if value is None else "0" if D(value) == 0 else report_sheet._n(value)
@@ -1113,7 +1134,7 @@ def render(capture, result, producer, *, plots):
                 + fmt(supply["current_limit_A"])
                 + " A requested)."
             )
-    zero = f"Pre-RF zero: {fmt(D(result['zero_mean_W']) * 1000000)} µW (3 source-off samples; no subtraction)."
+    zero = f"Pre-RF zero: {fmt(D(result['zero_mean_W']) * 1000000 if result['zero_mean_W'] is not None else None)} µW ({result['zero_samples']} source-off samples; no subtraction)."
     nominal = (
         f"Nominal reference: {result['nominal_point_id']}; {fmt(result['nominal_requested_V'])} V requested, {fmt(result['nominal_observed_V'])} V observed; {fmt(result['nominal_mean_W'])} W."
         if result["nominal_eligible"]
@@ -1134,6 +1155,8 @@ def render(capture, result, producer, *, plots):
         + (
             "off acknowledged (synthetic)."
             if capture["final_state"]["external_source_off"]
+            else "ON (synthetic)."
+            if capture["final_state"].get("rf_state") == "on"
             else "UNKNOWN (synthetic)."
         )
     )
@@ -1305,6 +1328,9 @@ def publish(source, output, *, plots=True):
             + "</pre>",
             encoding="utf-8",
         )
+        from .controlled_sweep import annotate_report
+
+        annotate_report(output, capture)
         p.verify(record, source)
         p.require(
             r.digest(p.Bundle(source).read("artifacts.json")) == source_hash,
@@ -1333,15 +1359,29 @@ def main(argv=None):
     run.add_argument("--criteria", type=Path)
     run.add_argument("--operator")
     run.add_argument("--report-output", type=Path)
+    controlled_run = commands.add_parser(
+        "controlled", help="Shared fake DUT-CTRL-01 capture-to-report"
+    )
+    controlled_run.add_argument("--scenario", choices=SCENARIOS, default="nominal")
+    controlled_run.add_argument("--plan", type=Path)
+    controlled_run.add_argument("--criteria", type=Path)
+    controlled_run.add_argument("--operator")
+    controlled_run.add_argument("--report-output", type=Path)
+    from .controlled_sweep import FAULTS
+
+    controlled_run.add_argument("--fault", choices=FAULTS)
+    controlled_run.add_argument("--fault-point")
+    controlled_run.add_argument("--stop-before")
     report = commands.add_parser("report")
     report.add_argument("--bundle", required=True, type=Path)
-    for sub in (run, report):
+    for sub in (run, controlled_run, report):
         sub.add_argument("--output", required=True, type=Path)
         sub.add_argument("--no-plots", action="store_true")
     args = parser.parse_args(argv)
     try:
-        if args.command == "synthetic":
-            capture = simulate(
+        if args.command in ("synthetic", "controlled"):
+            runner = controlled if args.command == "controlled" else simulate
+            capture = runner(
                 args.output,
                 scenario=args.scenario,
                 plan=p._json(p.Bundle(args.plan.parent).read(args.plan.name))
@@ -1353,6 +1393,13 @@ def main(argv=None):
                 operator=args.operator,
                 report_output=args.report_output,
                 plots=not args.no_plots,
+                **(
+                    dict(
+                        fault=args.fault, fault_point=args.fault_point, stop_before=args.stop_before
+                    )
+                    if args.command == "controlled"
+                    else {}
+                ),
             )
             return 0 if capture["status"] == "completed" else 1
         publish(args.bundle, args.output, plots=not args.no_plots)

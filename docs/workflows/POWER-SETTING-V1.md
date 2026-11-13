@@ -1,5 +1,7 @@
 # WF-04: Output power versus setting, v1
 
+The additive [shared DUT-CTRL-01 fake-control path](CONTROLLED-SWEEPS-V1.md) executes these point plans through guarded controls and the production logger with a fake meter. Use `controlled` for that path; `synthetic` retains the original fixture generator. Physical drivers remain open.
+
 Status: synthetic implementation, November 12, 2026. Physical transmitter integration remains open under **DUT-CTRL-01**. Normal logging, transport, meter commands, existing physical workflows, dependencies, and CLI defaults are unchanged.
 
 This human-started workflow compares recorded power with explicit targets at ordered transmitter settings. It produces a one-page **RF Output Power Test**, plots, a technical appendix, deterministic results, and reusable PROV-01 provenance. It does not qualify a transmitter or the meter from synthetic data. No model/provider, network request, instrument opening, or physical source control is involved.

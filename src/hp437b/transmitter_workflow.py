@@ -25,6 +25,7 @@ from .workflow_report import _seal, preflight
 
 WORKFLOW = "external-transmitter-single-point-v1"
 SCHEMA = "hp437b.external-transmitter-capture.v1"
+MODEL_SCHEMA = "hp437b.external-transmitter-capture.v2"
 STAGES = ("baseline-before", "settling", "plateau", "baseline-after")
 PROFILE = {"baseline-before": 3, "settling": 20, "plateau": 30, "baseline-after": 3}
 
@@ -106,6 +107,10 @@ def simulate(
     operator=None,
     report_output=None,
     plots=True,
+    model=None,
+    hardware=None,
+    epoch=None,
+    parent_context=None,
 ):
     p.require(scenario in fake.SCENARIOS, "Unknown external-DUT scenario")
     plan = c.validate_plan(c.default_plan() if plan is None else plan)
@@ -115,13 +120,31 @@ def simulate(
         plan["fixture"].update(loss_dB=None, correction_source=None)
     if scenario == "sensor-plane":
         plan["measurement_plane"] = "sensor_input"
-    model_power = D("4.8") if scenario == "low-output" else D("5")
-    p.require(
-        model_power <= D(plan["max_RF_W"])
-        and model_power / factor("30") <= D(plan["sensor_limit_W"])
-        and D(plan["fixture"]["minimum_loss_dB"]) <= 30,
-        "Fixed fake RF model conflicts with declared operating bounds",
-    )
+    if model is None:
+        p.require(
+            hardware is None and epoch is None, "Shared state requires an explicit simulation model"
+        )
+        model_power = D("4.8") if scenario == "low-output" else D("5")
+        p.require(
+            model_power <= D(plan["max_RF_W"])
+            and model_power / factor("30") <= D(plan["sensor_limit_W"])
+            and D(plan["fixture"]["minimum_loss_dB"]) <= 30,
+            "Fixed fake RF model conflicts with declared operating bounds",
+        )
+    else:
+        fake.validate_model(model, plan)
+        p.require(
+            hardware is None or type(hardware) is fake.Hardware,
+            "Only in-memory fake hardware is accepted",
+        )
+    if parent_context is not None:
+        p._keys(parent_context, ("run_id", "point_id", "workflow_id"))
+        uuid.UUID(parent_context["run_id"])
+        p.require(
+            parent_context["point_id"] in ("P01", "P02", "P03", "P04", "P05"),
+            "Invalid parent point",
+        )
+        text(parent_context["workflow_id"], 120)
     validate_criteria(criteria)
     operator = report_context.resolve_operator(operator)["value"]
     output = Path(output).resolve()
@@ -130,7 +153,7 @@ def simulate(
     )
     if report_output is not None:
         preflight(output, report_output, plots=plots)
-    bench = fake.Bench(plan, scenario)
+    bench = fake.Bench(plan, scenario, model=model, hardware=hardware, epoch=epoch)
     controls = c.Controls(
         plan,
         fake.FakeTransmitter(bench),
@@ -140,7 +163,7 @@ def simulate(
     )
     bench.controls = controls
     record = dict(
-        schema=SCHEMA,
+        schema=MODEL_SCHEMA if model is not None else SCHEMA,
         workflow_id=WORKFLOW,
         mode="synthetic",
         simulation=True,
@@ -158,6 +181,14 @@ def simulate(
         stages={stage: dict(status="skipped", reason="Not reached") for stage in STAGES},
         final_state=None,
     )
+    if model is not None:
+        record.update(
+            parent_context=parent_context,
+            simulation_model=p._json(r.encoded(model)),
+            initial_hardware=bench.hardware.snapshot(),
+            final_hardware=None,
+            meter_preparation=None,
+        )
     output.mkdir(parents=True, exist_ok=False)
     (output / "stages").mkdir()
     (output / "starting.json").write_bytes(r.encoded(record))
@@ -192,6 +223,7 @@ def simulate(
                     stage_id=stage,
                     mode="synthetic",
                     source_asset_id=plan["assets"]["transmitter"]["asset_id"],
+                    **({"parent_context": parent_context} if model is not None else {}),
                 ),
             )
             item["status"] = "completed"
@@ -210,7 +242,18 @@ def simulate(
             instrument.close()
             item.update(end_s=bench.now, uncertain=instrument._uncertain)
 
-    outcome = c.execute(controls, capture)
+    def prepare():
+        item = record["meter_preparation"] = {"start_s": bench.now, "status": "running"}
+        observed = bench.prepare_meter()
+        item.update(**observed, end_s=bench.now)
+        if D(observed["observed_percent"]) != D(observed["expected_percent"]):
+            item.update(status="failed", error="Simulated meter factor readback mismatch")
+            raise c.ControlFailure(item["error"])
+        item["status"] = "completed"
+
+    outcome = c.execute(controls, capture, prepare_capture=prepare if model is not None else None)
+    if model is not None:
+        record["final_hardware"] = bench.hardware.snapshot()
     record.update(
         status=outcome["status"],
         outcome=outcome,
@@ -338,10 +381,21 @@ def load(source):
             "outcome",
             "stages",
             "final_state",
+        )
+        + (
+            (
+                "simulation_model",
+                "initial_hardware",
+                "final_hardware",
+                "meter_preparation",
+                "parent_context",
+            )
+            if record.get("schema") == MODEL_SCHEMA
+            else ()
         ),
     )
     p.require(
-        record["schema"] == SCHEMA
+        record["schema"] in (SCHEMA, MODEL_SCHEMA)
         and record["workflow_id"] == WORKFLOW
         and record["mode"] == "synthetic"
         and record["simulation"] is True,
@@ -360,6 +414,27 @@ def load(source):
     c.validate_plan(record["plan"])
     validate_criteria(record["criteria"])
     report_context.validate_operator(record["operator"])
+    modeled = record["schema"] == MODEL_SCHEMA
+    if modeled:
+        fake.validate_model(record["simulation_model"], record["plan"])
+        for snapshot in (record["initial_hardware"], record["final_hardware"]):
+            p._keys(
+                snapshot,
+                ("rf", "frequency", "setting", "voltage", "current", "meter_factor_percent"),
+            )
+            p.require(
+                type(snapshot["rf"]) is bool
+                and type(snapshot["frequency"]) is int
+                and 0 <= snapshot["frequency"] <= 4200000000,
+                "Invalid fake hardware snapshot",
+            )
+            text(snapshot["setting"], 120)
+            p.require(
+                0 <= r.number(snapshot["voltage"]) <= 1000
+                and 0 < r.number(snapshot["current"]) <= 100
+                and 1 <= r.number(snapshot["meter_factor_percent"]) <= 150,
+                "Invalid fake hardware numeric state",
+            )
     initial = {
         **record,
         "finished_utc": None,
@@ -368,6 +443,8 @@ def load(source):
         "stages": {stage: dict(status="skipped", reason="Not reached") for stage in STAGES},
         "final_state": None,
     }
+    if modeled:
+        initial.update(final_hardware=None, meter_preparation=None)
     p.require(bundle.json("starting.json") == initial, "Starting/final record mismatch")
     started, finished = r.timestamp(record["started_utc"]), r.timestamp(record["finished_utc"])
     span = (finished - started).total_seconds()
@@ -428,6 +505,7 @@ def load(source):
             stage_id=stage,
             mode="synthetic",
             source_asset_id=record["plan"]["assets"]["transmitter"]["asset_id"],
+            **({"parent_context": record["parent_context"]} if modeled else {}),
         )
         p.require(
             metadata.get("context") == context and metadata["session_id"] not in session_ids,
@@ -509,7 +587,79 @@ def load(source):
             invalid_stage.append(str(exc))
             raise
 
-    outcome = c.execute(controls, checked_stage)
+    preparation_used = []
+
+    def prepare_saved():
+        preparation_used.append(True)
+        item = record["meter_preparation"]
+        model = record["simulation_model"]
+        expected = (
+            model["sensor_factor_percent"] if model["factor_applied_in"] == "meter" else "100"
+        )
+        correct = D(model["factor_readback_percent"]) == D(expected)
+        data = dict(
+            start_s=clock.now,
+            end_s=round(clock.now + 0.01, 6),
+            status="completed" if correct else "failed",
+            expected_percent=expected,
+            observed_percent=model["factor_readback_percent"],
+        )
+        if not correct:
+            data["error"] = "Simulated meter factor readback mismatch"
+        p.require(
+            controls.rf == "off"
+            and record["initial_hardware"]["rf"] is False
+            and r.encoded(item) == r.encoded(data),
+            "Invalid off-state simulated meter preparation",
+        )
+        clock.now = data["end_s"]
+        if not correct:
+            raise c.ControlFailure(data["error"])
+
+    def checked_prepare():
+        try:
+            prepare_saved()
+        except c.ControlFailure:
+            raise
+        except Exception as exc:
+            invalid_stage.append(str(exc))
+            raise
+
+    outcome = c.execute(
+        controls, checked_stage, prepare_capture=checked_prepare if modeled else None
+    )
+    if modeled:
+        p.require(
+            bool(preparation_used) == (record["meter_preparation"] is not None),
+            "Unexpected/missing meter preparation",
+        )
+        expected_cf = (
+            record["simulation_model"]["factor_readback_percent"]
+            if preparation_used
+            else record["initial_hardware"]["meter_factor_percent"]
+        )
+        p.require(
+            record["final_hardware"]["meter_factor_percent"] == expected_cf,
+            "Final fake factor state mismatch",
+        )
+        if controls.rf in ("on", "off"):
+            p.require(
+                record["final_hardware"]["rf"] is (controls.rf == "on"),
+                "RF snapshot contradicts verified control state",
+            )
+        if controls.restored:
+            supply = record["plan"]["supply"]
+            p.require(
+                abs(D(record["final_hardware"]["voltage"]) - D(supply["restore_V"]))
+                <= D(supply["tolerance_V"])
+                and D(record["final_hardware"]["current"]) == D(supply["restore_current_limit_A"]),
+                "Fake supply snapshot not restored",
+            )
+        if not controls.adopted:
+            p.require(
+                record["initial_hardware"] == record["final_hardware"],
+                "Unadopted fake hardware changed",
+            )
     p.require(not invalid_stage, "Invalid saved stage evidence: " + "; ".join(invalid_stage))
     # A parser failure must not be swallowed as an expected workflow failure.
     p.require(
@@ -621,6 +771,17 @@ def analyze(record, stages):
     base = stages.get("baseline-before")
     metrics = plateau["metrics"] if plateau else {}
     sensor = D(metrics["mean_W"]) if metrics.get("mean_W") is not None else None
+    indicated = sensor
+    if record["schema"] == MODEL_SCHEMA:
+        model = record["simulation_model"]
+        cf = model["sensor_factor_percent"]
+        sensor = (
+            None
+            if cf is None or indicated is None
+            else indicated * 100 / D(cf)
+            if model["factor_applied_in"] == "analysis"
+            else indicated
+        )
     loss = record["plan"]["fixture"]["loss_dB"]
     multiplier = factor(loss) if loss is not None else None
     measured = sensor * multiplier if sensor is not None and multiplier is not None else None
@@ -673,6 +834,7 @@ def analyze(record, stages):
         source_kind="external_transmitter",
         execution=record["status"],
         measurement_plane=record["plan"]["measurement_plane"],
+        indicated_mean_W=str(indicated) if indicated is not None else None,
         sensor_mean_W=str(sensor) if sensor is not None else None,
         measured_W=str(measured) if measured is not None else None,
         sensor_metrics=metrics,
@@ -839,6 +1001,11 @@ def render(record, result, producer, *, plots):
         else ""
     )
     notes = "All identities, RF samples, and control readbacks are simulated. Frequency/setting readback is not an independent RF frequency measurement. Supplied fixture loss is applied once; sensor calibration is already represented. POWER REF is never controlled. Partial results cannot pass; no failed control is retried."
+    if record["schema"] == MODEL_SCHEMA:
+        notes = notes.replace(
+            "sensor calibration is already represented",
+            "sensor calibration follows the recorded analysis/meter policy",
+        )
     footer = [
         "Equipment: fictional TX, HP 437B, 8482A, fixture, supply, and voltage observer.",
         report_sheet.producer_note(producer),
