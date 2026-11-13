@@ -42,6 +42,10 @@ REPORT-RECOVERY-01 regenerates PDF and ZIP reports from sealed individual physic
 
 The owner authorized frequency, drive-setting, and combined measurement series on November 13, 2026. Support all 17 requested band labels and at least five drive labels; the implemented limits are 32 frequencies and 16 drive labels. Pause for fresh operator label confirmation before every capture. Use the production meter logger with an explicitly configured bench source, retain a simulated path, and expose equivalent local orchestration actions. Labels are declarations, separate from measured power.
 
+## Saved run history and comparison
+
+RUN-HISTORY-01 adds read-only saved history, twenty runs per page, with measurement/report-attempt filters, report links, verified native POWER REF details, and original front-panel attestation bound to the source inventory hash. Compare two to four distinct acquisitions for matching WF-01–WF-03 workflows: signed zero (µW), mean (mW), endpoint change (%), and cycle spread (µW) retain native definitions. Context, profile, resource, mode, and completeness differences remain visible; unknown, different, or partial evidence withholds arithmetic mean changes (µW). Report attempts trace their acquisition source and cannot count as new measurements. This extends the existing interface without new measurements, hardware qualification, or changes to normal logging; see [the workflow contract](docs/workflows/RUN-HISTORY-V1.md).
+
 ## Brand Commitments
 
 Use HP 437B Automation as the project name and retain the existing report styling. Reports remain titled RF Output Power Test, with operator, signed pre-RF zero, and Report Harness provenance.

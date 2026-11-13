@@ -2,7 +2,8 @@
 const $ = id => document.getElementById(id);
 const token = document.querySelector('meta[name="operator-token"]').content;
 let model = {profiles:[],jobs:[],active_id:null}, selectedProfile = null, busy = false, initialized = false;
-let stepsSignature="", historySignature="", inflight=null, generation=0, recoverySignature="";
+let stepsSignature="", inflight=null, generation=0, recoverySignature="";
+let historyLoaded=false,historyBusy=false,historyOffset=0,historyTotal=0,historySelection=new Set(),comparisonBusy=false,detailGeneration=0;
 const setText=(id,value)=>{if($(id).textContent!==value)$(id).textContent=value;};
 const titles = {"GUIDED":"Operator-guided sweep","WF-01":"POWER REF baseline and output","WF-02":"Sustained output stability","WF-03":"Transmission-cycle repeatability","WF-04":"Output versus setting","WF-05":"Output versus frequency","WF-06":"Supply-voltage sensitivity"};
 const node = (tag, text, cls) => {const element=document.createElement(tag);if(text!==undefined)element.textContent=text;if(cls)element.className=cls;return element;};
@@ -137,16 +138,7 @@ function renderRun(job) {
   for(const input of document.querySelectorAll('#test-options input,#reference-suite-setup input,#reference-suite-setup select'))input.disabled=active;
   $("start").textContent=active?"Run in progress…":referenceSuiteMode()?"Start POWER REF suite":physicalMode()?"Start POWER REF workflow":"Start suite";$("start").disabled=!canStart();
 }
-function renderHistory() {
-  const past=model.jobs.filter(job=>job.phase==="finished"||job.phase==="failed").slice(0,5);$("history").hidden=!past.length;
-  const signature=JSON.stringify(past.map(job=>[job.job_id,job.phase,job.outcome,job.pdf_ready]));if(signature===historySignature)return;historySignature=signature;$("history-body").replaceChildren();
-  for(const job of past){
-    const tr=node("tr");tr.append(node("td",job.profile_name),node("td",new Date(job.started_utc).toLocaleString()),node("td",job.phase==="failed"?(job.outcome?"Report error":"Run error"):job.outcome==="interrupted"?"Cancelled":job.outcome==="failed"?"Stopped":"Complete"));
-    const cell=node("td");if(job.pdf_ready){const link=node("a","Open PDF");link.href=`/artifacts/${job.job_id}/report.pdf`;link.target="_blank";link.rel="noopener";cell.append(link);}else cell.textContent="Not available";
-    if(job.mode==="report_recovery"){tr.firstChild.textContent+=" · report regeneration";tr.children[2].textContent=job.phase==="failed"?"Report error":"Reports ready";}
-    tr.append(cell);$("history-body").append(tr);
-  }
-}
+function renderHistory(){if(!historyLoaded&&!historyBusy)loadHistory();}
 async function refresh(force=false) {
   if(inflight){if(!force)return inflight;await inflight;}
   const observed=generation;
@@ -244,4 +236,55 @@ $("recover-report").addEventListener("click",async()=>{
  try{await api("/api/report-recovery",{source_job_id:$("recovery-source").value});}
  catch(exc){error("Reports were not regenerated. "+exc.message+". Original measurements are retained; select another capture or repair a copy before retrying.");}
  finally{busy=false;await refresh(true);}
+});
+
+const measured=value=>value===null||value===undefined?"Not available":Number(value).toLocaleString(undefined,{maximumSignificantDigits:8});
+const metric=(value,scale)=>value===null||value===undefined?"Not available":measured(Number(value)*scale);
+function updateComparisonSelection(){
+ setText("comparison-selection",`${historySelection.size} measurements selected${historySelection.size?": "+[...historySelection].map(x=>x.slice(0,8)).join(", "):""}. Choose two to four; report attempts are not measurements.`);
+ $("compare-runs").disabled=comparisonBusy||historySelection.size<2||historySelection.size>4;
+}
+function reportLink(job,name,text){const link=node("a",text);link.href=`/artifacts/${job.job_id}/${name}`;link.target="_blank";link.rel="noopener";return link;}
+async function loadHistory(){
+ if(historyBusy)return;historyBusy=true;$("history-filter").disabled=true;$("history-prev").disabled=true;$("history-next").disabled=true;$("history-refresh").disabled=true;setText("history-note","Loading saved runs…");
+ try{
+  const data=await api("/api/run-history",{offset:historyOffset,category:$("history-filter").value});historyLoaded=true;historyTotal=data.total;
+  const rows=data.entries.map(job=>{
+   const tr=node("tr"),select=node("td"),box=node("input");box.type="checkbox";box.checked=historySelection.has(job.job_id);box.disabled=!job.report_recovery_available;box.setAttribute("aria-label",`Select measurement ${job.job_id.slice(0,8)}`);
+   box.addEventListener("change",()=>{if(box.checked&&historySelection.size>=4){box.checked=false;setText("history-note","Select at most four measurements; clear a selection first.");return;}box.checked?historySelection.add(job.job_id):historySelection.delete(job.job_id);$("comparison").hidden=true;updateComparisonSelection();});select.append(box);
+   const report=job.mode==="report_recovery",subject=node("td");subject.append(node("div",job.profile_name),node("small",`${report?"Report regeneration":"Measurement"} · ${job.job_id.slice(0,8)}${report?" · source "+job.source_job_id.slice(0,8):" · "+job.workflows.join(" + ")}`));
+   const outcome=job.phase==="failed"?(report?"Report error":"Needs attention"):job.phase!=="finished"?job.phase:report?"Reports ready":job.outcome==="interrupted"?"Cancelled":job.outcome==="failed"?"Stopped":"Complete";
+   tr.append(select,subject,node("td",new Date(job.started_utc).toLocaleString()),node("td",outcome));
+   const actions=node("td",undefined,"history-links");if(job.pdf_ready)actions.append(reportLink(job,"report.pdf","PDF"));if(job.package_ready)actions.append(reportLink(job,"package.zip","Package"));
+   if(job.report_recovery_available||report){const button=node("button","View details","text-button");button.type="button";button.setAttribute("aria-label",`View details for ${job.job_id.slice(0,8)}`);button.addEventListener("click",()=>showRunDetails(job.job_id));actions.append(button);}
+   if(!actions.childNodes.length)actions.textContent="No report available";tr.append(actions);return tr;
+  });$("history-body").replaceChildren(...rows);
+  setText("history-note",data.total?`Showing ${historyOffset+1}–${Math.min(historyOffset+20,data.total)} of ${data.total} saved runs.${data.unreadable_jobs.length?" "+data.unreadable_jobs.length+" unreadable run records omitted.":""}`:"No saved runs match this filter.");
+  $("history-prev").disabled=historyOffset===0;$("history-next").disabled=historyOffset+20>=historyTotal;
+ }catch(exc){setText("history-note","History could not be loaded: "+exc.message);}
+ finally{historyBusy=false;$("history-filter").disabled=false;$("history-refresh").disabled=false;updateComparisonSelection();}
+}
+async function showRunDetails(jobId){
+ const detailRequest=++detailGeneration;
+ $("run-detail").hidden=false;$("detail-body").replaceChildren();setText("detail-note","Validating saved POWER REF evidence…");setText("detail-context","");
+ try{
+  const data=await api("/api/run-details",{job_id:jobId});if(detailRequest!==detailGeneration)return;
+  setText("detail-note",`${data.report_attempt?"Report attempt; original measurement":"Measurement"} ${data.source_job_id}. Capture SHA-256: ${data.source_inventory_sha256}.`);
+  $("detail-body").replaceChildren(...data.workflows.map(row=>{const tr=node("tr"),label=node("td",`${row.workflow} · ${row.mode} · ${row.execution}`),identity=node("small",`Capture ${row.run_id.slice(0,8)}`);identity.title=row.run_id;label.append(identity);tr.append(label,node("td",metric(row.metrics.zero_W,1e6)),node("td",metric(row.metrics.mean_W,1e3)),node("td",String(row.metrics.valid_plateau)));return tr;}));
+  setText("detail-context",data.workflows.map(row=>`${row.workflow}: meter ${row.meter_serial||"not recorded"}; sensor ${row.sensor_serial||"not recorded"}.`).join(" ")+` ${data.not_captured.length?"Not captured: "+data.not_captured.join(", ")+". ":""}Original front-panel confirmation: ${data.front_panel_confirmation?"recorded at "+data.front_panel_confirmation.confirmed_utc:"not recorded"}.`);
+ }catch(exc){if(detailRequest===detailGeneration)setText("detail-note","Saved capture could not be verified: "+exc.message);}
+}
+$("history-refresh").addEventListener("click",()=>loadHistory());
+$("history-filter").addEventListener("change",()=>{historyOffset=0;loadHistory();});
+$("history-prev").addEventListener("click",()=>{historyOffset=Math.max(0,historyOffset-20);loadHistory();});
+$("history-next").addEventListener("click",()=>{historyOffset+=20;loadHistory();});
+$("comparison-workflow").addEventListener("change",()=>{$("comparison").hidden=true;});
+$("compare-runs").addEventListener("click",async()=>{
+ if($("compare-runs").disabled)return;comparisonBusy=true;updateComparisonSelection();$("comparison").hidden=false;$("comparison-body").replaceChildren();$("comparison-table").hidden=false;setText("comparison-caption",$("comparison-workflow").value+" · verifying saved measurements");setText("comparison-note","Validating selected captures…");
+ try{
+  const result=await api("/api/run-comparison",{job_ids:[...historySelection],workflow:$("comparison-workflow").value});setText("comparison-caption",`${result.workflow} · sensor-input measurements; changes relative to first selected run`);
+  setText("comparison-note",result.verdict+". "+result.notes.map(note=>note.replace(/\.$/," ").trim()).join("; ")+". "+(result.changes_available?"":" Mean changes withheld because recorded conditions, completeness, or metadata differ."));
+  $("comparison-body").replaceChildren(...result.rows.map(row=>{const tr=node("tr");tr.append(node("td",`${row.job_id.slice(0,8)} · ${row.mode} · ${row.execution} · ${new Date(row.started_utc).toLocaleString()}`),node("td",metric(row.metrics.zero_W,1e6)),node("td",metric(row.metrics.mean_W,1e3)),node("td",metric(row.mean_change_W,1e6)),node("td",metric(row.metrics.endpoint_change_percent,1)),node("td",metric(row.metrics.cycle_spread_W,1e6)),node("td",`Meter ${row.meter_serial||"unknown"}; sensor ${row.sensor_serial||"unknown"}. `+(row.flags.join("; ")||"Recorded context matches first selection")));return tr;}));
+ }catch(exc){$("comparison-table").hidden=true;setText("comparison-note","Comparison unavailable: "+exc.message);}
+ finally{comparisonBusy=false;updateComparisonSelection();}
 });

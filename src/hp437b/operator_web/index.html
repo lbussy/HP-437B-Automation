@@ -74,7 +74,18 @@
 <p id="recovery-status" role="status" aria-live="polite"></p><div class="report-actions"><a id="recovery-pdf" class="primary link-button" target="_blank" rel="noopener" hidden>Open regenerated PDF</a><a id="recovery-package" class="secondary link-button" hidden>Download regenerated package</a></div>
 <button id="recover-report" class="secondary" type="button" disabled>Regenerate PDF &amp; package</button>
 </section>
-<section class="history" id="history" hidden><h2>Recent runs</h2><div class="table-scroll"><table><thead><tr><th>DUT / source</th><th>Started</th><th>Outcome</th><th>Report</th></tr></thead><tbody id="history-body"></tbody></table></div></section>
+<section class="history" id="history" aria-labelledby="history-title">
+<h2 id="history-title">Saved run history</h2>
+<p class="hint">Browse saved measurements and separate report attempts. POWER REF details and comparisons are read from verified captures; no new measurement starts here.</p>
+<div class="history-tools"><div class="field"><label for="history-filter">Show saved runs</label><select id="history-filter"><option value="all">Measurements and report attempts</option><option value="measurements">Measurements only</option><option value="reports">Report regenerations only</option></select></div><button id="history-refresh" class="secondary" type="button">Refresh history</button></div>
+<p id="history-note" role="status" class="hint"></p>
+<div class="table-scroll" tabindex="0" aria-label="Scrollable saved-run table"><table><caption>Saved runs — select two to four POWER REF measurements to compare</caption><thead><tr><th scope="col">Select</th><th scope="col">Run / source</th><th scope="col">Started</th><th scope="col">Outcome</th><th scope="col">Reports and details</th></tr></thead><tbody id="history-body"></tbody></table></div>
+<p class="hint">On narrow screens, scroll tables sideways to see every column.</p>
+<div class="report-actions"><button id="history-prev" class="secondary" type="button" disabled>Previous page</button><button id="history-next" class="secondary" type="button" disabled>Next page</button></div>
+<div id="run-detail" class="saved-detail" hidden><h3>Verified POWER REF details</h3><p id="detail-note" class="hint"></p><div class="table-scroll" tabindex="0" aria-label="Scrollable verified measurement details"><table><caption>Recorded sensor-input measurements</caption><thead><tr><th>Workflow / result</th><th>Pre-RF zero (µW)</th><th>Mean (mW)</th><th>Plateau readings</th></tr></thead><tbody id="detail-body"></tbody></table></div><p id="detail-context" class="hint"></p></div>
+<div class="saved-detail"><h3>Compare POWER REF measurements</h3><p id="comparison-selection" class="hint">Select two to four measurements above. Report regenerations cannot be compared as new measurements.</p><div class="history-tools"><div class="field"><label for="comparison-workflow">Workflow to compare</label><select id="comparison-workflow"><option value="WF-01">WF-01 · Output and baseline</option><option value="WF-02">WF-02 · Sustained stability</option><option value="WF-03">WF-03 · Cycle repeatability</option></select></div><button id="compare-runs" class="secondary" type="button" disabled>Compare selected runs</button></div>
+<div id="comparison" hidden><p id="comparison-note" role="status"></p><div id="comparison-table" class="table-scroll" tabindex="0" aria-label="Scrollable measurement comparison"><table><caption id="comparison-caption">Verified comparison</caption><thead><tr><th>Measurement</th><th>Zero (µW)</th><th>Mean (mW)</th><th>Mean change (µW)</th><th>Endpoint change (%)</th><th>Cycle spread (µW)</th><th>Context</th></tr></thead><tbody id="comparison-body"></tbody></table></div></div></div>
+</section>
 <footer>Human-started tests. Deterministic reports. Original evidence stays with each run.</footer>
 </main>
 </body>

@@ -710,6 +710,116 @@ class Jobs:
                 ),
             )
 
+    def history(self, offset=0, category="all"):
+        p.require(type(offset) is int and offset >= 0, "Invalid history offset")
+        p.require(category in ("all", "measurements", "reports"), "Invalid history filter")
+        with self.mutex:
+            self._reap()
+            entries, issues = [], []
+            for path in self.root.iterdir():
+                if not path.is_dir() or not ID.fullmatch(path.name):
+                    continue
+                try:
+                    job = self.get(path.name)
+                    report = job["mode"] == "report_recovery"
+                    if (
+                        category == "reports"
+                        and not report
+                        or category == "measurements"
+                        and report
+                    ):
+                        continue
+                    entries.append(
+                        {
+                            key: job[key]
+                            for key in (
+                                "job_id",
+                                "source_job_id",
+                                "mode",
+                                "meter_mode",
+                                "profile_name",
+                                "started_utc",
+                                "phase",
+                                "outcome",
+                                "workflows",
+                                "pdf_ready",
+                                "package_ready",
+                                "report_recovery_available",
+                            )
+                        }
+                    )
+                except (ValueError, KeyError, TypeError, OSError):
+                    issues.append(path.name)
+            entries.sort(key=lambda entry: (entry["started_utc"], entry["job_id"]), reverse=True)
+            return dict(
+                entries=entries[offset : offset + 20],
+                total=len(entries),
+                offset=offset,
+                unreadable_jobs=issues,
+            )
+
+    def run_details(self, job_id):
+        from . import run_history
+
+        with self.mutex:
+            self._reap()
+            job = self.get(job_id)
+            source_id = job["source_job_id"] if job["mode"] == "report_recovery" else job_id
+            source = self._path(source_id)
+            source_job = self.get(source_id)
+            p.require(
+                not source_job["active"] and source_job["phase"] not in ACTIVE,
+                "Wait for the source worker to close before inspecting measurements",
+            )
+            request = read(source / "request.json")
+            p.require(
+                request.get("mode") in ("physical", "reference_suite"),
+                "POWER REF details are available for individual and combined POWER REF captures",
+            )
+            detail = run_history.details(source, request)
+            confirmation = source / "operator-confirmation.json"
+            value = read(confirmation) if confirmation.exists() else None
+            if value:
+                p.require(
+                    value.get("schema") == "hp437b.operator-front-panel.v1"
+                    and value.get("job_id") == source_id
+                    and all(
+                        value.get(k) is True for k in ("live_readings", "rmt_off", "power_ref_off")
+                    ),
+                    "Invalid original front-panel attestation",
+                )
+                p.require(
+                    value.get("capture_inventory_sha256") == detail["source_inventory_sha256"],
+                    "Front-panel confirmation is bound to different evidence",
+                )
+            return dict(
+                job_id=job_id,
+                source_job_id=source_id,
+                report_attempt=job["mode"] == "report_recovery",
+                front_panel_confirmation=value,
+                **detail,
+            )
+
+    def compare_runs(self, job_ids, workflow):
+        from . import run_history
+
+        p.require(
+            isinstance(job_ids, list)
+            and 2 <= len(job_ids) <= 4
+            and all(isinstance(x, str) and ID.fullmatch(x) for x in job_ids)
+            and len(set(job_ids)) == len(job_ids),
+            "Choose two to four distinct measurement runs",
+        )
+        with self.mutex:
+            entries = []
+            for job_id in job_ids:
+                p.require(
+                    self.get(job_id)["mode"] in ("physical", "reference_suite"),
+                    "Select measurements, not report-regeneration attempts",
+                )
+                entries.append((job_id, self.run_details(job_id)))
+            return run_history.compare(entries, workflow)
+
     def cancel(self, job_id):
         with self.mutex:
             self._reap()

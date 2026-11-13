@@ -209,6 +209,20 @@ def server(manager, port=8765):
                         ),
                     )
                     return
+                if path == "/api/run-history":
+                    p._keys(body, ("offset", "category"))
+                    self._send(200, r.encoded(manager.history(body["offset"], body["category"])))
+                    return
+                if path == "/api/run-details":
+                    p._keys(body, ("job_id",))
+                    self._send(200, r.encoded(manager.run_details(body["job_id"])))
+                    return
+                if path == "/api/run-comparison":
+                    p._keys(body, ("job_ids", "workflow"))
+                    self._send(
+                        200, r.encoded(manager.compare_runs(body["job_ids"], body["workflow"]))
+                    )
+                    return
                 if path == "/api/report-recovery":
                     p._keys(body, ("source_job_id",))
                     self._send(202, r.encoded(manager.regenerate_reports(body["source_job_id"])))
