@@ -1,6 +1,6 @@
 # REF-SUITE-01: Reusable POWER REF suite
 
-Status: implemented locally, with simulated browser execution and injected native-runner verification. The combined current-Mac physical suite remains a separate supervised bench exercise. Existing individual WF-01–WF-03 bench records retain their original scope. Ordinary logger, instrument, transport, CLI, physical runner source, and dependency pins are unchanged.
+Status: implemented and tested offline; [combined current-Mac browser execution passed](../validation/REF-SUITE-20261113.md), including 3/3 workflows, 2,395 valid readings, report/audit, and separate owner final-state confirmation. Existing individual WF-01–WF-03 records retain their original scope. Ordinary logger, instrument, transport, CLI, physical runner source, and dependency pins are unchanged.
 
 ## Operator flow
 
