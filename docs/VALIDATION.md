@@ -207,7 +207,7 @@ This establishes local offline PDF/package software behavior. It adds no hardwar
 
 ## Local operator interface — November 12, 2026
 
-[OPERATOR-UI-01](workflows/OPERATOR-UI-V1.md) is implemented locally, following the owner's confirmed single-user, loopback-only, fake-only scope. It reuses profiles, native suite capture, provenance, and PDF/ZIP delivery. The only suite change is an opt-in progress observer at existing workflow boundaries. Normal logger/instrument/transport, the main CLI, physical runners, and base dependency pins remain unchanged. No hardware, USB/VISA resource, RF source, SSH host, or AI provider was accessed. Local implementation checks passed; delivery and CI verification are in progress.
+[OPERATOR-UI-01](workflows/OPERATOR-UI-V1.md) is implemented locally, following the owner's confirmed single-user, loopback-only, fake-only scope. It reuses profiles, native suite capture, provenance, and PDF/ZIP delivery. The only suite change is an opt-in progress observer at existing workflow boundaries. Normal logger/instrument/transport, the main CLI, physical runners, and base dependency pins remain unchanged. No hardware, USB/VISA resource, RF source, SSH host, or AI provider was accessed. Delivered to `devel` in `72b6f12` with Linux test correction `970f7b6`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43421149047).
 
 Local ignored evidence: `tmp/operator01/`, `.impeccable/review/`, and `output/reports/operator-ui-demo/`.
 
@@ -219,4 +219,4 @@ Local ignored evidence: `tmp/operator01/`, `.impeccable/review/`, and `output/re
 
 This establishes the local fake operator path. It does not qualify physical transmitter/supply controls, remote/multiuser deployment, Windows file locking, or unattended hardware recovery. Existing physical workflows and named Mac/Pi evidence retain their separate scope.
 
-CI follow-up on November 13, 2026: the initial Linux Python 3.11 software job exposed an oversized-request test race. The service correctly rejected Content-Length before consuming the body, while the client was still sending and reported a broken pipe. The test now sends an oversized declared length with a small body and asserts the exact rejection, plus a separate fully consumed profile-size rejection. No service or logging behavior changed. Delivery verification remains in progress.
+CI follow-up on November 13, 2026: the initial Linux Python 3.11 software job exposed an oversized-request test race. The service correctly rejected Content-Length before consuming the body, while the client was still sending and reported a broken pipe. The test now sends an oversized declared length with a small body and asserts the exact rejection, plus a separate fully consumed profile-size rejection. No service or logging behavior changed. All 14 focused local checks then passed, followed by all four CI jobs on `970f7b6` (linked above).

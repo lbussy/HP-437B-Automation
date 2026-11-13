@@ -1,6 +1,6 @@
 # OPERATOR-UI-01: Local operator interface, v1
 
-Status: implemented and locally exercised; delivery and CI verification in progress. This single-user browser interface uses the existing [profiles](DUT-TEST-PROFILES-V1.md), [suite runner](TEST-SUITES-V1.md), and [PDF/portable delivery](PDF-EXPORT-V1.md). The owner confirmed a loopback-only Python service, the existing reports' clean style, and **fakes only** for this first interface. Normal logging, physical runners, the main CLI, and base dependency pins remain unchanged.
+Status: delivered (fake-only). Delivered to `devel` in `72b6f12` with Linux test correction `970f7b6`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43421149047). This single-user browser interface uses the existing [profiles](DUT-TEST-PROFILES-V1.md), [suite runner](TEST-SUITES-V1.md), and [PDF/portable delivery](PDF-EXPORT-V1.md). The owner confirmed a loopback-only Python service, the existing reports' clean style, and **fakes only** for this first interface. Normal logging, physical runners, the main CLI, and base dependency pins remain unchanged.
 
 ## Launch
 
