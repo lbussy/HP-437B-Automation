@@ -15,11 +15,11 @@ Automatic radio/supply drivers are optional; the existing operator-guided path p
 
 ## Optional enhancements and requested investigations
 
-These are separate from completion of the current deliverable. The owner requested a review of recovery and command expansion on November 13; that request does not mark implementation or physical fault trials as started.
+These are separate from completion of the current deliverable. The owner requested these investigations on November 13 and subsequently authorized fake recovery work. The first recovery investigation is recorded below; command expansion and physical fault trials have not started.
 
 | Existing scope | Current status and bounded opportunity |
 | --- | --- |
-| PI-RECOVER-01: Broader/unattended recovery | ▧ Investigation requested. The integrated failed-read shutdown and fresh-session route already passed on Mac and Pi. Review bounded orchestration after faults using fakes first; distinguish restoring communication from resuming a test. Already-wedged repair and unattended continuation remain unqualified |
+| PI-RECOVER-01: Broader/unattended recovery | ⏳ Fake investigation started. [22 new cases and 136 related tests passed](validation/UNATTENDED-RECOVERY-FAKES.md): failed-run preservation, fresh sessions, source-on refusal, access failures, and service restart. Existing Mac/Pi shutdown evidence remains accepted. No production reconnection/resumption added; bounded reconciliation supervision is a candidate next experiment, and already-wedged repair/unattended hardware continuation remain unqualified |
 | Broader command/bus support | ▧ Investigation requested. Use the existing inventory/coverage matrix to select useful commands, resolve framing and parameter ambiguities, and separate software tests from physical evidence. Full command coverage is not a release requirement |
 | DUT-CTRL-01 physical drivers | ▧ Optional. Implement only for a selected transmitter/supply; fake controls are complete, and manual operation remains supported |
 
