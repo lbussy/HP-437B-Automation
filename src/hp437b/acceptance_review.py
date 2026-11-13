@@ -22,6 +22,8 @@ from .workflow_report import _seal
 SCHEMA = "hp437b.acceptance-criteria.v1"
 REPORT_SCHEMA = "hp437b.acceptance-report.v1"
 RULE = "inclusive-no-guard-band"
+LEGACY_COVERAGE = "receipt-window-v1"
+COVERAGE_POLICY = "acquisition-start-v2"
 BASE = ("mean_min_mW", "mean_max_mW", "min_valid_samples", "max_gap_s")
 FIELDS = {
     "WF-01": BASE,
@@ -149,7 +151,7 @@ def collect(source, workflow=None):
     )
 
 
-def coverage(row, kind, limits):
+def _legacy_coverage(row, kind, limits):
     native, result = row["native"], row["results"]
     minimum, gap = limits.get("min_valid_samples"), limits.get("max_gap_s")
     if native["status"] != "completed":
@@ -207,7 +209,101 @@ def coverage(row, kind, limits):
     ), "Required coverage satisfied" if good else "Required coverage was not satisfied"
 
 
-def evaluate(data, criteria):
+def _window_coverage(points, duration, timeout, minimum, max_gap):
+    """Assess the logger's start-window contract, including its bounded final read."""
+    times = [Decimal(str(x["elapsed_s"])) for x in points if x["status"] == "ok"]
+    if len(times) != len(points):
+        return False, "Window contains failed or invalid readings"
+    if len(times) < minimum:
+        return False, f"Only {len(times)} valid readings; minimum {minimum} required"
+    if (
+        not times
+        or any(t < 0 for t in times)
+        or any(b < a for a, b in zip(times, times[1:], strict=False))
+    ):
+        return False, "Window receipt times are unavailable or invalid"
+    late = [t for t in times if t > duration]
+    if late and (len(late) != 1 or any(t >= duration for t in times[:-1])):
+        return False, "More than the final acquisition extends beyond the start window"
+    if late and (timeout is None or timeout <= 0):
+        return False, "Recorded final-acquisition timeout is unavailable"
+    if late and times[-1] > duration + timeout:
+        return False, "Final acquisition exceeds the recorded timeout beyond the start window"
+    largest = max(
+        [
+            times[0],
+            max(Decimal(0), duration - times[-1]),
+            *[b - a for a, b in zip(times, times[1:], strict=False)],
+        ]
+    )
+    if largest > max_gap:
+        return False, f"Maximum receipt gap {largest} s exceeds supplied {max_gap} s"
+    note = (
+        f"Final acquisition completed {times[-1] - duration} s after the start window, within its recorded {timeout} s timeout"
+        if late
+        else "Acquisition-start window coverage satisfied"
+    )
+    return True, note
+
+
+def coverage(row, kind, limits, policy=COVERAGE_POLICY):
+    if policy == LEGACY_COVERAGE:
+        return _legacy_coverage(row, kind, limits)
+    p.require(policy == COVERAGE_POLICY, "Unsupported assessment coverage policy")
+    native, result = row["native"], row["results"]
+    minimum, gap = limits.get("min_valid_samples"), limits.get("max_gap_s")
+    if native["status"] != "completed":
+        return False, "Capture did not complete"
+    if row["metrics"].get("zero_W") is None:
+        return False, "Pre-RF zero is unavailable"
+    if minimum is None or gap is None:
+        return False, "Specify minimum valid samples and maximum gap before applying limits"
+    profile = native["profile"]
+    timeout = Decimal(str(profile["timeout_s"])) if profile.get("timeout_s") is not None else None
+    max_gap = Decimal(gap)
+    if kind == "WF-01":
+        stage = result["stages"].get("S40", {})
+        if stage.get("outcome") != "completed":
+            return False, "Plateau did not complete"
+        duration = profile.get("duration_s", profile.get("sustained_duration_s"))
+        if duration is None:
+            return False, "Recorded plateau duration is unavailable"
+        return _window_coverage(
+            stage.get("points", []), Decimal(str(duration)), timeout, minimum, max_gap
+        )
+    if kind == "WF-02":
+        if result["coverage"]["nonvalid"]:
+            return False, "Plateau contains failed or invalid readings"
+        if not all(x["count"] >= minimum for x in result["bins"]):
+            return False, f"At least one fixed-time bin has fewer than {minimum} valid readings"
+        return _window_coverage(
+            result["stages"].get("plateau", {}).get("points", []),
+            Decimal(str(profile["duration_s"])),
+            timeout,
+            1,
+            max_gap,
+        )
+    if result["completed_cycles"] != result["requested_cycles"]:
+        return False, "Not all requested cycles completed"
+    notes = []
+    for cycle in result["cycles"]:
+        if not cycle["included_in_aggregate"]:
+            return False, cycle["cycle_id"] + ": Cycle is incomplete"
+        good, reason = _window_coverage(
+            cycle.get("points", []), Decimal(str(profile["plateau_s"])), timeout, minimum, max_gap
+        )
+        if not good:
+            return False, cycle["cycle_id"] + ": " + reason
+        if reason.startswith("Final acquisition"):
+            notes.append(cycle["cycle_id"] + ": " + reason)
+    return True, "; ".join(notes) if notes else "All acquisition-start cycle windows satisfied"
+
+
+def evaluate(data, criteria, *, coverage_policy=COVERAGE_POLICY):
+    p.require(
+        coverage_policy in (LEGACY_COVERAGE, COVERAGE_POLICY),
+        "Unsupported assessment coverage policy",
+    )
     criteria = validate(criteria)
     p.require(
         set(criteria["workflows"]) <= set(data["workflows"]),
@@ -222,7 +318,9 @@ def evaluate(data, criteria):
             metrics = row["metrics"] if row else dict(zero_W=None, mean_W=None)
             applicable = [k for k in PERFORMANCE if limits.get(k) is not None]
             good, reason = (
-                coverage(row, kind, limits) if row else (False, "Workflow was not captured")
+                coverage(row, kind, limits, coverage_policy)
+                if row
+                else (False, "Workflow was not captured")
             )
             if not applicable:
                 good, reason = False, "No performance limits supplied"
@@ -299,7 +397,7 @@ def evaluate(data, criteria):
             else "Not evaluated"
         )
     )
-    return dict(
+    result = dict(
         schema="hp437b.acceptance-results.v1",
         run_id=data["run_id"],
         mode=data["mode"],
@@ -310,6 +408,9 @@ def evaluate(data, criteria):
         outcome=outcome,
         workflows=rows,
     )
+    if coverage_policy != LEGACY_COVERAGE:
+        result["coverage_policy"] = coverage_policy
+    return result
 
 
 def provenance(data, meta):
@@ -324,6 +425,8 @@ def provenance(data, meta):
         criteria_sha256=meta["criteria_sha256"],
         timing="post_capture",
     )
+    if "coverage_policy" in meta:
+        value["coverage_policy"] = meta["coverage_policy"]
     if "test_profile" in meta:
         value["test_profile"] = meta["test_profile"]
     return value
@@ -338,7 +441,11 @@ def validate_pair(source, output):
         "Invalid assessment metadata",
     )
     data = collect(source, meta["source_workflow"])
-    result = evaluate(data, bundle.json("criteria.json"))
+    result = evaluate(
+        data,
+        bundle.json("criteria.json"),
+        coverage_policy=meta.get("coverage_policy", LEGACY_COVERAGE),
+    )
     if "test_profile" in meta:
         from . import reference_profiles
 
@@ -383,6 +490,7 @@ def publish(
         producer = report_identity.identify()
         meta = dict(
             schema=REPORT_SCHEMA,
+            coverage_policy=COVERAGE_POLICY,
             run_id=data["run_id"],
             mode=data["mode"],
             assessment_id=str(uuid.uuid4()),
@@ -460,6 +568,7 @@ def publish(
             )
         notes = [
             "Post-capture decision; original reports and measurements are unchanged.",
+            "Coverage: acquisition-start-v2; a final read may finish within its recorded timeout after the start window.",
             "Inclusive boundaries; no uncertainty guard band. No accuracy, calibration, or compliance verdict.",
         ]
         for item in result["workflows"]:

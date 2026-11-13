@@ -36,14 +36,15 @@ def test_native_equality_failure_and_original_preservation(manager, source):
     bounds = criteria(kind, mean_min_mW=mean, mean_max_mW=mean)
     result = a.evaluate(data, bounds)
     # The existing WF-03 injected fixture records one receipt just beyond the window.
-    # A completed acquisition must still be withheld by the coverage gate.
-    expected = "Not evaluated" if kind == "WF-03" else "Pass"
+    # Its bounded final acquisition is valid under the corrected start-window contract.
+    expected = "Pass"
+    legacy = a.evaluate(data, bounds, coverage_policy=a.LEGACY_COVERAGE)
+    assert legacy["outcome"] == ("Not evaluated" if kind == "WF-03" else "Pass")
+    assert "coverage_policy" not in legacy
     if kind == "WF-03":
         assert data["rows"][kind]["results"]["cycles"][0]["receipts_after_window"] == 1
     assert result["outcome"] == expected
-    assert a.evaluate(data, criteria(kind, mean_max_mW="0"))["outcome"] == (
-        "Not evaluated" if kind == "WF-03" else "Fail"
-    )
+    assert a.evaluate(data, criteria(kind, mean_max_mW="0"))["outcome"] == "Fail"
     assert (
         a.evaluate(data, dict(schema=a.SCHEMA, source=None, decision_rule=a.RULE, workflows={}))[
             "outcome"
@@ -218,9 +219,7 @@ def test_http_assessment_and_no_path_or_hardware_input(manager, source):
         with request("/api/acceptance-review", body) as response:
             started = json.loads(response.read())
         result = ui_tests.wait(manager, started["job_id"])
-        assert result["phase"] == "finished" and result["assessment_outcome"] == (
-            "Not evaluated" if kind == "WF-03" else "Fail"
-        )
+        assert result["phase"] == "finished" and result["assessment_outcome"] == "Fail"
     finally:
         try:
             next(generator)
@@ -263,3 +262,72 @@ def test_small_scientific_limits_remain_bounded():
     assert spec["workflows"]["WF-01"]["mean_min_mW"] == "1E-100000000"
     assert len(r.encoded(spec)) < 1024
     assert a.validate(spec) == spec
+
+
+@pytest.mark.parametrize(
+    "times,timeout,minimum,gap,expected,reason",
+    [
+        ([0, 299, 300], 10, 3, 300, True, "coverage satisfied"),
+        ([0, 299, 300.123], 10, 3, 300, True, "Final acquisition completed"),
+        ([0, 299, 310], 10, 3, 300, True, "Final acquisition completed"),
+        ([0, 299, 310.001], 10, 3, 300, False, "recorded timeout"),
+        ([0, 300, 300.1], 10, 3, 300, False, "More than the final"),
+        ([0, 300.1, 300.2], 10, 3, 300, False, "More than the final"),
+        ([0, 299, 300.123], None, 3, 300, False, "timeout is unavailable"),
+        ([0, 299, 300.123], 0, 3, 300, False, "timeout is unavailable"),
+        ([0, 299, 300.123], 10, 4, 300, False, "minimum 4"),
+        ([0, 299, 300.123], 10, 3, 2, False, "Maximum receipt gap"),
+        ([-1, 299, 300.123], 10, 3, 300, False, "invalid"),
+        ([0, 299, 298], 10, 3, 300, False, "invalid"),
+        ([], 10, 1, 300, False, "minimum 1"),
+    ],
+)
+def test_acquisition_start_window_and_real_coverage_failures(
+    times, timeout, minimum, gap, expected, reason
+):
+    points = [dict(elapsed_s=t, status="ok") for t in times]
+    good, detail = a._window_coverage(
+        points,
+        Decimal(300),
+        Decimal(timeout) if timeout is not None else None,
+        minimum,
+        Decimal(gap),
+    )
+    assert good is expected and reason in detail
+
+
+def test_failed_read_is_not_excused_by_final_acquisition_policy():
+    points = [dict(elapsed_s=0, status="ok"), dict(elapsed_s=300.123, status="failed")]
+    good, reason = a._window_coverage(points, Decimal(300), Decimal(10), 1, Decimal(500))
+    assert not good and "failed or invalid" in reason
+
+
+def test_legacy_sealed_assessment_still_verifies_and_new_policy_is_bound(
+    manager, source, monkeypatch
+):
+    from hp437b.workflow_report import _seal
+
+    kind = jobs.read(source / "request.json")["workflows"][0]
+    spec = criteria(kind, mean_min_mW="0")
+    job = ui_tests.wait(manager, manager.assess_run(source.name, spec, None)["job_id"])
+    output = manager.root / job["job_id"] / "report"
+    meta = jobs.read(output / "metadata.json")
+    assert meta["coverage_policy"] == a.COVERAGE_POLICY
+    data = a.collect(source / "capture", kind)
+    assert a.validate_pair(source / "capture", output)
+    # Reconstruct the prior release's metadata/results to exercise legacy verification.
+    meta.pop("coverage_policy")
+    (output / "metadata.json").write_bytes(r.encoded(meta))
+    (output / "results.json").write_bytes(
+        r.encoded(a.evaluate(data, spec, coverage_policy=a.LEGACY_COVERAGE))
+    )
+    (output / "provenance.json").write_bytes(r.encoded(a.provenance(data, meta)))
+    (output / "artifacts.json").unlink()
+    _seal(output, meta)
+    assert a.validate_pair(source / "capture", output)
+    meta["coverage_policy"] = "unknown"
+    (output / "metadata.json").write_bytes(r.encoded(meta))
+    (output / "artifacts.json").unlink()
+    _seal(output, meta)
+    with pytest.raises(ValueError, match="coverage policy"):
+        a.validate_pair(source / "capture", output)
