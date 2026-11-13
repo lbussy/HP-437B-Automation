@@ -313,6 +313,28 @@ def csv_bytes(rows):
     return stream.getvalue().encode()
 
 
+def validate_suite_context(context):
+    p._keys(context, ("schema", "suite_id", "index", "initial_hardware"))
+    p.require(context["schema"] == "hp437b.suite-context.v1", "Invalid suite context schema")
+    uuid.UUID(context["suite_id"])
+    p.require(type(context["index"]) is int and 1 <= context["index"] <= 3, "Invalid suite index")
+    state = context["initial_hardware"]
+    p._keys(state, ("rf", "frequency", "setting", "voltage", "current", "meter_factor_percent"))
+    p.require(
+        type(state["rf"]) is bool
+        and type(state["frequency"]) is int
+        and 0 <= state["frequency"] <= 4200000000,
+        "Invalid suite fake state",
+    )
+    module("WF-04").text(state["setting"])
+    p.require(
+        0 <= r.number(state["voltage"]) <= 1000
+        and 0 < r.number(state["current"]) <= 100
+        and 1 <= r.number(state["meter_factor_percent"]) <= 150,
+        "Invalid suite fake numeric state",
+    )
+
+
 def run(
     kind,
     output,
@@ -326,6 +348,10 @@ def run(
     fault=None,
     fault_point=None,
     stop_before=None,
+    test_profile=None,
+    suite_context=None,
+    hardware=None,
+    epoch=None,
 ):
     w = module(kind)
     p.require(scenario in w.SCENARIOS, "Unknown workflow scenario")
@@ -353,11 +379,36 @@ def run(
             point,
             factor_fault=fault == "factor-mismatch" and point["point_id"] == fault_point,
         )
+    if test_profile is not None:
+        from . import test_profiles
+
+        entry = test_profiles.validate_binding(test_profile, kind)
+        p.require(
+            entry["plan"] == plan
+            and entry["criteria"] == criteria
+            and test_profile["operator"]["value"] == operator,
+            "Profile differs from requested capture",
+        )
+        p.require(scenario == "nominal", "Profile plans require nominal scenario")
+    if suite_context is not None:
+        validate_suite_context(suite_context)
+        p.require(
+            test_profile is not None
+            and type(hardware) is f.Hardware
+            and hardware.snapshot() == suite_context["initial_hardware"],
+            "Suite requires a bound profile and matching in-memory hardware",
+        )
+        p.require(
+            isinstance(epoch, datetime) and epoch.utcoffset() is not None,
+            "Suite requires a UTC timeline",
+        )
+    else:
+        p.require(hardware is None and epoch is None, "Shared state requires suite context")
     output = Path(output).resolve()
     p.require(not output.exists() and not p.sidecar_path(output).exists(), "Capture output exists")
     if report_output is not None:
         preflight(output, report_output, plots=plots)
-    started = datetime.now(UTC)
+    started = epoch if suite_context is not None else datetime.now(UTC)
     record = dict(
         schema=SCHEMA,
         backend=BACKEND,
@@ -383,10 +434,17 @@ def run(
         final_state=None,
         control_summary=None,
     )
+    if suite_context is not None:
+        record["suite_context"] = p._json(r.encoded(suite_context))
+    if test_profile is not None:
+        record["test_profile"] = dict(
+            path="test-profile.json", sha256=r.digest(r.encoded(test_profile))
+        )
     output.mkdir(parents=True, exist_ok=False)
+    if test_profile is not None:
+        (output / "test-profile.json").write_bytes(r.encoded(test_profile))
     (output / "points").mkdir()
     (output / "starting.json").write_bytes(r.encoded(record))
-    hardware = None
     epoch = started
     children = []
     for point in plan["points"]:
@@ -505,7 +563,37 @@ def load(kind, source):
         "final_state",
         "control_summary",
     )
-    p._keys(record, base_keys + (("setup", "restoration") if kind == "WF-06" else ()))
+    p._keys(
+        record,
+        base_keys
+        + (("setup", "restoration") if kind == "WF-06" else ())
+        + (("test_profile",) if "test_profile" in record else ())
+        + (("suite_context",) if "suite_context" in record else ()),
+    )
+    if "suite_context" in record:
+        validate_suite_context(record["suite_context"])
+        p.require("test_profile" in record, "Suite child requires a profile binding")
+    if "test_profile" in record:
+        from . import test_profiles
+
+        ref = record["test_profile"]
+        p._keys(ref, ("path", "sha256"))
+        p.require(
+            ref["path"] == "test-profile.json"
+            and ref["sha256"] == r.digest(bundle.read(ref["path"])),
+            "Profile binding file/hash mismatch",
+        )
+        binding = bundle.json(ref["path"])
+        entry = test_profiles.validate_binding(binding, kind)
+        p.require(
+            entry["plan"] == record["plan"]
+            and entry["criteria"] == record["criteria"]
+            and binding["operator"]["value"] == record["operator"]
+            and record["scenario"] == "nominal",
+            "Saved profile differs from capture",
+        )
+    else:
+        p.require("test-profile.json" not in bundle.entries, "Unbound profile snapshot")
     p.require(
         isinstance(record["children"], list) and len(record["children"]) <= len(ids),
         "Invalid child count",
@@ -557,6 +645,7 @@ def load(kind, source):
                 session_ids.add(sid)
         expected = (
             last_state
+            or record.get("suite_context", {}).get("initial_hardware")
             or f.Hardware(
                 False,
                 1000000,
@@ -654,6 +743,19 @@ def augment_provenance(record, bundle, legacy):
         basis="supplied",
         refs=[dict(evidence_id="workflow.json", pointer="/children")],
     )
+    if "test_profile" in record:
+        binding = bundle.json("test-profile.json")
+        legacy["dut"]["facts"]["profile_identity"] = p.fact(
+            binding["profile"]["dut"],
+            basis="supplied",
+            refs=[dict(evidence_id="test-profile.json", pointer="/profile/dut")],
+        )
+        legacy["run"]["facts"]["test_profile"] = p.fact(
+            binding,
+            basis="supplied",
+            refs=[dict(evidence_id="test-profile.json", pointer="")],
+            note="Validated fake-only profile snapshot; hash detects changes, not authenticity",
+        )
     p.validate(legacy)
     return legacy
 

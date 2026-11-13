@@ -1,0 +1,177 @@
+{
+  "description": "Fictional reusable transmitter example; no physical RF or DUT limits",
+  "dut": {
+    "asset_id": null,
+    "manufacturer": null,
+    "model": null,
+    "name": "Fictional transmitter",
+    "serial": null
+  },
+  "mode": "fake",
+  "operator": null,
+  "profile_id": "fictional-transmitter",
+  "revision": 1,
+  "schema": "hp437b.dut-test-profile.v1",
+  "workflows": {
+    "WF-04": {
+      "criteria": null,
+      "plan": {
+        "fixture_description": "Fictional 30 dB fixture; no physical RF",
+        "frequency_Hz": 50000000,
+        "measurement_plane": "DUT_output",
+        "name": "Fictional transmitter",
+        "points": [
+          {
+            "fixture_loss_dB": "30",
+            "point_id": "P01",
+            "setting": "Low",
+            "simulation_loss_dB": "30",
+            "synthetic_DUT_W": "1",
+            "target_W": "1"
+          },
+          {
+            "fixture_loss_dB": "30",
+            "point_id": "P02",
+            "setting": "Medium",
+            "simulation_loss_dB": "30",
+            "synthetic_DUT_W": "5",
+            "target_W": "5"
+          },
+          {
+            "fixture_loss_dB": "30",
+            "point_id": "P03",
+            "setting": "High",
+            "simulation_loss_dB": "30",
+            "synthetic_DUT_W": "10",
+            "target_W": "10"
+          }
+        ],
+        "schema": "hp437b.power-setting-plan.v1",
+        "signal_mode": "Continuous carrier (synthetic)"
+      }
+    },
+    "WF-05": {
+      "criteria": null,
+      "plan": {
+        "fixture_description": "Fictional frequency-dependent fixture; no physical RF",
+        "measurement_plane": "DUT_output",
+        "name": "Fictional transmitter",
+        "points": [
+          {
+            "factor_applied_in": "analysis",
+            "factor_source": "Fictional sensor table r1; exact point",
+            "fixture_loss_dB": "30",
+            "fixture_source": "Fictional fixture table r1; exact point",
+            "frequency_Hz": 1800000,
+            "point_id": "P01",
+            "sensor_factor_percent": "100",
+            "simulation_loss_dB": "30",
+            "simulation_sensor_factor_percent": "100",
+            "synthetic_DUT_W": "5",
+            "target_W": "5"
+          },
+          {
+            "factor_applied_in": "analysis",
+            "factor_source": "Fictional sensor table r1; exact point",
+            "fixture_loss_dB": "30",
+            "fixture_source": "Fictional fixture table r1; exact point",
+            "frequency_Hz": 3500000,
+            "point_id": "P02",
+            "sensor_factor_percent": "100",
+            "simulation_loss_dB": "30",
+            "simulation_sensor_factor_percent": "100",
+            "synthetic_DUT_W": "5",
+            "target_W": "5"
+          },
+          {
+            "factor_applied_in": "analysis",
+            "factor_source": "Fictional sensor table r1; exact point",
+            "fixture_loss_dB": "30",
+            "fixture_source": "Fictional fixture table r1; exact point",
+            "frequency_Hz": 7000000,
+            "point_id": "P03",
+            "sensor_factor_percent": "100",
+            "simulation_loss_dB": "30",
+            "simulation_sensor_factor_percent": "100",
+            "synthetic_DUT_W": "5",
+            "target_W": "5"
+          },
+          {
+            "factor_applied_in": "analysis",
+            "factor_source": "Fictional sensor table r1; exact point",
+            "fixture_loss_dB": "30",
+            "fixture_source": "Fictional fixture table r1; exact point",
+            "frequency_Hz": 14000000,
+            "point_id": "P04",
+            "sensor_factor_percent": "100",
+            "simulation_loss_dB": "30",
+            "simulation_sensor_factor_percent": "100",
+            "synthetic_DUT_W": "5",
+            "target_W": "5"
+          },
+          {
+            "factor_applied_in": "analysis",
+            "factor_source": "Fictional sensor table r1; exact point",
+            "fixture_loss_dB": "30",
+            "fixture_source": "Fictional fixture table r1; exact point",
+            "frequency_Hz": 28000000,
+            "point_id": "P05",
+            "sensor_factor_percent": "100",
+            "simulation_loss_dB": "30",
+            "simulation_sensor_factor_percent": "100",
+            "synthetic_DUT_W": "5",
+            "target_W": "5"
+          }
+        ],
+        "power_setting": "Nominal output (fixed)",
+        "schema": "hp437b.frequency-sweep-plan.v1",
+        "signal_mode": "Continuous carrier (synthetic)"
+      }
+    },
+    "WF-06": {
+      "criteria": null,
+      "plan": {
+        "fixture_description": "Fictional fixed fixture; no physical RF",
+        "fixture_loss_dB": "30",
+        "fixture_source": "Fictional fixture table r1; fixed frequency",
+        "frequency_Hz": 14000000,
+        "measurement_plane": "DUT_output",
+        "name": "Fictional transmitter",
+        "points": [
+          {
+            "point_id": "P01",
+            "requested_V": "11",
+            "synthetic_DUT_W": "5",
+            "synthetic_observed_V": "11"
+          },
+          {
+            "point_id": "P02",
+            "requested_V": "12",
+            "synthetic_DUT_W": "5",
+            "synthetic_observed_V": "12"
+          },
+          {
+            "point_id": "P03",
+            "requested_V": "13",
+            "synthetic_DUT_W": "5",
+            "synthetic_observed_V": "13"
+          }
+        ],
+        "power_setting": "Nominal output (fixed)",
+        "schema": "hp437b.supply-sensitivity-plan.v1",
+        "signal_mode": "Continuous carrier (synthetic)",
+        "simulation_loss_dB": "30",
+        "supply": {
+          "current_limit_A": "1.5",
+          "maximum_V": "14",
+          "minimum_V": "10",
+          "nominal_V": "12",
+          "nominal_point_id": "P02",
+          "observation_location": "DUT supply terminals (synthetic)",
+          "restore_V": "12",
+          "tolerance_V": "0.1"
+        }
+      }
+    }
+  }
+}

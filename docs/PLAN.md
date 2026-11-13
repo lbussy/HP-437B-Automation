@@ -140,3 +140,11 @@ The report footer places Report Harness before Record. Clean exact semantic-vers
 ## Shared controls for WF-04–WF-06
 
 The [shared-control fake sweeps](workflows/CONTROLLED-SWEEPS-V1.md) now integrate DUT-CTRL-01 into ordered setting, frequency, and supply-voltage runs. Each point uses guarded transmitter/supply/observer operations and production logger capture through explicit fakes, carries shared fake hardware state, verifies shutdown/restoration, and stops on failure. Native point evidence feeds existing analyses, provenance, and reports. Legacy fixture commands and saved bundles remain supported. Delivered to `devel` at `d2f5584`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43337194421). Physical drivers and normal logging remain unchanged.
+
+## Reusable DUT test profiles
+
+[PROFILE-01](workflows/DUT-TEST-PROFILES-V1.md) implements explicit fake-only profiles for supplied DUT identity, operator, existing WF-04–WF-06 plans, and acceptance criteria. Human-started single-workflow runs reuse shared controls and preserve a hashed full profile snapshot in capture/provenance. Existing commands, physical runners, and normal logging remain unchanged. Implementation is complete; delivery and CI are tracked in validation. SUITE-01 now composes selected workflows and summarizes results with explicit stop/cancel behavior, as recorded below; physical drivers and AI automation remain separate.
+
+## Human-started test suites
+
+[SUITE-01](workflows/TEST-SUITES-V1.md) now runs an ordered profile-selected subset of WF-04–WF-06 through one shared fake hardware state, verifies cross-workflow restoration/timing/profile joins, stops after execution/criterion failure or cooperative cancellation, and produces individual reports plus a compact summary. Sealed captures support report-only retries; storage faults retain partial evidence without asserting completion. Local implementation is complete; delivery and CI are tracked in validation. Normal logging, physical runners, and dependencies remain unchanged. Physical drivers and user interfaces are separate future work.
