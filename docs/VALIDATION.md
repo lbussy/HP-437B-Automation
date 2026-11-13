@@ -223,7 +223,7 @@ CI follow-up on November 13, 2026: the initial Linux Python 3.11 software job ex
 
 ## POWER REF operator integration — November 13, 2026
 
-[OPERATOR-REF-01](workflows/OPERATOR-POWER-REF-V1.md) implements the explicitly configured current-Mac WF-01–WF-03 route through the local interface. Ordinary logger/instrument/transport, main CLI, physical runner source, and base dependency pins remain unchanged. No instrument, USB/backend resource, RF source, SSH host, or AI provider was opened during these checks. [Current-Mac WF-01 browser execution passed](validation/OPERATOR-WF01-20261113.md); WF-02/WF-03 browser execution remains pending; integration delivery and CI verification are in progress. Previous command-line bench evidence is separate.
+[OPERATOR-REF-01](workflows/OPERATOR-POWER-REF-V1.md) implements the explicitly configured current-Mac WF-01–WF-03 route through the local interface. Ordinary logger/instrument/transport, main CLI, physical runner source, and base dependency pins remain unchanged. No instrument, USB/backend resource, RF source, SSH host, or AI provider was opened during these checks. [Current-Mac WF-01 browser execution passed](validation/OPERATOR-WF01-20261113.md); WF-02/WF-03 browser execution remains pending. Delivered to `devel` at `80f625d`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43427245573). Previous command-line bench evidence is separate.
 
 Local ignored evidence: `tmp/operator-ref/`, `.impeccable/review/reference-*.png`, and `output/reports/operator-ref-qa/`.
 

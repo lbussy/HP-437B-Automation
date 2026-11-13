@@ -1,6 +1,6 @@
 # OPERATOR-REF-01: POWER REF in the local interface
 
-Status: implemented locally and tested offline; [current-Mac WF-01 browser execution passed](../validation/OPERATOR-WF01-20261113.md), including owner final-state confirmation. WF-02/WF-03 browser execution remains pending; integration delivery and CI verification are in progress. The [local operator interface](OPERATOR-UI-V1.md) now offers the existing supervised current-Mac [WF-01](WF-01-PHYSICAL.md), [WF-02](WF-02-PHYSICAL.md), and [WF-03](WF-03-PHYSICAL.md) runners, alongside the unchanged fake transmitter suites. Normal logging, main CLI, physical runner source, transport, and base dependency pins are unchanged.
+Status: implemented locally and tested offline; [current-Mac WF-01 browser execution passed](../validation/OPERATOR-WF01-20261113.md), including owner final-state confirmation. WF-02/WF-03 browser execution remains pending. Delivered to `devel` at `80f625d`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43427245573). The [local operator interface](OPERATOR-UI-V1.md) now offers the existing supervised current-Mac [WF-01](WF-01-PHYSICAL.md), [WF-02](WF-02-PHYSICAL.md), and [WF-03](WF-03-PHYSICAL.md) runners, alongside the unchanged fake transmitter suites. Normal logging, main CLI, physical runner source, transport, and base dependency pins are unchanged.
 
 ## Enable the selected bench path
 
