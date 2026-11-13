@@ -76,7 +76,13 @@ def _pair(source, report):
     source_inv = _exact_inventory(evidence)
     output = p.Bundle(report)
     report_inv = _exact_inventory(output)
-    if "suite.json" in evidence.entries:
+    if report_inv.get("schema") == "hp437b.reference-suite-report.v1":
+        from . import reference_suite
+
+        run_id = reference_suite.validate_pair(source, report)
+        schema = reference_suite.REPORT_SCHEMA
+        expected = output.json("results.json")
+    elif "suite.json" in evidence.entries:
         from . import test_suite as u
 
         cap, binding, _ = u.load(source)

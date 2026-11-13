@@ -78,7 +78,7 @@ def observing(module, path):
         module["execute"].__globals__["Controller"] = original
 
 
-def supervise(path, request, *, lock_fd=None):
+def supervise(path, request, *, lock_fd=None, extra_fds=()):
     config = request["reference_config"]
     limit = 2100 if request["workflows"] == ["WF-02"] else 900
     command = [config["python"], "-m", "hp437b.operator_reference", "--child", "--job", str(path)]
@@ -94,7 +94,7 @@ def supervise(path, request, *, lock_fd=None):
             stdout=log,
             stderr=subprocess.STDOUT,
             start_new_session=True,
-            pass_fds=(guard.fileno(),) + (() if lock_fd is None else (lock_fd,)),
+            pass_fds=(guard.fileno(),) + (() if lock_fd is None else (lock_fd,)) + extra_fds,
         )
         try:
             try:

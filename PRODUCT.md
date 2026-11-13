@@ -30,6 +30,10 @@ The Python logger, fake transmitter/supply controls, profiles, suites, provenanc
 - PDF and ZIP delivery use existing optional reporting dependencies. Normal logging and base runtime pins remain unchanged.
 - No remote service, external assets, AI provider, credential setup, or physical device discovery. Physical mode uses a trusted checkout, selected USB resource, bench interpreter, and retained equipment setup.
 
+## POWER REF suites
+
+POWER REF suite mode groups selected WF-01–WF-03 captures into one explicit start, shared progress, results, PDF, and portable package. Simulation is the default source; the current-meter source becomes available only when configured at service launch and requires fresh setup confirmation. Simulated time is distinct from elapsed bench time. Bench cancellation waits for the current capture stage and existing cleanup; a separate front-panel confirmation remains required after closure.
+
 ## Operator-guided sweeps
 
 The owner authorized frequency, drive-setting, and combined measurement series on November 13, 2026. Support all 17 requested band labels and at least five drive labels; the implemented limits are 32 frequencies and 16 drive labels. Pause for fresh operator label confirmation before every capture. Use the production meter logger with an explicitly configured bench source, retain a simulated path, and expose equivalent local orchestration actions. Labels are declarations, separate from measured power.

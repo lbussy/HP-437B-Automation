@@ -16,7 +16,7 @@
 <section class="setup" aria-labelledby="setup-title">
 <h2 id="setup-title">Test setup</h2>
 <form id="run-form">
-<div class="field"><label for="mode">Operating mode</label><select id="mode"><option value="synthetic">Simulated transmitter suite</option><option value="guided">Operator-guided radio sweep</option><option value="physical" disabled>POWER REF — current meter</option></select><p id="mode-note" class="hint">POWER REF must be explicitly enabled when launching this service.</p></div>
+<div class="field"><label for="mode">Operating mode</label><select id="mode"><option value="synthetic">Simulated transmitter suite</option><option value="guided">Operator-guided radio sweep</option><option value="reference_suite">POWER REF suite</option><option value="physical" disabled>POWER REF — current meter</option></select><p id="mode-note" class="hint">POWER REF must be explicitly enabled when launching this service.</p></div>
 <div id="fake-setup">
 <div class="field"><label for="profile">DUT profile</label><select id="profile" aria-describedby="profile-description" required><option>Loading profiles…</option></select><p id="profile-description" class="hint"></p></div>
 <div class="profile-import"><button id="import" class="text-button" type="button">Import profile JSON</button><input id="profile-file" type="file" accept=".json,application/json" hidden></div>
@@ -31,6 +31,14 @@
 <div class="capture-fields"><div class="field"><label for="guided-samples">Samples per point</label><input id="guided-samples" type="number" min="1" max="1000" value="10"></div><div class="field"><label for="guided-interval">Interval (s)</label><input id="guided-interval" type="number" min="0.1" max="60" step="0.1" value="1"></div><div class="field"><label for="guided-settling">Settling (s)</label><input id="guided-settling" type="number" min="0" max="120" step="0.1" value="5"></div></div>
 <div class="field"><label for="guided-notes">RF path and measurement notes</label><textarea id="guided-notes" rows="3" maxlength="1000">Meter-indicated power at sensor input; record the RF path and meter corrections here.</textarea></div>
 <p id="guided-plan" class="hint"></p><fieldset id="guided-prepared" hidden><legend>Confirm the bench setup</legend></fieldset>
+</div>
+<div id="reference-suite-setup" hidden>
+<div class="field"><label for="reference-suite-source">Suite source</label><select id="reference-suite-source"><option value="synthetic">Simulated reference — no hardware</option><option value="physical" disabled>Configured current meter</option></select><p class="hint">One start, one suite report. Bench runs require fresh preparation and an operator present.</p></div>
+<fieldset id="reference-suite-tests"><legend>Reference tests to run</legend>
+<label class="test-option"><input type="checkbox" value="WF-01" checked><span>WF-01 · Output and baseline (~7 min on bench)</span></label>
+<label class="test-option"><input type="checkbox" value="WF-02" checked><span>WF-02 · Sustained stability (~32 min on bench)</span></label>
+<label class="test-option"><input type="checkbox" value="WF-03" checked><span>WF-03 · Five-cycle repeatability (up to 15 min on bench)</span></label>
+</fieldset><p id="reference-suite-note" class="hint">Runs in the order shown. Simulated time does not represent elapsed bench time.</p>
 </div>
 <div id="reference-setup" hidden><h3>Prepared POWER REF path</h3><p id="reference-identity" class="hint"></p><p id="reference-issues" class="hint"></p><div class="field"><label for="reference-workflow">POWER REF workflow</label><select id="reference-workflow"><option value="WF-01">WF-01 · Output (~7 min)</option><option value="WF-02">WF-02 · Stability (~32 min)</option><option value="WF-03">WF-03 · Five cycles (up to 15 min)</option></select></div><fieldset id="prepared"><legend>Confirm before each run</legend></fieldset></div>
 <div class="field"><label for="operator">Operator <span class="optional">optional</span></label><input id="operator" type="text" maxlength="120" autocomplete="name" placeholder="Name to include in the report"></div>

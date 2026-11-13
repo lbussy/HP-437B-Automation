@@ -155,8 +155,11 @@ class Jobs:
                 request = read(path / "request.json")
                 if (
                     request.get("mode") == "physical"
-                    and not (path / "operator-confirmation.json").is_file()
-                ):
+                    or (
+                        request.get("mode") == "reference_suite"
+                        and request.get("meter_mode") == "physical"
+                    )
+                ) and not (path / "operator-confirmation.json").is_file():
                     return path.name
         return None
 
@@ -345,18 +348,43 @@ class Jobs:
             temporary.unlink()
             return self.get(job_id)
 
-    def start_reference(self, kind, operator, prepared):
+    def start_reference_suite(self, workflows, meter_mode, operator, prepared):
+        p.require(meter_mode in ("synthetic", "physical"), "Invalid suite source")
+        return self.start_reference(workflows, operator, prepared, suite_mode=meter_mode)
+
+    def start_reference(self, kind, operator, prepared, *, suite_mode=None):
         from . import operator_reference as ref
+        from . import reference_suite
 
         with self.mutex:
             self._reap()
-            p.require(self.reference_config is not None, "POWER REF is not enabled by this service")
-            p.require(self.process is None, "A suite is already running")
-            p.require(kind in ref.SCRIPTS, "Select one POWER REF workflow")
+            workflows = reference_suite.selection(kind) if suite_mode is not None else [kind]
             p.require(
-                isinstance(prepared, dict)
-                and set(prepared) == set(ref.PREPARED)
-                and all(value is True for value in prepared.values()),
+                suite_mode is None or suite_mode in ("synthetic", "physical"),
+                "Invalid suite source",
+            )
+            if suite_mode == "synthetic" and "WF-01" in workflows:
+                p.require(
+                    (Path(__file__).resolve().parents[2] / "tools/exercise_workflow.py").is_file(),
+                    "WF-01 reference simulation requires the source checkout",
+                )
+            physical = suite_mode != "synthetic"
+            p.require(
+                not physical or self.reference_config is not None,
+                "POWER REF is not enabled by this service",
+            )
+            p.require(self.process is None, "A suite is already running")
+            p.require(
+                suite_mode is not None or kind in ref.SCRIPTS, "Select one POWER REF workflow"
+            )
+            p.require(
+                (
+                    isinstance(prepared, dict)
+                    and set(prepared) == set(ref.PREPARED)
+                    and all(value is True for value in prepared.values())
+                )
+                if physical
+                else prepared == {},
                 "Fresh prepared setup confirmations are required for every POWER REF run",
             )
             r.report_context.validate_operator(operator)
@@ -364,9 +392,9 @@ class Jobs:
                 self.pending_reference() is None,
                 "Confirm the prior physical run's front-panel state before another POWER REF run",
             )
-            config = p._json(r.encoded(self.reference_config))
+            config = p._json(r.encoded(self.reference_config)) if physical else None
             setup = {
-                **config["setup"],
+                **(config["setup"] if config else {}),
                 **prepared,
                 "prepared_record_utc": datetime.now(UTC).isoformat(),
                 "confirmation_origin": "Operator freshly confirmed each setup item in the local UI",
@@ -374,26 +402,30 @@ class Jobs:
             }
             if operator is None:
                 setup.pop("operator")
+            if not physical:
+                setup = None
             job_id = uuid.uuid4().hex
             path = self.root / job_id
             delivery.preflight_delivery(path / "capture", path / "report", pdf=True, package=True)
             path.mkdir(mode=0o700)
             request = dict(
                 schema="hp437b.operator-request.v1",
-                mode="physical",
+                mode="physical" if suite_mode is None else "reference_suite",
                 job_id=job_id,
                 profile=dict(
-                    dut=dict(name="Internal POWER REF"),
+                    dut=dict(name="Internal POWER REF" if physical else "Simulated POWER REF"),
                     profile_id="prepared-power-reference",
                     operator=operator,
                 ),
-                workflows=[kind],
+                workflows=workflows,
                 operator=operator,
                 plots=self.plots,
                 started_utc=datetime.now(UTC).isoformat(),
                 reference_config=config,
                 prepared_setup=setup,
             )
+            if suite_mode is not None:
+                request["meter_mode"] = suite_mode
             atomic(path / "request.json", request)
             atomic(
                 path / "state.json",
@@ -402,7 +434,7 @@ class Jobs:
                     phase="starting",
                     current=None,
                     index=0,
-                    total=1,
+                    total=len(workflows),
                     results=[],
                     error=None,
                     outcome=None,
@@ -432,7 +464,7 @@ class Jobs:
                 self.log = None
                 state = read(path / "state.json")
                 state.update(
-                    phase="failed", error="Unable to start physical worker; no capture was started"
+                    phase="failed", error="Unable to start reference worker; no capture was started"
                 )
                 atomic(path / "state.json", state)
                 raise
@@ -443,7 +475,12 @@ class Jobs:
             self._reap()
             job = self.get(job_id)
             p.require(
-                job["mode"] == "physical" and not job["active"] and job["phase"] not in ACTIVE,
+                (
+                    job["mode"] == "physical"
+                    or (job["mode"] == "reference_suite" and job.get("meter_mode") == "physical")
+                )
+                and not job["active"]
+                and job["phase"] not in ACTIVE,
                 "Physical worker must be closed before confirming front-panel state",
             )
             p.require(
@@ -485,9 +522,13 @@ class Jobs:
             state["job_id"] == job_id and request["job_id"] == job_id,
             "Operational run identity mismatch",
         )
-        physical = request.get("mode") == "physical"
+        physical = request.get("mode") == "physical" or (
+            request.get("mode") == "reference_suite" and request.get("meter_mode") == "physical"
+        )
         stage = None
         checkpoint = path / "capture/workflow.json"
+        if request.get("mode") == "reference_suite" and state.get("current"):
+            checkpoint = path / "steps" / state["current"] / "capture/workflow.json"
         if physical and checkpoint.is_file():
             try:
                 current = read(checkpoint)
@@ -646,6 +687,8 @@ def worker(path, *, lock_fd=None):
     expected = ("schema", "job_id", "profile", "workflows", "operator", "plots", "started_utc")
     if request.get("mode") == "physical":
         expected += ("mode", "reference_config", "prepared_setup")
+    if request.get("mode") == "reference_suite":
+        expected += ("mode", "meter_mode", "reference_config", "prepared_setup")
     if request.get("mode") == "guided":
         expected += ("mode", "sweep_plan", "meter_mode", "sweep_config", "prepared")
     p._keys(request, expected)
@@ -671,6 +714,11 @@ def worker(path, *, lock_fd=None):
             emit(current=None, results=list(rows), index=event["index"])
 
     try:
+        if request.get("mode") == "reference_suite":
+            from . import reference_suite
+
+            reference_suite.run(path, request, emit, lock_fd=lock_fd)
+            return
         if request.get("mode") == "guided":
             from . import guided_report
 

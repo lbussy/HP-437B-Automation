@@ -18,7 +18,7 @@ TITLES = {
 SCHEMA = "hp437b.reference-report.v1"
 
 
-def load(source, kind):
+def load(source, kind, *, allow_synthetic=False):
     p.require(kind in TITLES, "Unsupported POWER REF workflow")
     if kind == "WF-01":
         provenance = p.import_wf01(source)
@@ -34,7 +34,8 @@ def load(source, kind):
             source
         )
     p.require(
-        record["mode"] == "physical", "POWER REF operator reports require physical-format captures"
+        record["mode"] == "physical" or (allow_synthetic and record["mode"] == "synthetic"),
+        "POWER REF operator reports require physical-format captures",
     )
     return record, results, provenance
 
@@ -79,7 +80,7 @@ def summary(record, results, kind):
     return dict(
         schema=SCHEMA,
         workflow=kind,
-        mode="physical",
+        mode=record["mode"],
         run_id=record["run_id"],
         execution=record["status"],
         acceptance="NOT EVALUATED",
@@ -90,9 +91,16 @@ def summary(record, results, kind):
 
 def validate_pair(source, output):
     report = p.Bundle(output)
-    report.inventory("artifacts.json", "physical")
+    report.inventory("artifacts.json", p._json(report.read("artifacts.json"))["mode"])
     meta = report.json("metadata.json")
-    record, results, provenance = load(source, meta["workflow"])
+    record, results, provenance = load(source, meta["workflow"], allow_synthetic=True)
+    p.require(
+        meta["schema"] == SCHEMA
+        and meta["run_id"] == record["run_id"]
+        and meta["mode"] == record["mode"]
+        and meta["source_inventory_sha256"] == r.digest(p.Bundle(source).read("artifacts.json")),
+        "Reference report identity/source mismatch",
+    )
     p.require(
         report.json("results.json") == summary(record, results, meta["workflow"]),
         "Reference report results differ from native evidence",
@@ -105,12 +113,14 @@ def validate_pair(source, output):
     return record["run_id"]
 
 
-def publish(source, output, kind, *, plots=True, operator=None, package=True):
+def publish(
+    source, output, kind, *, plots=True, operator=None, package=True, allow_synthetic=False
+):
     from . import report_delivery as delivery
 
     source, output = preflight(source, output, plots=plots)
     delivery.preflight_delivery(source, output, pdf=True, package=package)
-    record, results, provenance = load(source, kind)
+    record, results, provenance = load(source, kind, allow_synthetic=allow_synthetic)
     values = summary(record, results, kind)
     operator = report_context.resolve_operator(
         operator, record.get("operator", record.get("setup", {}).get("operator"))
@@ -132,7 +142,7 @@ def publish(source, output, kind, *, plots=True, operator=None, package=True):
         )
     meta = dict(
         schema=SCHEMA,
-        mode="physical",
+        mode=record["mode"],
         run_id=record["run_id"],
         workflow=kind,
         source_inventory_sha256=source_hash,
@@ -142,7 +152,8 @@ def publish(source, output, kind, *, plots=True, operator=None, package=True):
     (output / "metadata.json").write_bytes(r.encoded(meta))
     lines = [
         "Test: " + TITLES[kind],
-        "Source: Internal POWER REF; sensor input directly attached",
+        "Source: Internal POWER REF; sensor input directly attached"
+        + (" (simulated)" if record["mode"] == "synthetic" else ""),
         "Operator: " + (operator or "Not recorded"),
         "When: " + record["started_utc"],
         "Execution: " + record["status"] + "; acceptance: NOT EVALUATED",
@@ -150,7 +161,9 @@ def publish(source, output, kind, *, plots=True, operator=None, package=True):
     notes = [
         "Descriptive reference-source exercise; no transmitter or accuracy/compliance verdict.",
         "Signed source-off zero is not subtracted. No zero/CAL or factor adjustment.",
-        "Front-panel live readings, RMT off, and POWER REF off require separate operator confirmation.",
+        "Front-panel live readings, RMT off, and POWER REF off require separate operator confirmation."
+        if record["mode"] == "physical"
+        else "Synthetic reference and cleanup only; no physical front-panel observation applies.",
         "Known equipment issues: " + "; ".join(record.get("setup", {}).get("known_issues", [])),
     ]
     esc = lambda value: html.escape(str(value))  # noqa: E731
@@ -158,7 +171,12 @@ def publish(source, output, kind, *, plots=True, operator=None, package=True):
         "<tr><th>" + esc(a) + "</th><td>" + esc(b) + "</td></tr>" for a, b in values["rows"]
     )
     page = (
-        "<!doctype html><html lang='en'><meta charset='utf-8'><title>RF Output Power Test</title><style>body{font:16px system-ui;color:#18242b;max-width:900px;margin:32px auto;padding:24px}td,th{text-align:left;padding:12px;border-bottom:1px solid #cbd6dc}a{color:#135c91}</style><h1>RF Output Power Test</h1><p>POWER REF — recorded measurement</p>"
+        "<!doctype html><html lang='en'><meta charset='utf-8'><title>RF Output Power Test</title><style>body{font:16px system-ui;color:#18242b;max-width:900px;margin:32px auto;padding:24px}td,th{text-align:left;padding:12px;border-bottom:1px solid #cbd6dc}a{color:#135c91}</style><h1>RF Output Power Test</h1>"
+        + (
+            "<p>SYNTHETIC - fictional reference exercise; no hardware</p>"
+            if record["mode"] == "synthetic"
+            else "<p>POWER REF — recorded measurement</p>"
+        )
         + "".join("<p>" + esc(line) + "</p>" for line in lines)
         + "<table>"
         + table
@@ -167,9 +185,9 @@ def publish(source, output, kind, *, plots=True, operator=None, package=True):
         + "<p><a href='native/report.html'>Full native report</a></p><footer>"
         + esc(
             "Equipment: "
-            + record["setup"]["meter_serial"]
+            + record.get("setup", {}).get("meter_serial", "Simulated meter")
             + " / "
-            + record["setup"]["sensor_serial"]
+            + record.get("setup", {}).get("sensor_serial", "Simulated sensor")
         )
         + "<br>"
         + esc(report_sheet.producer_note(producer))
@@ -191,7 +209,7 @@ def publish(source, output, kind, *, plots=True, operator=None, package=True):
         notes=notes,
         producer=producer,
         run_id=record["run_id"],
-        physical=True,
+        physical=record["mode"] == "physical",
     )
     meta = p._json((output / "metadata.json").read_bytes())
     _seal(output, meta)

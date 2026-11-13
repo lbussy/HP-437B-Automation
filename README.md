@@ -8,6 +8,10 @@ The [current project scope](docs/PROJECT-SCOPE.md) was clarified by the owner on
 
 The interface/logger and named Mac/Pi interaction cases are implemented. The offline campaign is integrated into `devel` at `6bda91d`: 421 local tests with stress enabled and [CI passing on Python 3.11/3.14](https://github.com/lbussy/HP-437B-Automation/actions/runs/43214328205). Normal logging/runtime remains unchanged. See the [current checklist](docs/RELEASE-CHECKLIST.md).
 
+## Reusable POWER REF suite
+
+[REF-SUITE-01](docs/workflows/POWER-REF-SUITE-V1.md) joins selected WF-01–WF-03 workflows into one operator-started run, with ordered progress, boundary cancellation, signed baseline/results, a concise suite PDF, full child reports, and a verified portable package. Simulated reference mode is available first; the configured physical path retains fresh preparation, original runners/cleanup, and separate final front-panel confirmation. Software and simulated browser evidence are distinct from the pending combined physical suite exercise. Normal logging is unchanged.
+
 ## Operator-guided radio sweeps
 
 [Operator-guided sweeps](docs/workflows/OPERATOR-GUIDED-SWEEPS.md) now support frequency, drive-setting, and combined series through the local interface: all 17 requested bands, up to 32 frequency labels and 16 drive labels, either point order, and a fresh label confirmation before every capture. An explicitly configured bench meter uses the production logger; simulated capture remains available. Full tables, optional comparison plots, a PDF summary, and portable evidence packages retain partial results. A local Python/HTTP client exposes start, status, confirm-one-point, and stop actions for future orchestration. New physical bench acceptance remains pending.

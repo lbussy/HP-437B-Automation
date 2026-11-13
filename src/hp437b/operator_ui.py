@@ -173,6 +173,20 @@ def server(manager, port=8765):
                         202, r.encoded(manager.confirm_guided(body["job_id"], body["confirmation"]))
                     )
                     return
+                if path == "/api/reference-suite":
+                    p._keys(body, ("workflows", "meter_mode", "operator", "prepared"))
+                    self._send(
+                        202,
+                        r.encoded(
+                            manager.start_reference_suite(
+                                body["workflows"],
+                                body["meter_mode"],
+                                body["operator"],
+                                body["prepared"],
+                            )
+                        ),
+                    )
+                    return
                 if path == "/api/reference":
                     p._keys(body, ("workflow", "operator", "prepared"))
                     self._send(
