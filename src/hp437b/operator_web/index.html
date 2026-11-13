@@ -7,22 +7,26 @@
 <link rel="stylesheet" href="/app.css"><script src="/app.js" defer></script>
 </head>
 <body>
-<header class="masthead"><span class="project">HP 437B Automation</span><span class="environment">Simulation · local session</span></header>
+<header class="masthead"><span class="project">HP 437B Automation</span><span id="environment" class="environment">Simulation · local session</span></header>
 <main>
-<div class="intro"><h1>Run an RF test suite</h1><p>Choose a DUT profile and tests. Collect a traceable report.</p></div>
+<div class="intro"><h1 id="page-title">Run an RF test suite</h1><p id="intro-text">Choose a DUT profile and tests. Collect a traceable report.</p></div>
 <div id="connection" class="notice" role="status" hidden></div>
 <div id="error" class="notice error" role="alert" tabindex="-1" hidden></div>
 <div class="workspace">
 <section class="setup" aria-labelledby="setup-title">
 <h2 id="setup-title">Test setup</h2>
 <form id="run-form">
+<div class="field"><label for="mode">Operating mode</label><select id="mode"><option value="synthetic">Simulated transmitter suite</option><option value="physical" disabled>POWER REF — current meter</option></select><p id="mode-note" class="hint">POWER REF must be explicitly enabled when launching this service.</p></div>
+<div id="fake-setup">
 <div class="field"><label for="profile">DUT profile</label><select id="profile" aria-describedby="profile-description" required><option>Loading profiles…</option></select><p id="profile-description" class="hint"></p></div>
 <div class="profile-import"><button id="import" class="text-button" type="button">Import profile JSON</button><input id="profile-file" type="file" accept=".json,application/json" hidden></div>
+</div>
+<div id="reference-setup" hidden><h3>Prepared POWER REF path</h3><p id="reference-identity" class="hint"></p><p id="reference-issues" class="hint"></p><div class="field"><label for="reference-workflow">POWER REF workflow</label><select id="reference-workflow"><option value="WF-01">WF-01 · Output (~7 min)</option><option value="WF-02">WF-02 · Stability (~32 min)</option><option value="WF-03">WF-03 · Five cycles (up to 15 min)</option></select></div><fieldset id="prepared"><legend>Confirm before each run</legend></fieldset></div>
 <div class="field"><label for="operator">Operator <span class="optional">optional</span></label><input id="operator" type="text" maxlength="120" autocomplete="name" placeholder="Name to include in the report"></div>
-<fieldset aria-describedby="selection-note"><legend>Tests to run</legend><div id="test-options"></div></fieldset>
+<fieldset id="fake-tests" aria-describedby="selection-note"><legend>Tests to run</legend><div id="test-options"></div></fieldset>
 <p id="selection-note" class="hint">Select at least one test.</p>
 <button id="start" class="primary" type="submit" disabled>Start suite</button>
-<p class="hint scope">Fakes only. No radio, meter, or supply is controlled.</p>
+<p id="scope" class="hint scope">Fakes only. No radio, meter, or supply is controlled.</p>
 </form>
 <details id="profile-issues" hidden><summary>Profiles that could not be loaded</summary><ul id="issues-list"></ul></details>
 </section>
@@ -34,9 +38,10 @@
 <ol id="steps" class="steps" aria-label="Workflow progress"></ol>
 <div class="boundary"><h3>Cancellation boundary</h3><p id="boundary-text">The current test finishes and verifies RF off and supply restoration before cancellation takes effect. Later tests do not start.</p><button id="cancel" class="secondary danger" type="button" disabled>Request cancellation</button></div>
 <div class="reports"><h3>Reports</h3><p id="report-note" class="hint">PDF and portable package appear after capture and reporting finish.</p><div class="report-actions"><a id="pdf" class="primary link-button" target="_blank" rel="noopener" hidden>Open PDF report</a><a id="package" class="secondary link-button" hidden>Download package</a></div></div>
+<div id="front-panel" class="boundary" hidden><h3>Confirm after Python closes</h3><p>Check the actual front panel. If recovery is needed, use PRESET/LOCAL and the documented manual recovery before confirming. Protocol observations remain separate.</p><label class="test-option"><input id="front-panel-check" type="checkbox"><span>Live numeric readings, RMT off, and POWER REF off</span></label><button id="front-panel-save" class="secondary" type="button" disabled>Record front-panel confirmation</button><p id="front-panel-result" class="hint"></p></div>
 </section>
 </div>
-<section class="history" id="history" hidden><h2>Recent runs</h2><div class="table-scroll"><table><thead><tr><th>Transmitter</th><th>Started</th><th>Outcome</th><th>Report</th></tr></thead><tbody id="history-body"></tbody></table></div></section>
+<section class="history" id="history" hidden><h2>Recent runs</h2><div class="table-scroll"><table><thead><tr><th>DUT / source</th><th>Started</th><th>Outcome</th><th>Report</th></tr></thead><tbody id="history-body"></tbody></table></div></section>
 <footer>Human-started tests. Deterministic reports. Original evidence stays with each run.</footer>
 </main>
 </body>

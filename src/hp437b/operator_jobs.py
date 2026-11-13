@@ -1,4 +1,4 @@
-"""Single-user fake job supervision; UI state is not measurement evidence."""
+"""Single-user job supervision; UI state is not measurement evidence."""
 
 import fcntl
 import importlib.util
@@ -44,7 +44,8 @@ def read(path):
 
 
 class Jobs:
-    def __init__(self, root, *, profiles_dir=None, plots=True):
+    def __init__(self, root, *, profiles_dir=None, plots=True, reference_config=None):
+        self.reference_config = reference_config
         self.external = Path(profiles_dir).resolve() if profiles_dir else None
         p.require(
             self.external is None or self.external.is_dir(), "Profiles directory does not exist"
@@ -140,10 +141,30 @@ class Jobs:
                 self.log.close()
                 self.log = None
 
+    def pending_reference(self):
+        for path in self.root.iterdir():
+            if (
+                path.is_dir()
+                and not path.is_symlink()
+                and ID.fullmatch(path.name)
+                and (path / "request.json").is_file()
+            ):
+                request = read(path / "request.json")
+                if (
+                    request.get("mode") == "physical"
+                    and not (path / "operator-confirmation.json").is_file()
+                ):
+                    return path.name
+        return None
+
     def start(self, key, workflows, operator):
         with self.mutex:
             self._reap()
             p.require(self.process is None, "A suite is already running")
+            p.require(
+                self.pending_reference() is None,
+                "Confirm the prior physical run’s front-panel state first",
+            )
             docs, _ = self.catalog()
             p.require(key in docs, "Select an available DUT profile")
             doc = profiles.validate(docs[key])
@@ -199,6 +220,138 @@ class Jobs:
                 raise
             return self.get(job_id)
 
+    def start_reference(self, kind, operator, prepared):
+        from . import operator_reference as ref
+
+        with self.mutex:
+            self._reap()
+            p.require(self.reference_config is not None, "POWER REF is not enabled by this service")
+            p.require(self.process is None, "A suite is already running")
+            p.require(kind in ref.SCRIPTS, "Select one POWER REF workflow")
+            p.require(
+                isinstance(prepared, dict)
+                and set(prepared) == set(ref.PREPARED)
+                and all(value is True for value in prepared.values()),
+                "Fresh prepared setup confirmations are required for every POWER REF run",
+            )
+            r.report_context.validate_operator(operator)
+            p.require(
+                self.pending_reference() is None,
+                "Confirm the prior physical run's front-panel state before another POWER REF run",
+            )
+            config = p._json(r.encoded(self.reference_config))
+            setup = {
+                **config["setup"],
+                **prepared,
+                "prepared_record_utc": datetime.now(UTC).isoformat(),
+                "confirmation_origin": "Operator freshly confirmed each setup item in the local UI",
+                "operator": operator,
+            }
+            if operator is None:
+                setup.pop("operator")
+            job_id = uuid.uuid4().hex
+            path = self.root / job_id
+            delivery.preflight_delivery(path / "capture", path / "report", pdf=True, package=True)
+            path.mkdir(mode=0o700)
+            request = dict(
+                schema="hp437b.operator-request.v1",
+                mode="physical",
+                job_id=job_id,
+                profile=dict(
+                    dut=dict(name="Internal POWER REF"),
+                    profile_id="prepared-power-reference",
+                    operator=operator,
+                ),
+                workflows=[kind],
+                operator=operator,
+                plots=self.plots,
+                started_utc=datetime.now(UTC).isoformat(),
+                reference_config=config,
+                prepared_setup=setup,
+            )
+            atomic(path / "request.json", request)
+            atomic(
+                path / "state.json",
+                dict(
+                    job_id=job_id,
+                    phase="starting",
+                    current=None,
+                    index=0,
+                    total=1,
+                    results=[],
+                    error=None,
+                    outcome=None,
+                ),
+            )
+            self.log = (path / "worker.log").open("xb")
+            try:
+                self.process = subprocess.Popen(
+                    [
+                        sys.executable,
+                        "-m",
+                        "hp437b.operator_jobs",
+                        "--job",
+                        str(path),
+                        "--lock-fd",
+                        str(self.lockfile.fileno()),
+                    ],
+                    stdin=subprocess.DEVNULL,
+                    stdout=self.log,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,
+                    pass_fds=(self.lockfile.fileno(),),
+                )
+                self.active_id = job_id
+            except BaseException:
+                self.log.close()
+                self.log = None
+                state = read(path / "state.json")
+                state.update(
+                    phase="failed", error="Unable to start physical worker; no capture was started"
+                )
+                atomic(path / "state.json", state)
+                raise
+            return self.get(job_id)
+
+    def confirm_reference(self, job_id, operator, confirmed):
+        with self.mutex:
+            self._reap()
+            job = self.get(job_id)
+            p.require(
+                job["mode"] == "physical" and not job["active"] and job["phase"] not in ACTIVE,
+                "Physical worker must be closed before confirming front-panel state",
+            )
+            p.require(
+                confirmed is True, "Confirm live numeric readings, RMT off, and POWER REF off"
+            )
+            r.report_context.validate_operator(operator)
+            path = self._path(job_id)
+            with (path / ".capture.lock").open("a+b") as guard:
+                try:
+                    fcntl.flock(guard.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    raise ValueError(
+                        "The capture child still owns the meter; wait for closure before confirming"
+                    ) from None
+            inventory = path / "capture/artifacts.json"
+            value = dict(
+                schema="hp437b.operator-front-panel.v1",
+                job_id=job_id,
+                operator=operator,
+                confirmed_utc=datetime.now(UTC).isoformat(),
+                live_readings=True,
+                rmt_off=True,
+                power_ref_off=True,
+                capture_inventory_sha256=r.digest(inventory.read_bytes())
+                if inventory.is_file()
+                else None,
+            )
+            target = path / "operator-confirmation.json"
+            p.require(not target.exists(), "Front-panel confirmation already recorded")
+            with target.open("xb") as handle:
+                handle.write(r.encoded(value))
+            return self.get(job_id)
+
     def get(self, job_id):
         path = self._path(job_id)
         request = read(path / "request.json")
@@ -207,8 +360,29 @@ class Jobs:
             state["job_id"] == job_id and request["job_id"] == job_id,
             "Operational run identity mismatch",
         )
+        physical = request.get("mode") == "physical"
+        stage = None
+        checkpoint = path / "capture/workflow.json"
+        if physical and checkpoint.is_file():
+            try:
+                current = read(checkpoint)
+                tables = [current.get("stages", {}), current.get("control_stages", {})]
+                stage = next(
+                    (
+                        name
+                        for table in tables
+                        for name, item in table.items()
+                        if item.get("status") == "running"
+                    ),
+                    None,
+                )
+            except (OSError, ValueError, TypeError):
+                pass
         return {
             **state,
+            "mode": "physical" if physical else "synthetic",
+            "stage": stage,
+            "front_panel_confirmed": (path / "operator-confirmation.json").is_file(),
             "profile_name": request["profile"]["dut"]["name"],
             "profile_id": request["profile"]["profile_id"],
             "operator": request["operator"] or request["profile"]["operator"],
@@ -261,9 +435,21 @@ class Jobs:
                     items, key=lambda item: (item["name"], item["profile_id"], item["revision"])
                 ),
                 profile_issues=issues,
-                jobs=jobs[:20],
+                jobs=jobs[:20]
+                + [job for job in jobs[20:] if job["job_id"] == self.pending_reference()],
                 active_id=self.active_id,
+                pending_reference=self.pending_reference(),
                 plots=self.plots,
+                reference=(
+                    dict(
+                        resource=self.reference_config["resource"],
+                        meter_serial=self.reference_config["setup"]["meter_serial"],
+                        sensor_serial=self.reference_config["setup"]["sensor_serial"],
+                        known_issues=self.reference_config["setup"]["known_issues"],
+                    )
+                    if self.reference_config
+                    else None
+                ),
             )
 
     def cancel(self, job_id):
@@ -291,7 +477,7 @@ class Jobs:
             return target.read_bytes(), "application/zip", True
         p._relative(name)
         bundle = p.Bundle(path / "report")
-        bundle.inventory("artifacts.json", "synthetic")
+        bundle.inventory("artifacts.json", p._json(bundle.read("artifacts.json"))["mode"])
         p.require(name in bundle.entries, "Report artifact is not available")
         media = {
             ".pdf": "application/pdf",
@@ -322,12 +508,13 @@ class Jobs:
             self.lockfile.close()  # do not explicitly unlock the worker's inherited file description
 
 
-def worker(path):
+def worker(path, *, lock_fd=None):
     path = Path(path).resolve()
     request = read(path / "request.json")
-    p._keys(
-        request, ("schema", "job_id", "profile", "workflows", "operator", "plots", "started_utc")
-    )
+    expected = ("schema", "job_id", "profile", "workflows", "operator", "plots", "started_utc")
+    if request.get("mode") == "physical":
+        expected += ("mode", "reference_config", "prepared_setup")
+    p._keys(request, expected)
     p.require(
         request["schema"] == "hp437b.operator-request.v1"
         and request["job_id"] == path.name
@@ -350,6 +537,11 @@ def worker(path):
             emit(current=None, results=list(rows), index=event["index"])
 
     try:
+        if request.get("mode") == "physical":
+            from . import operator_reference
+
+            operator_reference.run(path, request, emit, lock_fd=lock_fd)
+            return
         result = suite.run(
             request["profile"],
             path / "capture",
@@ -379,4 +571,6 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--job", type=Path, required=True)
-    worker(parser.parse_args().job)
+    parser.add_argument("--lock-fd", type=int)
+    args = parser.parse_args()
+    worker(args.job, lock_fd=args.lock_fd)

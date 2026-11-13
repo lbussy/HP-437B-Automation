@@ -20,15 +20,15 @@ Orchestrate RF-output measurement workflows and produce human-readable, traceabl
 
 ## Operating Context
 
-The Python logger, fake transmitter/supply controls, profiles, suites, provenance, and PDF/ZIP delivery already exist. Current physical workflows and named Mac/Pi interactions have separate evidence. This first interface executes fakes only; it provides no physical endpoint or RF controls.
+The Python logger, fake transmitter/supply controls, profiles, suites, provenance, and PDF/ZIP delivery already exist. Current physical workflows and named Mac/Pi interactions have separate evidence. The original fake-only interface is now extended at the owner’s request with explicitly enabled, supervised current-Mac POWER REF workflows WF-01–WF-03. Physical runs require fresh setup confirmation, stage-boundary cancellation, and separate post-run front-panel confirmation.
 
 ## Capabilities and Constraints
 
 - User-initiated runs; no automatic test start on page load.
-- One active suite at a time. Cancellation is cooperative between workflows: the active workflow finishes and verifies RF off/restoration first.
+- One active job at a time. Fake-suite cancellation is between workflows; POWER REF cancellation is before the next capture/control stage, using existing runner cleanup.
 - Existing runner/reporting APIs remain authoritative. UI progress is operational information, not measurement evidence.
 - PDF and ZIP delivery use existing optional reporting dependencies. Normal logging and base runtime pins remain unchanged.
-- No remote service, external assets, AI provider, credential setup, or physical device discovery.
+- No remote service, external assets, AI provider, credential setup, or physical device discovery. Physical mode uses a trusted checkout, selected USB resource, bench interpreter, and retained equipment setup.
 
 ## Brand Commitments
 
@@ -40,4 +40,4 @@ See docs/OPEN-WORK.md, docs/VALIDATION.md, docs/workflows/DUT-TEST-PROFILES-V1.m
 
 ## Product Principles
 
-Make the next action obvious. Show recorded truth rather than invented results. Preserve native evidence and distinguish test failure, cancellation, and report errors. Keep hardware access and AI automation outside this interface's scope.
+Make the next action obvious. Show recorded truth rather than invented results. Preserve native evidence and distinguish test failure, cancellation, and report errors. Keep external transmitter/supply controls and AI automation outside this interface’s scope.

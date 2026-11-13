@@ -55,7 +55,9 @@ def _layout(source, report, target):
 
 
 def _exact_inventory(bundle):
-    inv = bundle.inventory("artifacts.json", "synthetic")
+    mode = p._json(bundle.read("artifacts.json")).get("mode")
+    p.require(mode in ("synthetic", "physical"), "Invalid delivery mode")
+    inv = bundle.inventory("artifacts.json", mode)
     p.require(
         not any(path.is_symlink() for path in bundle.root.rglob("*")),
         "Symlink bundle entries are unsupported",
@@ -90,6 +92,12 @@ def _pair(source, report):
         schema = "hp437b.test-suite-report.v1"
         for item in cap["children"]:
             _pair(Path(source) / item["path"], Path(report) / "workflows" / item["workflow"])
+    elif report_inv.get("schema") == "hp437b.reference-report.v1":
+        from . import reference_report
+
+        run_id = reference_report.validate_pair(source, report)
+        schema = reference_report.SCHEMA
+        expected = output.json("results.json")
     else:
         kind = workflow_kind(source)
         w = s.module(kind)
@@ -109,7 +117,13 @@ def _pair(source, report):
     p.require(
         report_inv.get("schema") == schema
         and report_inv.get("run_id") == run_id
-        and source_inv.get("run_id") == run_id,
+        and source_inv.get(
+            "run_id",
+            evidence.json("workflow.json").get("run_id")
+            if schema == "hp437b.reference-report.v1"
+            else None,
+        )
+        == run_id,
         "Report/capture identity mismatch",
     )
     p.require(
@@ -127,6 +141,10 @@ def _pair(source, report):
         "Portable export requires a sealed one-page PDF report",
     )
     return evidence, output, run_id
+
+
+def source_inv_mode(bundle):
+    return p._json(bundle.read("artifacts.json"))["mode"]
 
 
 def _zip_entry(archive, name, data):
@@ -149,13 +167,18 @@ def package(source, report, target=None):
     )
     manifest = dict(
         schema=SCHEMA,
-        mode="synthetic",
+        mode=source_inv_mode(evidence),
         run_id=run_id,
         evidence_inventory_sha256=r.digest(evidence.read("artifacts.json")),
         report_inventory_sha256=r.digest(output.read("artifacts.json")),
         artifacts={},
     )
     readme = b"RF Output Power Test - portable report\n\nExtract the entire ZIP into a new directory. Open report/report.pdf for the one-page answer. Open report/report.html for linked detail and individual reports. Sealed original evidence is under evidence/. Provenance references are relative to the corresponding original capture (for suites: evidence/captures/WF-04 etc.).\n\nHashes detect changes, not author/device authenticity. All included measurements are synthetic. No equipment, network, or AI-provider access is needed.\n\nVerify without extracting: python -m hp437b.report_delivery verify --package FILE.zip\n"
+    if manifest["mode"] == "physical":
+        readme = readme.replace(
+            b"All included measurements are synthetic.",
+            b"Recorded POWER REF measurements; equipment/setup limits and separate front-panel confirmation apply.",
+        )
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
     try:
@@ -234,7 +257,7 @@ def verify(path):
         )
         p.require(
             manifest["schema"] == SCHEMA
-            and manifest["mode"] == "synthetic"
+            and manifest["mode"] in ("synthetic", "physical")
             and set(manifest["artifacts"]) == set(names) - {"package-manifest.json"},
             "Archive manifest mismatch",
         )
@@ -253,7 +276,16 @@ def verify(path):
             p.require(r.digest(data) == manifest[key], "Archive root inventory hash mismatch")
             inv = p._json(data)
             p.require(
-                inv.get("mode") == "synthetic" and inv.get("run_id") == manifest["run_id"],
+                inv.get("mode") == manifest["mode"]
+                and (
+                    inv.get("run_id")
+                    or (
+                        p._json(archive.read("evidence/workflow.json")).get("run_id")
+                        if prefix == "evidence" and manifest["mode"] == "physical"
+                        else None
+                    )
+                )
+                == manifest["run_id"],
                 "Archive root identity mismatch",
             )
             expected_paths = {prefix + "/" + name for name in inv["artifacts"]} | {

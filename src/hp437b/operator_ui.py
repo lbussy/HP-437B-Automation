@@ -1,4 +1,4 @@
-"""Loopback-only, single-user operator interface for explicitly fake suite jobs."""
+"""Loopback-only operator interface for fake suites and explicitly enabled POWER REF."""
 
 import argparse
 import hmac
@@ -156,6 +156,28 @@ def server(manager, port=8765):
                     result = manager.start(body["profile_key"], body["workflows"], body["operator"])
                     self._send(202, r.encoded(result))
                     return
+                if path == "/api/reference":
+                    p._keys(body, ("workflow", "operator", "prepared"))
+                    self._send(
+                        202,
+                        r.encoded(
+                            manager.start_reference(
+                                body["workflow"], body["operator"], body["prepared"]
+                            )
+                        ),
+                    )
+                    return
+                if path == "/api/reference-confirm":
+                    p._keys(body, ("job_id", "operator", "confirmed"))
+                    self._send(
+                        200,
+                        r.encoded(
+                            manager.confirm_reference(
+                                body["job_id"], body["operator"], body["confirmed"]
+                            )
+                        ),
+                    )
+                    return
                 if path == "/api/cancel":
                     p._keys(body, ("job_id",))
                     self._send(202, r.encoded(manager.cancel(body["job_id"])))
@@ -183,15 +205,41 @@ def main(argv=None):
     parser.add_argument("--runs-dir", type=Path, default=Path("output/reports/operator-runs"))
     parser.add_argument("--profiles-dir", type=Path)
     parser.add_argument("--no-plots", action="store_true")
+    parser.add_argument("--power-ref-setup", type=Path)
+    parser.add_argument("--resource")
+    parser.add_argument("--bench-python", type=Path)
+    parser.add_argument("--reference-root", type=Path, default=Path(__file__).resolve().parents[2])
     args = parser.parse_args(argv)
     manager = None
     app = None
     try:
         p.require(0 <= args.port <= 65535, "Invalid local port")
-        manager = jobs.Jobs(args.runs_dir, profiles_dir=args.profiles_dir, plots=not args.no_plots)
+        enabled = (args.power_ref_setup, args.resource, args.bench_python)
+        p.require(
+            all(enabled) or not any(enabled),
+            "POWER REF requires --power-ref-setup, --resource, and --bench-python",
+        )
+        reference_config = None
+        if all(enabled):
+            from .operator_reference import configuration
+
+            reference_config = configuration(
+                args.reference_root, args.power_ref_setup, args.resource, args.bench_python
+            )
+        manager = jobs.Jobs(
+            args.runs_dir,
+            profiles_dir=args.profiles_dir,
+            plots=not args.no_plots,
+            reference_config=reference_config,
+        )
         app = server(manager, args.port)
         print(f"Operator interface: http://127.0.0.1:{app.server_port}", flush=True)
-        print("Fakes only. Cancellation takes effect between tests.", flush=True)
+        print(
+            "POWER REF available with fresh UI confirmation."
+            if reference_config
+            else "Fakes only. Cancellation takes effect between tests.",
+            flush=True,
+        )
         app.serve_forever(poll_interval=0.25)
     except KeyboardInterrupt:
         pass

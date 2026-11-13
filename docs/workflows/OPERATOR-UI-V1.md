@@ -1,6 +1,6 @@
 # OPERATOR-UI-01: Local operator interface, v1
 
-Status: delivered (fake-only). Delivered to `devel` in `72b6f12` with Linux test correction `970f7b6`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43421149047). This single-user browser interface uses the existing [profiles](DUT-TEST-PROFILES-V1.md), [suite runner](TEST-SUITES-V1.md), and [PDF/portable delivery](PDF-EXPORT-V1.md). The owner confirmed a loopback-only Python service, the existing reports' clean style, and **fakes only** for this first interface. Normal logging, physical runners, the main CLI, and base dependency pins remain unchanged.
+Status: delivered (fake-only). Delivered to `devel` in `72b6f12` with Linux test correction `970f7b6`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43421149047). This single-user browser interface uses the existing [profiles](DUT-TEST-PROFILES-V1.md), [suite runner](TEST-SUITES-V1.md), and [PDF/portable delivery](PDF-EXPORT-V1.md). The owner confirmed a loopback-only Python service, the existing reports' clean style, and **fakes only** for its first version. [Explicit POWER REF integration](OPERATOR-POWER-REF-V1.md) now extends it at the owner’s request. Normal logging, physical runners, the main CLI, and base dependency pins remain unchanged.
 
 ## Launch
 
@@ -12,7 +12,7 @@ python -m hp437b.operator_ui --port 8765 \
   --runs-dir output/reports/operator-runs
 ```
 
-Open the printed `http://127.0.0.1:8765` URL on that computer. `--port 0` chooses an available port. Add `--no-plots` to omit individual plots and avoid requiring the `reports` extra; the `pdf` extra is still required. Dependency checks precede any run. There is no frontend build step, external asset fetch, physical endpoint, or AI provider.
+Open the printed `http://127.0.0.1:8765` URL on that computer. `--port 0` chooses an available port. Add `--no-plots` to omit individual plots and avoid requiring the `reports` extra; the `pdf` extra is still required. Dependency checks precede any run. There is no frontend build step, external asset fetch, or AI provider. Without explicit POWER REF configuration, the service remains fake-only.
 
 A fictional example profile is available immediately. Choose a profile, optionally enter an operator name, select one or more tests, and press **Start suite**. Tests run in displayed WF-04, WF-05, WF-06 order. All included profile plans and adjacent restoration conditions are validated before allocating a job. The default example's acceptance is NOT EVALUATED because it supplies no DUT limits; completion is not a PASS claim.
 
@@ -55,4 +55,4 @@ Use `--no-plots` if appropriate. This command does not recapture or change the o
 
 The service binds only IPv4 `127.0.0.1`, requires the exact printed Host, uses a local session cookie and API token, and rejects cross-origin writes. Static code is packaged with Python; user-supplied text is rendered as text. These controls serve a local single-user tool, not a remote authentication or multiuser authorization system. Do not expose the port through a proxy or tunnel. Run/profile storage is operator-owned; hashes detect changed evidence, not authorship.
 
-[Validation](../VALIDATION.md#local-operator-interface--november-12-2026) records guarded regression, native fake workers, cancellation, access controls, artifact verification, installed-wheel behavior, and desktop/mobile browser checks. This establishes local software behavior, not physical DUT control, timing qualification, or broader host/backend support. Physical controls, remote access, profile editing, and AI automation remain separate future work.
+[Validation](../VALIDATION.md#local-operator-interface--november-12-2026) records guarded regression, native fake workers, cancellation, access controls, artifact verification, installed-wheel behavior, and desktop/mobile browser checks. This establishes local software behavior, not physical DUT control, timing qualification, or broader host/backend support. External DUT controls, remote access, profile editing, and AI automation remain separate future work. Existing internal-reference controls are available through the explicitly configured POWER REF extension.

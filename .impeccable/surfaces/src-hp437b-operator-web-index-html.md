@@ -7,7 +7,7 @@ related_targets: ["src/hp437b/operator_ui.py","src/hp437b/operator_jobs.py","src
 
 # Local operator interface
 
-Mode: Operate. The owner confirmed a single-user, loopback-only browser page, existing Python stack/report styling, and fakes only. Primary target: src/hp437b/operator_web/index.html. No physical controls or remote deployment.
+Mode: Operate. The owner confirmed a single-user, loopback-only browser page, existing Python stack/report styling, and initially fakes only. The owner now requests existing current-meter POWER REF workflows through the same interface. Primary target: src/hp437b/operator_web/index.html. Only the reviewed internal-reference controls are added; no external transmitter/supply controls or remote deployment.
 
 ## Direction contract
 
@@ -17,9 +17,9 @@ OWN-WORLD: Inherit the reports' white surface, dark ink, restrained blue actions
 
 STORY: Choose profile and tests, start explicitly, follow workflow boundaries, request cancellation, then open the PDF or package. Failures and missing limits remain visible.
 
-FIRST VIEWPORT: Compact project header and simulation statement; a two-column workspace with setup/Start suite on the left and the selected workflow rail, live status/cancellation, and report actions on the right. Stack the same controls on small screens.
+FIRST VIEWPORT: Compact project header and explicit mode statement; a two-column workspace with setup/Start suite on the left and the selected workflow rail, live status/cancellation, and report actions on the right. Stack the same controls on small screens.
 
-FORM: Code-first extension of the user-confirmed report world and precisely specified task; no new-world concept round. Signature interaction: cancellation names the current test and the next boundary, while the last completed native results remain available.
+FORM: Code-first extension of the user-confirmed report world and precisely specified task; no new-world concept round. Signature interaction: cancellation names the current test and the next boundary, while the last completed native results remain available. Physical mode separates setup attestations from recorded protocol observations and post-run front-panel confirmation.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 

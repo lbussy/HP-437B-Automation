@@ -51,7 +51,20 @@ def _zero(result):
     return _number(r.number(value) * 1000000) + " µW" if value is not None else "Not captured"
 
 
-def _write(output, *, lines, columns, rows, widths, notes, producer, run_id, plot=None, suite=None):
+def _write(
+    output,
+    *,
+    lines,
+    columns,
+    rows,
+    widths,
+    notes,
+    producer,
+    run_id,
+    plot=None,
+    suite=None,
+    physical=False,
+):
     root = preflight()
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import letter
@@ -80,7 +93,12 @@ def _write(output, *, lines, columns, rows, widths, notes, producer, run_id, plo
 
     content = [
         paragraph("RF Output Power Test", heading),
-        paragraph("SYNTHETIC - fictional measurements; no physical RF", bold),
+        paragraph(
+            "POWER REF - recorded measurement"
+            if physical
+            else "SYNTHETIC - fictional measurements; no physical RF",
+            bold,
+        ),
     ]
     content.extend(paragraph(line) for line in lines)
     content.append(Spacer(1, 8))
