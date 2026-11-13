@@ -4,7 +4,7 @@ November 13, 2026. Owner-requested investigation under PI-RECOVER-01. This is so
 
 ## Starting point and scope
 
-The documentation scope correction was committed and pushed to `devel` at `7c948e0749e873492c55ce38119b09895313f876`. All four Python 3.11/3.14 software/reporting jobs [passed CI](https://github.com/lbussy/HP-437B-Automation/actions/runs/43506268796) before this investigation began. The investigation files described here are subsequent local work, not evidence from that CI run.
+The documentation scope correction was committed and pushed to `devel` at `7c948e0749e873492c55ce38119b09895313f876`. All four Python 3.11/3.14 software/reporting jobs [passed CI](https://github.com/lbussy/HP-437B-Automation/actions/runs/43506268796) before this investigation began. The investigation files described here were subsequent local work, not evidence from that earlier CI run. They were later committed at `ca80ee1`; [all four investigation CI jobs passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43507916420). The subsequently authorized [bounded fake supervisor implementation](BOUNDED-RECONCILIATION-FAKES.md) has its own local record; the candidate discussion below preserves the initial investigation boundary.
 
 The [integrated failed-read shutdown](PI-ONLY-RECOVERY.md#integrated-failed-read-shutdown-result) and [Mac verification](MAC-FAILED-READ-SHUTDOWN.md) already establish a named timeout/abort/fresh-session route on both hosts. They do not establish all-fault recovery. This first investigation tests how the existing logger, physical workflow, and operator job supervisor behave around a fault and subsequent session. It adds no production supervisor, automatic reconnection, test continuation, or hardware access.
 

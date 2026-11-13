@@ -16,11 +16,11 @@ Automatic radio/supply drivers are optional; the existing operator-guided path p
 
 ## Optional enhancements and requested investigations
 
-These are separate from completion of the current deliverable. The owner requested these investigations on November 13 and subsequently authorized fake recovery work. The first recovery investigation is recorded below; command expansion and physical fault trials have not started.
+These are separate from completion of the current deliverable. The owner requested these investigations on November 13 and subsequently authorized fake recovery work. The first recovery investigation and bounded fake supervisor are recorded below; command expansion and physical fault trials have not started.
 
 | Existing scope | Current status and bounded opportunity |
 | --- | --- |
-| PI-RECOVER-01: Broader/unattended recovery | ⏳ Fake investigation started. [22 new cases and 136 related tests passed](validation/UNATTENDED-RECOVERY-FAKES.md): failed-run preservation, fresh sessions, source-on refusal, access failures, and service restart. Existing Mac/Pi shutdown evidence remains accepted. No production reconnection/resumption added; bounded reconciliation supervision is a candidate next experiment, and already-wedged repair/unattended hardware continuation remain unqualified |
+| PI-RECOVER-01: Broader/unattended recovery | ⏳ Broader recovery; ✅ bounded fake supervisor implemented. [First investigation](validation/UNATTENDED-RECOVERY-FAKES.md) delivered at `ca80ee1` with [all four CI jobs passing](https://github.com/lbussy/HP-437B-Automation/actions/runs/43507916420). [41 supervisor cases](validation/BOUNDED-RECONCILIATION-FAKES.md) cover deadlines, cancellation, disposal/ownership, identity/source gates, bounded absence retries, and separate receipts. Fake-only implementation; no logger/UI hooks or automatic resumption. Existing Mac/Pi shutdown evidence remains accepted; physical bridge/trials and already-wedged repair remain unqualified |
 | Broader command/bus support | ▧ Investigation requested. Use the existing inventory/coverage matrix to select useful commands, resolve framing and parameter ambiguities, and separate software tests from physical evidence. Full command coverage is not a release requirement |
 | DUT-CTRL-01 physical drivers | ▧ Optional. Implement only for a selected transmitter/supply; fake controls are complete, and manual operation remains supported |
 | AGENT-AUTO-01 | ▧ Deferred by owner. Human-started tests and deterministic reports remain the selected mode |
