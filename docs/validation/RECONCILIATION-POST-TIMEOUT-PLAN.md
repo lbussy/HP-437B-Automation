@@ -1,0 +1,31 @@
+# Current-Mac post-timeout reconciliation: bounded case
+
+November 13, 2026. Owner requested a supervised post-timeout reconciliation test. The preparation below was subsequently exercised once after fresh owner confirmation; see the [physical result](RECONCILIATION-POST-TIMEOUT-20261113.md). Protocol/abort/fresh-reconciliation checks and separate owner confirmation of live readings, RMT off, and POWER REF off passed; the named supervised case is complete. The procedure below retains its original one-fault scope. This case extends the [completed healthy bridge exercise](RECONCILIATION-HEALTHY-20261113.md), not the project's mandatory POWER REF requirements.
+
+## Scope and preparation evidence
+
+Use committed runtime `19434103ab448f8e5dc64d29ac4a0a729e5a4300` and the current Mac, meter `3125U33223`, sensor `MY41094127`, USBGpib V2, and named `03eb:2065` resource. POWER REF stays off and the sensor/USB/GPIB connections remain unchanged. No radio is needed. Dependency pins and the existing production logger/transport remain unchanged.
+
+The reviewed [Mac failed-read shutdown case](MAC-FAILED-READ-SHUTDOWN.md) supplies the known fault mechanism: a single 0.5-second acquisition deadline with equal native/parent read budgets, retaining the existing one-second failed-read shutdown allowance. The new case substitutes the bounded physical reconciliation supervisor for that older manual fresh-session helper after abort evidence has been independently checked.
+
+Ignored helpers under `tmp/reconciliation-post-timeout/` contain the prepared fault driver, offline release gate, process-group ceiling wrapper, targeted tests, and frozen runtime/helper hashes. The tracing wrapper is derived from the previously reviewed Mac helper and forwards original USB calls and `_abort_bulk_in` without substituted replies, added recovery commands, or transport delays. Only the first CSV acquisition receives the short deadline. `count=1` ensures an unexpected success ends the test without another attempted fault.
+
+Twelve preparation/auditor cases and eleven existing transport tests passed under the hardware-access guard: **23 passed**. These exercise one-fault stopping, unexpected-success stopping, identity/source preconditions, uncertain-state reuse rejection, and rejection of altered/incomplete abort or failed-row evidence. The auditor's positive control reads the saved previously qualified physical exchange; it does not generate a new physical event. No normal source file or runtime default changed during preparation.
+
+## Fresh owner setup
+
+Confirm the adapter is still on this Mac, with the same meter/sensor and direct POWER REF fixture; POWER REF is off; numeric readings are live with RMT off; the setup is warmed up; and other control applications are closed. The owner should be at the meter for about ten minutes and able to use PRESET/LOCAL or the known manual recovery if prompted. Leave POWER REF off, settings unchanged, and cables connected throughout the active case.
+
+## Single bounded sequence
+
+1. Verify hashes, runtime pins, exclusive ownership, and that no capture worker remains. Record fresh preparation in an ignored new run directory. Release one healthy source-off bridge preflight using the already accepted physical entry point; stop on any mismatch, source/error flag, incomplete closure, or unexpected worker state.
+2. Release one production-logger session through an external diagnostic Instrument subclass. Identify the expected 437B/1.8, configure absolute W as in the accepted profile, complete the ordinary setup acquisition, and validate source-off/error-free status before permitting the fault. Setup/open operations have 30-second budgets. The sole CSV acquisition gets a 0.5-second deadline; no second acquisition or repeated fault is permitted.
+3. Keep the original timeout and failed CSV/sidecar. Audit the blank failed value/raw fields, matching session ID, uncertain-state guard with zero additional I/O, skipped ASCII cleanup, and disposed worker. A worker error by itself is insufficient. Require pass-through evidence of exactly one actual USB input timeout, matching-tag successful abort initiation, completed empty input drain, successful eight-byte abort completion, and return from the original backend abort routine. Missing evidence or unexpected success stops the case; do not guess that communication has recovered.
+4. Only a complete audit releases **one** new bounded physical-supervisor attempt, associated with the failed session but using a separate receipt/output directory. It performs the named descriptor/identity checks, source/error status, and healthy TR3/GTL/raw close. No source switch, clear/reset, sample retry, or workflow resumption is included. Preserve and recheck every original failure-artifact hash afterward.
+5. After Python and all case workers close, obtain a separate owner observation of live numeric readings, RMT off, and POWER REF off without keys. If manual intervention is needed, record it and keep the software-only result unqualified. No further meter session is automatically released.
+
+The fault helper has a 90-second outer ceiling plus bounded interrupt/kill disposal of at most ten seconds. Each physical bridge has its existing one-attempt/30-second work/three-second native finish/60-second total policy and a 70-second external ceiling. The whole active case is limited to eight minutes, excluding owner response time. Stop rather than repeating a fault, retrying a sample, changing backend code, resetting USB, rebooting, or moving/disconnecting cables. A stalled or failed case may still need the previously documented manual recovery, requested separately when needed.
+
+## Interpretation
+
+A pass would establish one current-Mac route from the original controlled read timeout, through completed existing abort/shutdown handling, to the new supervisor's fresh reconciliation and owner-observed final state. It would not establish repair of an already-wedged adapter, Pi acceptance of this bridge, recovery from source-on faults, arbitrary USB/host failures, unattended RF safety, or automatic continuation of a failed test. The failed measurement remains failed. Normal logging stays unchanged.
