@@ -459,13 +459,7 @@ def reference_plan():
     }
 
 
-@pytest.mark.parametrize(
-    "reference,source,completed",
-    [(True, "power_ref", 3), (False, "power_ref", 0), (True, "external", 0)],
-)
-def test_explicit_reference_source_status_and_native_import(tmp_path, reference, source, completed):
-    wires = []
-
+def reference_capture(reference, wires):
     class Wire(DemoTransport):
         def open(self, timeout):
             pass
@@ -482,22 +476,28 @@ def test_explicit_reference_source_status_and_native_import(tmp_path, reference,
         wires.append(wire)
         return g.capture_point(*args, **kwargs, transport_factory=lambda: wire)
 
+    return capture
+
+
+@pytest.mark.parametrize(
+    "reference,source,completed",
+    [(True, "power_ref", 3), (False, "power_ref", 0), (True, "external", 0)],
+)
+def test_explicit_reference_source_status_and_native_import(tmp_path, reference, source, completed):
+    wires = []
+
     folder, result = run(
         tmp_path,
         plan=reference_plan(),
         mode="physical",
         config={**config(), "signal_source": source},
         prepared=dict.fromkeys(g.PREPARED, True),
-        capture=capture,
+        capture=reference_capture(reference, wires),
     )
     assert result["completed_points"] == completed
     assert all(w.closed for w in wires)
     assert g.load(folder)[1] == result
     if completed:
-        output = tmp_path / "report"
-        reports.publish(folder, output, plot=False)
-        assert reports.validate_pair(folder, output) == result["run_id"]
-        assert "Operator-guided POWER REF repeats" in (output / "report.html").read_text()
         session = folder / "P001/samples.csv.session.json"
         value = json.loads(session.read_text())
         raw = bytes.fromhex(value["initial_status_raw_hex"])
@@ -535,3 +535,19 @@ def test_reference_configuration_is_explicit_and_legacy_is_unchanged():
     assert g.configuration(config()) == config()
     with pytest.raises(ValueError):
         g.configuration({**config(), "signal_source": "anything"})
+
+
+def test_reference_report_identifies_fixed_source(tmp_path):
+    pytest.importorskip("reportlab")
+    folder, result = run(
+        tmp_path,
+        plan=reference_plan(),
+        mode="physical",
+        config={**config(), "signal_source": "power_ref"},
+        prepared=dict.fromkeys(g.PREPARED, True),
+        capture=reference_capture(True, []),
+    )
+    output = tmp_path / "report"
+    reports.publish(folder, output, plot=False)
+    assert reports.validate_pair(folder, output) == result["run_id"]
+    assert "Operator-guided POWER REF repeats" in (output / "report.html").read_text()
