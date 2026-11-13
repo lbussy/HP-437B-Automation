@@ -1,6 +1,6 @@
 # SUITE-01: Human-started fake test suites, v1
 
-Status: implemented locally. Reuses [PROFILE-01](DUT-TEST-PROFILES-V1.md) and the [WF-04–WF-06 shared controls](CONTROLLED-SWEEPS-V1.md). Normal logging, physical runners, dependencies, and existing command defaults remain unchanged. There are no physical endpoints or AI-provider calls.
+Status: delivered. Reuses [PROFILE-01](DUT-TEST-PROFILES-V1.md) and the [WF-04–WF-06 shared controls](CONTROLLED-SWEEPS-V1.md). Normal logging, physical runners, dependencies, and existing command defaults remain unchanged. There are no physical endpoints or AI-provider calls. Delivered to `devel` at `e05a120`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43349815908).
 
 The suite runs selected transmitter workflows in order, preserves their individual captures/provenance/reports, and produces a compact **RF Output Power Test** summary. Shared fake transmitter, supply, and meter state carries across workflows. A failed control transfer is never followed by a fresh simulated setup or automatic retry.
 

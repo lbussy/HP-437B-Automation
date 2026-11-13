@@ -1,6 +1,6 @@
 # PROFILE-01: Reusable DUT test profiles, v1
 
-Status: implemented locally, with fake-only validation and single-workflow execution. Normal logging, physical workflow runners, dependencies, and existing commands/defaults are unchanged. The [fake suite runner](TEST-SUITES-V1.md) is now implemented; physical drivers remain open.
+Status: delivered, with fake-only validation and single-workflow execution. Normal logging, physical workflow runners, dependencies, and existing commands/defaults are unchanged. The [fake suite runner](TEST-SUITES-V1.md) is now implemented; physical drivers remain open. Delivered to `devel` at `e05a120`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43349815908).
 
 A profile saves transmitter identity, operator, ordered setting/frequency/voltage plans, fixture losses, sensor corrections, and optional acceptance criteria in one versioned JSON document. It reuses the existing [WF-04–WF-06 shared controls](CONTROLLED-SWEEPS-V1.md), capture files, PROV-01 records, deterministic calculations, and reports. Runs remain human-started. This version admits only `mode: "fake"`; it cannot open physical endpoints or turn POWER REF on.
 
