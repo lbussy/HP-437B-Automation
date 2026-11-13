@@ -1,7 +1,7 @@
-"""Opt-in, fake-only communication reconciliation; never resumes a failed test.
+"""Bounded communication reconciliation; never resumes a failed test.
 
-No logger/UI/CLI integration, default factory, real resource, or source-control
-operation is provided. Parent deadlines contain uncooperative injected workers.
+run_simulated retains its fake-only boundary. The separately gated physical
+bridge shares this engine; normal logging and its transport are unchanged.
 """
 
 import fcntl
@@ -9,6 +9,7 @@ import hashlib
 import json
 import math
 import multiprocessing
+import signal
 import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
@@ -88,14 +89,17 @@ def _identity(value):
     return value.manufacturer, value.model, value.serial, value.firmware
 
 
-def _probe(pipe, target, factory, attempt, deadline, worker_lock):
+def _probe(pipe, target, factory, attempt, deadline, worker_lock, stop=None):
     """Child owns its lease through close, including if the parent disappears."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)  # Parent owns cancellation and bounded disposal.
     result = {"reason": "probe_failed", "retryable": False, "stage": "ownership"}
     wire = None
 
     def stage(name):
         result["stage"] = name
         pipe.send_bytes(json.dumps({"stage": name}).encode())
+        if stop is not None and stop.is_set():
+            raise InterruptedError("Reconciliation stopped; no further commands")
         if time.monotonic() >= deadline:
             raise TimeoutError("Reconciliation attempt expired")
 
@@ -108,6 +112,7 @@ def _probe(pipe, target, factory, attempt, deadline, worker_lock):
                 wire.open(timeout=max(0.001, deadline - time.monotonic()))
                 stage("adapter_identity")
                 metadata = wire.metadata
+                result["transport"] = dict(metadata)
                 if (
                     metadata.get("resource") != target.resource
                     or metadata.get("adapter_identity") != target.adapter_identity
@@ -159,8 +164,11 @@ def _probe(pipe, target, factory, attempt, deadline, worker_lock):
             finally:
                 if wire is not None:
                     try:
-                        stage("closing")
-                        wire.close()  # No Instrument.close: never add ASCII after a failed probe.
+                        result["stage"] = "closing"
+                        try:
+                            pipe.send_bytes(json.dumps({"stage": "closing"}).encode())
+                        finally:
+                            wire.close()  # Raw close only, even after expiry/cancellation.
                     except Exception as exc:
                         result.update(
                             reason="close_failed",
@@ -198,11 +206,12 @@ def _dispose(process, end):
     return value
 
 
-def _attempt(target, factory, number, deadline, end, worker_lock, cancelled):
+def _attempt(target, factory, number, deadline, end, worker_lock, cancelled, shutdown_grace_s=0):
     context = multiprocessing.get_context("spawn")
     parent, child = context.Pipe(duplex=False)
+    stop = context.Event()
     process = context.Process(
-        target=_probe, args=(child, target, factory, number, deadline, str(worker_lock))
+        target=_probe, args=(child, target, factory, number, deadline, str(worker_lock), stop)
     )
     process.daemon = True
     record = {"number": number, "reason": "worker_failed", "retryable": False, "stage": "starting"}
@@ -213,15 +222,18 @@ def _attempt(target, factory, number, deadline, end, worker_lock, cancelled):
         while True:
             if cancelled():
                 record["reason"] = "cancelled"
+                stop.set()
                 break
             left = deadline - time.monotonic()
             if left <= 0:
                 record["reason"] = "attempt_deadline"
+                stop.set()
                 break
             if parent.poll(min(0.02, left)):
                 message = json.loads(parent.recv_bytes(8192))
                 if time.monotonic() >= deadline:
                     record["reason"] = "attempt_deadline"  # Never accept late results.
+                    stop.set()
                     break
                 if "result" in message:
                     record.update(message["result"])
@@ -233,6 +245,13 @@ def _attempt(target, factory, number, deadline, end, worker_lock, cancelled):
         )
     finally:
         child.close()
+        grace_started = time.monotonic()
+        if shutdown_grace_s and process.pid is not None:
+            process.join(timeout=max(0, min(shutdown_grace_s, end - DISPOSAL_S - time.monotonic())))
+        record["shutdown_grace"] = {
+            "budget_s": shutdown_grace_s,
+            "elapsed_s": time.monotonic() - grace_started,
+        }
         parent.close()
         record["worker"] = _dispose(process, end)
         record["elapsed_s"] = time.monotonic() - started
@@ -246,7 +265,7 @@ def _attempt(target, factory, number, deadline, end, worker_lock, cancelled):
     return record
 
 
-def run_simulated(
+def _run(
     output,
     *,
     target,
@@ -256,6 +275,10 @@ def run_simulated(
     prior_worker_stopped,
     policy=None,
     cancelled=lambda: False,
+    mode="simulation",
+    worker_lock_path=None,
+    shutdown_grace_s=0,
+    context=None,
 ):
     """Write a new reconciliation receipt from explicit fakes; failed data is never opened.
 
@@ -266,21 +289,19 @@ def run_simulated(
     target.validate()
     policy = policy if policy is not None else Policy()
     policy.validate()
-    if getattr(factory, "simulation", None) is not True:
-        raise ValueError("An explicitly simulated factory is required")
     if not isinstance(failed_run_id, str) or not failed_run_id.strip() or len(failed_run_id) > 256:
         raise ValueError("Record the failed run identity")
     if type(prior_worker_stopped) is not bool:
         raise ValueError("prior_worker_stopped must be an explicit boolean")
     started = time.monotonic()
     end = started + policy.total_s
-    work_end = end - DISPOSAL_S
+    work_end = end - DISPOSAL_S - shutdown_grace_s
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     path = output / "reconciliation.json"
     result = dict(
         schema="hp437b.reconciliation.v1",
-        mode="simulation",
+        mode=mode,
         failed_run_id=failed_run_id,
         started_utc=datetime.now(UTC).isoformat(),
         policy=asdict(policy),
@@ -296,6 +317,7 @@ def run_simulated(
         workflow_resumed=False,
         front_panel_confirmation="not_provided",
         physical_identity_verified=False,
+        context=context or {},
     )
     _atomic_json(path, result)  # Reserve/persist before launching a child.
     try:
@@ -305,7 +327,11 @@ def run_simulated(
             root = Path(lock_root)
             root.mkdir(parents=True, exist_ok=True)
             key = hashlib.sha256(target.resource.encode()).hexdigest()
-            worker_lock = root / (key + ".worker.lock")
+            worker_lock = (
+                Path(worker_lock_path)
+                if worker_lock_path is not None
+                else root / (key + ".worker.lock")
+            )
             try:
                 with _lease(root / (key + ".supervisor.lock")):
                     with _lease(worker_lock):
@@ -325,6 +351,7 @@ def run_simulated(
                             end,
                             worker_lock,
                             cancelled,
+                            shutdown_grace_s,
                         )
                         result["attempts"].append(attempt)
                         result["reason"] = attempt["reason"]
@@ -354,3 +381,29 @@ def run_simulated(
         )
         _atomic_json(path, result)
     return result
+
+
+def run_simulated(
+    output,
+    *,
+    target,
+    factory,
+    lock_root,
+    failed_run_id,
+    prior_worker_stopped,
+    policy=None,
+    cancelled=lambda: False,
+):
+    """Fake-only entry point; physical resources and factories remain rejected."""
+    if type(target) is not Target or getattr(factory, "simulation", None) is not True:
+        raise ValueError("An explicitly simulated target and factory are required")
+    return _run(
+        output,
+        target=target,
+        factory=factory,
+        lock_root=lock_root,
+        failed_run_id=failed_run_id,
+        prior_worker_stopped=prior_worker_stopped,
+        policy=policy,
+        cancelled=cancelled,
+    )

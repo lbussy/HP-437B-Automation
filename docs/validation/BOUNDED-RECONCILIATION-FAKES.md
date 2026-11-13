@@ -2,6 +2,8 @@
 
 November 13, 2026. Continuation of the owner-requested [fake recovery investigation](UNATTENDED-RECOVERY-FAKES.md), under PI-RECOVER-01. This implements the selected fake-only supervisor experiment; it does not add a release requirement or qualify unattended hardware operation.
 
+The later [supervised physical bridge preparation](RECONCILIATION-PHYSICAL-BRIDGE.md) extends the core through a separate gated entry point. This record preserves the original fake-only delivery evidence; it does not claim hardware acceptance of that later bridge.
+
 ## Delivery boundary
 
 The first investigation was committed and pushed to `devel` at `ca80ee18f2ee2639f930a06888430ada8689d9b7`. All four Python 3.11/3.14 jobs [passed CI](https://github.com/lbussy/HP-437B-Automation/actions/runs/43507916420) before supervisor implementation began. The new implementation and checks below are subsequent work, not results from that earlier CI run.

@@ -15,11 +15,11 @@ Automatic radio/supply drivers are optional; the existing operator-guided path p
 
 ## Optional enhancements and requested investigations
 
-These are separate from completion of the current deliverable. The owner requested these investigations on November 13 and subsequently authorized fake recovery work. The first recovery investigation and bounded fake supervisor are recorded below; command expansion and physical fault trials have not started.
+These are separate from completion of the current deliverable. The owner requested these investigations on November 13 and subsequently authorized fake recovery work. The recovery investigation, bounded supervisor, and subsequently prepared physical bridge are recorded below; the healthy current-Mac bridge case is complete with protocol/closure checks and owner final confirmation; command expansion and physical fault trials have not started.
 
 | Existing scope | Current status and bounded opportunity |
 | --- | --- |
-| PI-RECOVER-01: Broader/unattended recovery | ⏳ Broader recovery; ✅ bounded fake supervisor implemented. [First investigation](validation/UNATTENDED-RECOVERY-FAKES.md) delivered at `ca80ee1` with [all four CI jobs passing](https://github.com/lbussy/HP-437B-Automation/actions/runs/43507916420). [41 supervisor cases](validation/BOUNDED-RECONCILIATION-FAKES.md) cover deadlines, cancellation, disposal/ownership, identity/source gates, bounded absence retries, and separate receipts. Fake-only implementation; no logger/UI hooks or automatic resumption. Existing Mac/Pi shutdown evidence remains accepted; physical bridge/trials and already-wedged repair remain unqualified |
+| PI-RECOVER-01: Broader/unattended recovery | ✅ Healthy current-Mac bridge case; ⏳ broader recovery. [Physical result](validation/RECONCILIATION-HEALTHY-20261113.md): one attempt reconciled in 0.196 s, source-off/error-free status, accepted TR3/GTL, normal worker exit, and separate owner confirmation of live readings/RMT off/POWER REF off. [Preparation](validation/RECONCILIATION-PHYSICAL-BRIDGE.md) retains 30 bridge/41 supervisor fake cases and 1,543 full regression passes. No normal logging change, source switching, fault injection, or automatic resumption; post-fault/Pi bridge acceptance and already-wedged repair remain unqualified |
 | Broader command/bus support | ▧ Investigation requested. Use the existing inventory/coverage matrix to select useful commands, resolve framing and parameter ambiguities, and separate software tests from physical evidence. Full command coverage is not a release requirement |
 | DUT-CTRL-01 physical drivers | ▧ Optional. Implement only for a selected transmitter/supply; fake controls are complete, and manual operation remains supported |
 
