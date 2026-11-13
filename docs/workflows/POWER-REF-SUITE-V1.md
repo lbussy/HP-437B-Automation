@@ -51,3 +51,7 @@ The existing portable-report verifier supports the suite root and its child repo
 ## Local orchestration endpoint
 
 The loopback-only, same-origin, session-token-protected `POST /api/reference-suite` accepts exactly `workflows`, `meter_mode`, `operator`, and `prepared`. `meter_mode` is `synthetic` or `physical`. Simulated requests require empty preparation and retain no physical configuration; physical requests require all six fresh setup checks and the launch-configured resource. Existing state, cancellation, artifact delivery, and separate reference-confirmation endpoints are reused. No automatic scheduling or remote endpoint is added.
+
+## Current-Mac cancellation/restart evidence
+
+The [November 13 browser cases](../validation/REF-SUITE-CANCEL-20261113.md) exercised a cancellation request during WF-01's five-minute S40 plateau, healthy stage-boundary cleanup, retained interrupted reports, and stopped WF-02/WF-03 progression. Following owner final-state confirmation, a fresh WF-01-only suite completed and passed capture/report audit; its owner final live-reading/RMT-off/reference-off confirmation was recorded separately through the interface. This does not establish WF-02/WF-03-specific cancellation, forced-fault recovery, Pi-suite behavior, or unattended operation.
