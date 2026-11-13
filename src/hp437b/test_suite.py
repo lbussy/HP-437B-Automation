@@ -163,6 +163,7 @@ def run(
     fault_point=None,
     stop_before=None,
     cancelled=None,
+    progress=None,
 ):
     document = t.validate(document)
     selected = selection(document, workflows)
@@ -227,6 +228,10 @@ def run(
             if stop_before == kind or (cancelled is not None and cancelled()):
                 record["stop_reason"] = "cancelled:" + kind
                 break
+            if progress is not None:
+                progress(
+                    dict(event="workflow_started", workflow=kind, index=index, total=len(selected))
+                )
             entry = document["workflows"][kind]
             context = dict(
                 schema="hp437b.suite-context.v1",
@@ -257,6 +262,16 @@ def run(
                 dict(workflow=kind, path="captures/" + kind, run_id=cap["run_id"])
             )
             epoch = r.timestamp(cap["finished_utc"])
+            if progress is not None:
+                progress(
+                    dict(
+                        event="workflow_finished",
+                        workflow=kind,
+                        index=index,
+                        total=len(selected),
+                        result=row,
+                    )
+                )
             if (
                 cap["status"] != "completed"
                 or row["rf_state"] != "off"

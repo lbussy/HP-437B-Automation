@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="operator-token" content="__TOKEN__">
+<title>Operator · HP 437B Automation</title>
+<link rel="stylesheet" href="/app.css"><script src="/app.js" defer></script>
+</head>
+<body>
+<header class="masthead"><span class="project">HP 437B Automation</span><span class="environment">Simulation · local session</span></header>
+<main>
+<div class="intro"><h1>Run an RF test suite</h1><p>Choose a DUT profile and tests. Collect a traceable report.</p></div>
+<div id="connection" class="notice" role="status" hidden></div>
+<div id="error" class="notice error" role="alert" tabindex="-1" hidden></div>
+<div class="workspace">
+<section class="setup" aria-labelledby="setup-title">
+<h2 id="setup-title">Test setup</h2>
+<form id="run-form">
+<div class="field"><label for="profile">DUT profile</label><select id="profile" aria-describedby="profile-description" required><option>Loading profiles…</option></select><p id="profile-description" class="hint"></p></div>
+<div class="profile-import"><button id="import" class="text-button" type="button">Import profile JSON</button><input id="profile-file" type="file" accept=".json,application/json" hidden></div>
+<div class="field"><label for="operator">Operator <span class="optional">optional</span></label><input id="operator" type="text" maxlength="120" autocomplete="name" placeholder="Name to include in the report"></div>
+<fieldset aria-describedby="selection-note"><legend>Tests to run</legend><div id="test-options"></div></fieldset>
+<p id="selection-note" class="hint">Select at least one test.</p>
+<button id="start" class="primary" type="submit" disabled>Start suite</button>
+<p class="hint scope">Fakes only. No radio, meter, or supply is controlled.</p>
+</form>
+<details id="profile-issues" hidden><summary>Profiles that could not be loaded</summary><ul id="issues-list"></ul></details>
+</section>
+<section class="run" aria-labelledby="run-title">
+<div class="run-heading"><h2 id="run-title">Suite progress</h2><span id="run-state" class="state">Ready</span></div>
+<div class="run-summary" aria-live="polite" aria-atomic="true"><h3 id="run-headline">No test is running</h3><p id="run-description">Start a suite when your selection is ready.</p></div>
+<div class="progress-heading"><span id="progress-label">Selected tests</span><span id="progress-count"></span></div>
+<progress id="progress" value="0" max="3" aria-label="Completed tests"></progress>
+<ol id="steps" class="steps" aria-label="Workflow progress"></ol>
+<div class="boundary"><h3>Cancellation boundary</h3><p id="boundary-text">The current test finishes and verifies RF off and supply restoration before cancellation takes effect. Later tests do not start.</p><button id="cancel" class="secondary danger" type="button" disabled>Request cancellation</button></div>
+<div class="reports"><h3>Reports</h3><p id="report-note" class="hint">PDF and portable package appear after capture and reporting finish.</p><div class="report-actions"><a id="pdf" class="primary link-button" target="_blank" rel="noopener" hidden>Open PDF report</a><a id="package" class="secondary link-button" hidden>Download package</a></div></div>
+</section>
+</div>
+<section class="history" id="history" hidden><h2>Recent runs</h2><div class="table-scroll"><table><thead><tr><th>Transmitter</th><th>Started</th><th>Outcome</th><th>Report</th></tr></thead><tbody id="history-body"></tbody></table></div></section>
+<footer>Human-started tests. Deterministic reports. Original evidence stays with each run.</footer>
+</main>
+</body>
+</html>

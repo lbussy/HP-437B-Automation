@@ -1,0 +1,365 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-13T03:57:33.612771+00:00",
+  "title": "Design System: HP 437B Automation \u2014 local operator",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(27% 0.0000 89.88)",
+          "oklch(39% 0.0000 89.88)",
+          "oklch(51% 0.0000 89.88)",
+          "oklch(63% 0.0000 89.88)",
+          "oklch(75% 0.0000 89.88)",
+          "oklch(87% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0061 234.32)",
+          "oklch(27% 0.0134 234.32)",
+          "oklch(39% 0.0207 234.32)",
+          "oklch(51% 0.0214 234.32)",
+          "oklch(63% 0.0214 234.32)",
+          "oklch(75% 0.0183 234.32)",
+          "oklch(87% 0.0110 234.32)",
+          "oklch(95% 0.0061 234.32)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0099 236.37)",
+          "oklch(27% 0.0219 236.37)",
+          "oklch(39% 0.0338 236.37)",
+          "oklch(51% 0.0348 236.37)",
+          "oklch(63% 0.0348 236.37)",
+          "oklch(75% 0.0298 236.37)",
+          "oklch(87% 0.0179 236.37)",
+          "oklch(95% 0.0099 236.37)"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Rule",
+        "tonalRamp": [
+          "oklch(15% 0.0042 231.23)",
+          "oklch(27% 0.0092 231.23)",
+          "oklch(39% 0.0141 231.23)",
+          "oklch(51% 0.0146 231.23)",
+          "oklch(63% 0.0146 231.23)",
+          "oklch(75% 0.0125 231.23)",
+          "oklch(87% 0.0075 231.23)",
+          "oklch(95% 0.0042 231.23)"
+        ]
+      },
+      "soft": {
+        "role": "neutral",
+        "displayName": "Soft",
+        "tonalRamp": [
+          "oklch(15% 0.0014 228.82)",
+          "oklch(27% 0.0032 228.82)",
+          "oklch(39% 0.0049 228.82)",
+          "oklch(51% 0.0050 228.82)",
+          "oklch(63% 0.0050 228.82)",
+          "oklch(75% 0.0043 228.82)",
+          "oklch(87% 0.0026 228.82)",
+          "oklch(95% 0.0014 228.82)"
+        ]
+      },
+      "blue": {
+        "role": "primary",
+        "displayName": "Blue",
+        "tonalRamp": [
+          "oklch(15% 0.0313 246.24)",
+          "oklch(27% 0.0688 246.24)",
+          "oklch(39% 0.1064 246.24)",
+          "oklch(51% 0.1095 246.24)",
+          "oklch(63% 0.1095 246.24)",
+          "oklch(75% 0.0939 246.24)",
+          "oklch(87% 0.0563 246.24)",
+          "oklch(95% 0.0313 246.24)"
+        ]
+      },
+      "blue-hover": {
+        "role": "primary",
+        "displayName": "Blue hover",
+        "tonalRamp": [
+          "oklch(15% 0.0249 246.48)",
+          "oklch(27% 0.0548 246.48)",
+          "oklch(39% 0.0846 246.48)",
+          "oklch(51% 0.0871 246.48)",
+          "oklch(63% 0.0871 246.48)",
+          "oklch(75% 0.0747 246.48)",
+          "oklch(87% 0.0448 246.48)",
+          "oklch(95% 0.0249 246.48)"
+        ]
+      },
+      "blue-soft": {
+        "role": "primary",
+        "displayName": "Blue soft",
+        "tonalRamp": [
+          "oklch(15% 0.0041 244.72)",
+          "oklch(27% 0.0091 244.72)",
+          "oklch(39% 0.0140 244.72)",
+          "oklch(51% 0.0144 244.72)",
+          "oklch(63% 0.0144 244.72)",
+          "oklch(75% 0.0124 244.72)",
+          "oklch(87% 0.0074 244.72)",
+          "oklch(95% 0.0041 244.72)"
+        ]
+      },
+      "green": {
+        "role": "semantic",
+        "displayName": "Green",
+        "tonalRamp": [
+          "oklch(15% 0.0232 159.29)",
+          "oklch(27% 0.0510 159.29)",
+          "oklch(39% 0.0789 159.29)",
+          "oklch(51% 0.0812 159.29)",
+          "oklch(63% 0.0812 159.29)",
+          "oklch(75% 0.0696 159.29)",
+          "oklch(87% 0.0417 159.29)",
+          "oklch(95% 0.0232 159.29)"
+        ]
+      },
+      "red": {
+        "role": "semantic",
+        "displayName": "Red",
+        "tonalRamp": [
+          "oklch(15% 0.0413 24.54)",
+          "oklch(27% 0.0909 24.54)",
+          "oklch(39% 0.1405 24.54)",
+          "oklch(51% 0.1447 24.54)",
+          "oklch(63% 0.1447 24.54)",
+          "oklch(75% 0.1240 24.54)",
+          "oklch(87% 0.0744 24.54)",
+          "oklch(95% 0.0413 24.54)"
+        ]
+      },
+      "red-soft": {
+        "role": "semantic",
+        "displayName": "Red soft",
+        "tonalRamp": [
+          "oklch(15% 0.0047 26.65)",
+          "oklch(27% 0.0104 26.65)",
+          "oklch(39% 0.0160 26.65)",
+          "oklch(51% 0.0165 26.65)",
+          "oklch(63% 0.0165 26.65)",
+          "oklch(75% 0.0141 26.65)",
+          "oklch(87% 0.0085 26.65)",
+          "oklch(95% 0.0047 26.65)"
+        ]
+      },
+      "amber": {
+        "role": "semantic",
+        "displayName": "Amber",
+        "tonalRamp": [
+          "oklch(15% 0.0265 78.86)",
+          "oklch(27% 0.0584 78.86)",
+          "oklch(39% 0.0902 78.86)",
+          "oklch(51% 0.0929 78.86)",
+          "oklch(63% 0.0929 78.86)",
+          "oklch(75% 0.0796 78.86)",
+          "oklch(87% 0.0478 78.86)",
+          "oklch(95% 0.0265 78.86)"
+        ]
+      },
+      "amber-soft": {
+        "role": "semantic",
+        "displayName": "Amber soft",
+        "tonalRamp": [
+          "oklch(15% 0.0102 89.44)",
+          "oklch(27% 0.0224 89.44)",
+          "oklch(39% 0.0346 89.44)",
+          "oklch(51% 0.0356 89.44)",
+          "oklch(63% 0.0356 89.44)",
+          "oklch(75% 0.0306 89.44)",
+          "oklch(87% 0.0183 89.44)",
+          "oklch(95% 0.0102 89.44)"
+        ]
+      },
+      "field-border": {
+        "role": "neutral",
+        "displayName": "Field border",
+        "tonalRamp": [
+          "oklch(15% 0.0072 232.03)",
+          "oklch(27% 0.0158 232.03)",
+          "oklch(39% 0.0244 232.03)",
+          "oklch(51% 0.0251 232.03)",
+          "oklch(63% 0.0251 232.03)",
+          "oklch(75% 0.0216 232.03)",
+          "oklch(87% 0.0129 232.03)",
+          "oklch(95% 0.0072 232.03)"
+        ]
+      },
+      "selection": {
+        "role": "neutral",
+        "displayName": "Selection",
+        "tonalRamp": [
+          "oklch(15% 0.0099 241.47)",
+          "oklch(27% 0.0219 241.47)",
+          "oklch(39% 0.0338 241.47)",
+          "oklch(51% 0.0348 241.47)",
+          "oklch(63% 0.0348 241.47)",
+          "oklch(75% 0.0298 241.47)",
+          "oklch(87% 0.0179 241.47)",
+          "oklch(95% 0.0099 241.47)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page title."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "General copy and fields."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Persistent form labels."
+      },
+      "action": {
+        "displayName": "Action",
+        "purpose": "Action labels."
+      },
+      "supporting": {
+        "displayName": "Supporting",
+        "purpose": "Hints and status."
+      },
+      "metadata": {
+        "displayName": "Metadata",
+        "purpose": "Workflow IDs, results, and footer."
+      }
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": [
+      {
+        "name": "stack-workspace",
+        "value": "820px"
+      },
+      {
+        "name": "compact-rows",
+        "value": "430px"
+      }
+    ],
+    "focus": {
+      "value": "3px solid var(--blue)",
+      "offset": "4px"
+    },
+    "tonalRampPurpose": "Derived swatch previews only; use frontmatter source colors in the interface."
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Start suite.",
+      "html": "<button class=\"ds-primary\">Start suite</button>",
+      "css": ".ds-primary{font-family:system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;font-size:14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;border-radius:var(--radius,8px);border:1px solid var(--blue,#135c91);cursor:pointer;background:var(--blue,#135c91);color:var(--paper,#fff);}.ds-primary:hover:not(:disabled){background:var(--blue-hover,#0c426a);border-color:var(--blue-hover,#0c426a);}.ds-primary:focus-visible{outline:3px solid var(--blue,#135c91);outline-offset:4px}.ds-primary:disabled{cursor:not-allowed;color:var(--muted,#4c6270);background:var(--soft,#f2f6f8);border-color:var(--rule,#cbd6dc)}"
+    },
+    {
+      "name": "Secondary button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Download package.",
+      "html": "<button class=\"ds-secondary\">Download package</button>",
+      "css": ".ds-secondary{font-family:system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;font-size:14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;border-radius:var(--radius,8px);border:1px solid var(--blue,#135c91);cursor:pointer;background:var(--paper,#fff);color:var(--blue,#135c91);}.ds-secondary:hover:not(:disabled){background:var(--blue-soft,#e9f2fa);}.ds-secondary:focus-visible{outline:3px solid var(--blue,#135c91);outline-offset:4px}.ds-secondary:disabled{cursor:not-allowed;color:var(--muted,#4c6270);background:var(--soft,#f2f6f8);border-color:var(--rule,#cbd6dc)}"
+    },
+    {
+      "name": "Cancellation button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Request cancellation.",
+      "html": "<button class=\"ds-danger\">Request cancellation</button>",
+      "css": ".ds-danger{font-family:system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;font-size:14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;border-radius:var(--radius,8px);border:1px solid var(--blue,#135c91);cursor:pointer;background:var(--paper,#fff);color:var(--red,#9d3030);border-color:var(--red,#9d3030);}.ds-danger:hover:not(:disabled){background:var(--red-soft,#fff0ee);}.ds-danger:focus-visible{outline:3px solid var(--blue,#135c91);outline-offset:4px}.ds-danger:disabled{cursor:not-allowed;color:var(--muted,#4c6270);background:var(--soft,#f2f6f8);border-color:var(--rule,#cbd6dc)}"
+    },
+    {
+      "name": "Profile import",
+      "kind": "button",
+      "refersTo": "button-text",
+      "description": "Underlined secondary profile action.",
+      "html": "<button class=\"ds-import\">Import profile JSON</button>",
+      "css": ".ds-import{font-family:system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;font-size:14px;padding:2px 0;background:none;border:0;color:var(--blue,#135c91);text-decoration:underline;text-underline-offset:4px;cursor:pointer}.ds-import:hover{color:var(--blue-hover,#0c426a)}.ds-import:focus-visible{outline:3px solid var(--blue,#135c91);outline-offset:4px}"
+    },
+    {
+      "name": "Text field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Persistent label and supporting hint.",
+      "html": "<label class=\"ds-label\" for=\"ds-operator\">Operator</label><input class=\"ds-field\" id=\"ds-operator\" type=\"text\" placeholder=\"Name to include in the report\">",
+      "css": ".ds-label{display:block;font-family:system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;font-size:16px;font-weight:600;margin-bottom:8px}.ds-field{font-family:system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;font-size:16px;width:100%;min-height:46px;border:1px solid #8d9fa9;border-radius:var(--radius,8px);padding:10px 12px;background:var(--paper,#fff);color:var(--ink,#18242b);caret-color:var(--blue,#135c91)}.ds-field::placeholder{color:var(--muted,#4c6270);opacity:1}.ds-field:disabled{background:var(--soft,#f2f6f8);color:var(--muted,#4c6270)}.ds-field:focus-visible{outline:3px solid var(--blue,#135c91);outline-offset:4px}"
+    },
+    {
+      "name": "Current workflow",
+      "kind": "custom",
+      "refersTo": "workflow-current",
+      "description": "Ruled workflow row with explicit running status.",
+      "html": "<div class=\"ds-step\"><span class=\"ds-code\">WF-04</span><span class=\"ds-name\">Output versus setting</span><span class=\"ds-status\">Running</span></div>",
+      "css": ".ds-step{font-family:system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:12px;padding:15px 10px;border-bottom:1px solid var(--rule,#cbd6dc);background:var(--blue-soft,#e9f2fa)}.ds-code{font-size:12px;color:var(--muted,#4c6270);font-variant-numeric:tabular-nums;padding-top:2px}.ds-name{font-size:14px;font-weight:600;color:var(--ink,#18242b)}.ds-status{font-size:12px;font-weight:650;color:var(--blue,#135c91);padding-top:2px}"
+    },
+    {
+      "name": "Cancellation region",
+      "kind": "card",
+      "refersTo": "boundary",
+      "description": "Inset cleanup-boundary explanation.",
+      "html": "<section class=\"ds-boundary\"><h3>Cancellation boundary</h3><p>The current test finishes and verifies RF off and supply restoration before cancellation takes effect.</p></section>",
+      "css": ".ds-boundary{font-family:system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;padding:16px 18px;background:var(--soft,#f2f6f8);border-radius:12px}.ds-boundary h3{font-size:16px;font-weight:650;color:var(--ink,#18242b);margin:0 0 8px}.ds-boundary p{font-size:13px;line-height:1.5;color:var(--muted,#4c6270);margin:0 0 14px;max-width:65ch}"
+    },
+    {
+      "name": "Request error",
+      "kind": "custom",
+      "refersTo": "notice-error",
+      "description": "Alert for a failed operator request.",
+      "html": "<div class=\"ds-error\" role=\"alert\" tabindex=\"-1\">Profile was not imported: invalid profile.</div>",
+      "css": ".ds-error{font-family:system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;font-size:14px;line-height:1.5;padding:14px 18px;border-radius:12px;background:var(--red-soft,#fff0ee);color:var(--red,#9d3030);margin-bottom:20px}.ds-error:focus-visible{outline:3px solid var(--blue,#135c91);outline-offset:4px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The existing report style",
+    "overview": "The local operator surface inherits the owner-confirmed report style: white surfaces, dark ink, restrained blue actions, system typography, and clear rules. This document records the implemented browser surface; the report templates retain their own styles.\n\nThe interface uses spacing and dividers to separate setup, workflow progress, cancellation, and reports. Text labels accompany state colors, and operational status remains distinct from acceptance results.",
+    "keyCharacteristics": [
+      "White surfaces and ruled sections.",
+      "Blue actions with explicit labels.",
+      "Visible workflow states and cancellation boundaries.",
+      "A stacked workspace on small screens."
+    ],
+    "rules": [
+      {
+        "name": "The State Text Rule",
+        "body": "Preserve the text labels accompanying state colors; phase completion is separate from an acceptance decision.",
+        "section": "colors"
+      },
+      {
+        "name": "The Available Action Rule",
+        "body": "Keep controls disabled or hidden according to their actual availability: setup is locked during an active suite, Start requires a selection, and reports appear only when ready.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do retain visible labels, state text, and completion counts alongside color.",
+      "Do preserve visible keyboard focus and readable disabled states.",
+      "Do wrap long descriptive text and allow the recent-runs table to scroll horizontally.",
+      "Do distinguish a cancellation request from completed cancellation, and report errors from run outcomes."
+    ],
+    "donts": [
+      "Don't infer an acceptance decision from the green Finished state.",
+      "Don't hide the current workflow cleanup boundary when cancellation is requested.",
+      "Don't apply this browser token sheet to report templates without checking their existing styles."
+    ]
+  }
+}

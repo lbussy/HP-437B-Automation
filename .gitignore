@@ -46,3 +46,7 @@ dist/
 *.egg-info/
 .coverage
 htmlcov/
+
+# Local interface review evidence (design tokens/briefs remain trackable).
+.impeccable/review/
+.impeccable/mocks/

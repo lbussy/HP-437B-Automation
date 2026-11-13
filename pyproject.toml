@@ -22,7 +22,7 @@ dev = ["pytest==9.2.0", "ruff==0.17.4", "build==1.6.1"]
 hp437b = "hp437b.cli:main"
 
 [tool.setuptools.package-data]
-hp437b = ["_report_build.json"]
+hp437b = ["_report_build.json", "operator_web/*.html", "operator_web/*.css", "operator_web/*.js"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -68,7 +68,7 @@ Report root includes one-page `report.html` and `report.md`, complete `results.j
 
 Tests cover selection/order, shared state including meter-factor carry, criteria fail-fast, cancellation callbacks and the registered SIGINT handler, child timeout/malformed/shutdown/restoration faults, partial/no-data reports, profile/state/timing/summary corruption, storage failures, report-only recovery, optional plots, escaped supplied identity, and CLI exits. The SIGINT unit test invokes the installed handler; it is not a physical shutdown or operating-system latency qualification. See [validation results](../VALIDATION.md).
 
-This completes fake suite orchestration and reporting. Physical transmitter/supply/observer drivers, independent shutdown qualification, rated fixture/calibration records, workflow-specific hardware execution, and user interfaces remain future work. AI/provider automation remains deferred.
+This completes fake suite orchestration and reporting. Physical transmitter/supply/observer drivers, independent shutdown qualification, rated fixture/calibration records, workflow-specific hardware execution, remain future work. A [local fake-only operator interface](OPERATOR-UI-V1.md) is now implemented. AI/provider automation remains deferred.
 
 ## Optional PDF and portable delivery
 
