@@ -132,3 +132,7 @@ The owner requires a concise report about the equipment being tested: DUT identi
 ## Report harness release identity
 
 The report footer places Report Harness before Record. Clean exact semantic-version releases show their tag version; development builds show the commit, while full commit identity remains in metadata. Wheels/source archives carry build identity for installed use without a checkout. This does not change package-version policy, create/publish release tags, or alter normal logging. See the [tag-aware report policy](REPORTING.md#tagged-releases-and-development-builds).
+
+## External transmitter control foundation
+
+[DUT-CTRL-01 fake-control v1](workflows/EXTERNAL-TRANSMITTER-V1.md) now supplies reusable transmitter/supply/voltage-observer contracts and guarded single-condition orchestration. The fake-only workflow uses the existing Instrument/logger, captures source-off zero/settling/plateau/final baseline, verifies owned-source shutdown/restoration, and publishes provenance and deterministic reports. Saved receipt replay validates controls without device calls or reacquisition. Physical drivers, manual acknowledgement flows, independent shutdown qualification, and hardware acceptance remain open. Existing WF-01–WF-06 implementations, normal logging, dependencies, and CLI defaults are unchanged.
