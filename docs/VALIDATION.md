@@ -141,7 +141,7 @@ This establishes the fake-control foundation only. Cooperative deadlines do not 
 
 ## Shared-control sweep integration — November 12, 2026
 
-[Controlled fake sweeps](workflows/CONTROLLED-SWEEPS-V1.md) now integrate DUT-CTRL-01 into WF-04–WF-06 without changing normal logger/instrument/transport, physical workflow runners, dependencies, or CLI defaults. Delivery and hosted CI are tracked below. No hardware, USB/VISA backend, SSH host, RF source, or provider was accessed.
+[Controlled fake sweeps](workflows/CONTROLLED-SWEEPS-V1.md) now integrate DUT-CTRL-01 into WF-04–WF-06 without changing normal logger/instrument/transport, physical workflow runners, dependencies, or CLI defaults. Delivered to `devel` at `d2f5584`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43337194421). No hardware, USB/VISA backend, SSH host, RF source, or provider was accessed.
 
 Local ignored evidence: `tmp/controlled-sweeps/` and `output/reports/controlled-sweeps-20261112/`.
 
@@ -151,6 +151,6 @@ Local ignored evidence: `tmp/controlled-sweeps/` and `output/reports/controlled-
 - Each point stores native production CSV/session and replayable control/meter evidence. Projection is regenerated from those rows and checked byte for byte. Uncertain operations stop later points; initially on RF stays unadopted; failed restoration cannot pass even with completed RF captures. No retry or software recovery was added.
 - Source distribution and wheel builds passed under the offline guard. A fresh wheel installed from local caches, invoked outside the checkout without Matplotlib, completed capture/provenance/report publication for all three controlled workflows. The final focused regression passed **154 tests** after the fake current-limit mismatch refinement.
 - Seven representative plotted reports, including successful, partial, known-still-on, no-capture, and restoration-failure cases, rendered as **14 one-page Letter/A4 outputs**. Frequency-correction, restoration-failure, and no-capture sheets were visually checked. Full details stay in the appendix; signed zero, operator, synthetic status, and shared-control final state stay visible.
-- Ruff, formatting, Markdown links/anchors/tables, 138 matrix/ledger IDs, five publisher PDF checksums, and `git diff --check` passed. New tests are included in the hosted reporting matrix; hosted delivery verification is tracked below.
+- Ruff, formatting, Markdown links/anchors/tables, 138 matrix/ledger IDs, five publisher PDF checksums, and `git diff --check` passed. New tests are included in the hosted reporting matrix; Delivered to `devel` at `d2f5584`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43337194421).
 
 This establishes fake integration and software behavior only. In-memory calibration-factor preparation is not a qualified vendor command or physical readback. Physical drivers, equipment ratings/calibration, independent RF shutdown, and hardware acceptance remain open. Equipment exchange is not a software gate.

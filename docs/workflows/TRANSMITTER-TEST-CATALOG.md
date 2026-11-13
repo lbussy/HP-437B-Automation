@@ -142,7 +142,7 @@ The committed [fictional fixture](examples/transmitter-test-catalog-v1.json) pro
 
 These examples have no DUT limits, so their acceptance result is **NOT EVALUATED**. Implementation acceptance must add independent numeric oracles, threshold boundaries with supplied decision rules, absent limits, insufficient coverage, signed baselines, wrong units, source-state mismatch, cancellation/timeout/storage faults, and source-preservation/inventory checks. Test the proposed driver through fakes before any hardware run; synthetic passes and retained WF-01 re-analysis do not accept a new physical workflow.
 
-WF-04–WF-06 now also provide an explicit [shared-control fake integration](CONTROLLED-SWEEPS-V1.md), with production logger capture, guarded per-point cleanup/restoration, and state continuity. This is implemented; physical driver integration remains open.
+WF-04–WF-06 now also provide an explicit [shared-control fake integration](CONTROLLED-SWEEPS-V1.md), with production logger capture, guarded per-point cleanup/restoration, and state continuity. This is delivered at `d2f5584` with [Python 3.11/3.14 CI passing](https://github.com/lbussy/HP-437B-Automation/actions/runs/43337194421); physical driver integration remains open.
 
 ## Implementation milestones and completion boundary
 

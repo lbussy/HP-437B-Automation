@@ -1,6 +1,6 @@
 # WF-04–WF-06: Shared-control fake sweeps, v1
 
-Status: implemented, November 12, 2026. Fake-only integration; physical drivers and hardware evidence remain open. Normal logging, physical workflow runners, dependencies, and existing CLI defaults are unchanged.
+Status: implemented, November 12, 2026. Fake-only integration; physical drivers and hardware evidence remain open. Delivered to `devel` at `d2f5584`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43337194421). Normal logging, physical workflow runners, dependencies, and existing CLI defaults are unchanged.
 
 WF-04 output versus setting, WF-05 output versus frequency, and WF-06 supply-voltage sensitivity now reuse the [DUT-CTRL-01 control foundation](EXTERNAL-TRANSMITTER-V1.md). An explicit `controlled` command runs ordered points through transmitter, supply, and voltage-observer fakes, the production `Instrument`/`collect` interfaces, and a fake meter. There is no USB/VISA discovery, physical endpoint, POWER REF control, radio, supply, or AI-provider access. Existing `synthetic` commands continue generating their original v1 fixtures; saved fixtures remain readable.
 
