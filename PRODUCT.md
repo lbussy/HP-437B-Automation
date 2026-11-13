@@ -34,6 +34,10 @@ The Python logger, fake transmitter/supply controls, profiles, suites, provenanc
 
 POWER REF suite mode groups selected WF-01–WF-03 captures into one explicit start, shared progress, results, PDF, and portable package. Simulation is the default source; the current-meter source becomes available only when configured at service launch and requires fresh setup confirmation. Simulated time is distinct from elapsed bench time. Bench cancellation waits for the current capture stage and existing cleanup; a separate front-panel confirmation remains required after closure.
 
+## Saved POWER REF report recovery
+
+REPORT-RECOVERY-01 regenerates PDF and ZIP reports from sealed individual physical WF-01–WF-03 captures and combined physical or synthetic POWER REF jobs in the configured run directory. Each regeneration creates a separate `report_recovery` attempt with its own UUID and output, preserves original captures, reports, and attestations, and shows progress, errors, and ready download links. It takes no measurements, changes no USB configuration, and neither requires nor clears a pending original front-panel confirmation; normal logging remains unchanged.
+
 ## Operator-guided sweeps
 
 The owner authorized frequency, drive-setting, and combined measurement series on November 13, 2026. Support all 17 requested band labels and at least five drive labels; the implemented limits are 32 frequencies and 16 drive labels. Pause for fresh operator label confirmation before every capture. Use the production meter logger with an explicitly configured bench source, retain a simulated path, and expose equivalent local orchestration actions. Labels are declarations, separate from measured power.

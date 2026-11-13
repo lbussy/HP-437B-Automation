@@ -470,6 +470,76 @@ class Jobs:
                 raise
             return self.get(job_id)
 
+    def regenerate_reports(self, source_job_id):
+        from . import report_recovery
+
+        with self.mutex:
+            self._reap()
+            p.require(self.process is None, "Wait for the active run or report attempt to finish")
+            source = self._path(source_job_id)
+            source_job = self.get(source_job_id)
+            p.require(
+                not source_job["active"] and source_job["phase"] not in ACTIVE,
+                "Wait for the source worker to close",
+            )
+            original = read(source / "request.json")
+            source_hash = report_recovery.inspect(source, original)
+            job_id = uuid.uuid4().hex
+            path = self.root / job_id
+            delivery.preflight_delivery(source / "capture", path / "report", pdf=True, package=True)
+            path.mkdir(mode=0o700)
+            request = dict(
+                schema="hp437b.operator-request.v1",
+                mode="report_recovery",
+                job_id=job_id,
+                profile=original["profile"],
+                workflows=original["workflows"],
+                operator=original["operator"],
+                plots=self.plots,
+                started_utc=datetime.now(UTC).isoformat(),
+                source_job_id=source_job_id,
+                source_inventory_sha256=source_hash,
+            )
+            atomic(path / "request.json", request)
+            atomic(
+                path / "state.json",
+                dict(
+                    job_id=job_id,
+                    phase="starting",
+                    current=None,
+                    index=0,
+                    total=1,
+                    results=[],
+                    error=None,
+                    outcome=None,
+                ),
+            )
+            self.log = (path / "worker.log").open("xb")
+            try:
+                self.process = subprocess.Popen(
+                    [sys.executable, "-m", "hp437b.operator_jobs", "--job", str(path)],
+                    stdin=subprocess.DEVNULL,
+                    stdout=self.log,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,
+                    env={
+                        key: value for key, value in os.environ.items() if key != "HP437B_OPERATOR"
+                    },
+                    pass_fds=(self.lockfile.fileno(),),
+                )
+                self.active_id = job_id
+            except BaseException:
+                self.log.close()
+                self.log = None
+                state = read(path / "state.json")
+                state.update(
+                    phase="failed",
+                    error="Unable to start report worker; no measurement was started",
+                )
+                atomic(path / "state.json", state)
+                raise
+            return self.get(job_id)
+
     def confirm_reference(self, job_id, operator, confirmed):
         with self.mutex:
             self._reap()
@@ -547,6 +617,10 @@ class Jobs:
         return {
             **state,
             "mode": request.get("mode", "synthetic"),
+            "source_job_id": request.get("source_job_id"),
+            "report_recovery_available": request.get("mode") in ("physical", "reference_suite")
+            and state["phase"] not in ACTIVE
+            and (path / "capture/artifacts.json").is_file(),
             "meter_mode": request.get("meter_mode"),
             "sweep_plan": request.get("sweep_plan"),
             "sweep_config": request.get("sweep_config"),
@@ -606,6 +680,17 @@ class Jobs:
                 profile_issues=issues,
                 jobs=jobs[:20]
                 + [job for job in jobs[20:] if job["job_id"] == self.pending_reference()],
+                report_sources=[
+                    dict(
+                        job_id=job["job_id"],
+                        name=job["profile_name"],
+                        started_utc=job["started_utc"],
+                        workflows=job["workflows"],
+                        outcome=job.get("outcome"),
+                    )
+                    for job in jobs
+                    if job["report_recovery_available"]
+                ],
                 active_id=self.active_id,
                 pending_reference=self.pending_reference(),
                 plots=self.plots,
@@ -630,6 +715,10 @@ class Jobs:
             self._reap()
             p.require(self.active_id == job_id, "This suite is no longer running")
             state = self.get(job_id)
+            p.require(
+                state["mode"] != "report_recovery",
+                "Report regeneration has no measurement to cancel; wait for publication",
+            )
             p.require(
                 state["phase"] in ("starting", "waiting", "running"),
                 "Capture has finished; reports are being prepared",
@@ -689,6 +778,8 @@ def worker(path, *, lock_fd=None):
         expected += ("mode", "reference_config", "prepared_setup")
     if request.get("mode") == "reference_suite":
         expected += ("mode", "meter_mode", "reference_config", "prepared_setup")
+    if request.get("mode") == "report_recovery":
+        expected += ("mode", "source_job_id", "source_inventory_sha256")
     if request.get("mode") == "guided":
         expected += ("mode", "sweep_plan", "meter_mode", "sweep_config", "prepared")
     p._keys(request, expected)
@@ -714,6 +805,30 @@ def worker(path, *, lock_fd=None):
             emit(current=None, results=list(rows), index=event["index"])
 
     try:
+        if request.get("mode") == "report_recovery":
+            from . import report_recovery
+
+            source_id = request["source_job_id"]
+            p.require(isinstance(source_id, str) and ID.fullmatch(source_id), "Invalid source job")
+            source = path.parent / source_id
+            p.require(source.is_dir() and not source.is_symlink(), "Source run not found")
+            original = read(source / "request.json")
+            source_state = read(source / "state.json")
+            p.require(
+                original["job_id"] == source_id and source_state["job_id"] == source_id,
+                "Source run identity mismatch",
+            )
+            p.require(source_state["phase"] not in ACTIVE, "Source run is still active")
+            emit(phase="reporting", current=None)
+            report_recovery.publish(
+                source,
+                path / "report",
+                original,
+                request["source_inventory_sha256"],
+                plots=request["plots"],
+            )
+            emit(phase="finished", outcome="completed", index=1, error=None)
+            return
         if request.get("mode") == "reference_suite":
             from . import reference_suite
 

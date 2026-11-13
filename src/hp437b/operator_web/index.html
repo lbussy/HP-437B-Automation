@@ -67,6 +67,13 @@
 <div id="front-panel" class="boundary" hidden><h3>Confirm after Python closes</h3><p>Check the actual front panel. If recovery is needed, use PRESET/LOCAL and the documented manual recovery before confirming. Protocol observations remain separate.</p><label class="test-option"><input id="front-panel-check" type="checkbox"><span>Live numeric readings, RMT off, and POWER REF off</span></label><button id="front-panel-save" class="secondary" type="button" disabled>Record front-panel confirmation</button><p id="front-panel-result" class="hint"></p></div>
 </section>
 </div>
+<section class="history" aria-labelledby="recovery-title">
+<h2 id="recovery-title">Regenerate saved POWER REF reports</h2>
+<p class="hint">Use sealed measurements already saved on this computer. No meter connection or new measurement. Original captures, reports, and front-panel confirmations stay unchanged.</p>
+<div class="field"><label for="recovery-source">Saved POWER REF capture</label><select id="recovery-source" disabled></select><p id="recovery-note" class="hint">No sealed POWER REF captures are available in this run directory.</p></div>
+<p id="recovery-status" role="status" aria-live="polite"></p><div class="report-actions"><a id="recovery-pdf" class="primary link-button" target="_blank" rel="noopener" hidden>Open regenerated PDF</a><a id="recovery-package" class="secondary link-button" hidden>Download regenerated package</a></div>
+<button id="recover-report" class="secondary" type="button" disabled>Regenerate PDF &amp; package</button>
+</section>
 <section class="history" id="history" hidden><h2>Recent runs</h2><div class="table-scroll"><table><thead><tr><th>DUT / source</th><th>Started</th><th>Outcome</th><th>Report</th></tr></thead><tbody id="history-body"></tbody></table></div></section>
 <footer>Human-started tests. Deterministic reports. Original evidence stays with each run.</footer>
 </main>

@@ -2,7 +2,7 @@
 const $ = id => document.getElementById(id);
 const token = document.querySelector('meta[name="operator-token"]').content;
 let model = {profiles:[],jobs:[],active_id:null}, selectedProfile = null, busy = false, initialized = false;
-let stepsSignature="", historySignature="", inflight=null, generation=0;
+let stepsSignature="", historySignature="", inflight=null, generation=0, recoverySignature="";
 const setText=(id,value)=>{if($(id).textContent!==value)$(id).textContent=value;};
 const titles = {"GUIDED":"Operator-guided sweep","WF-01":"POWER REF baseline and output","WF-02":"Sustained output stability","WF-03":"Transmission-cycle repeatability","WF-04":"Output versus setting","WF-05":"Output versus frequency","WF-06":"Supply-voltage sensitivity"};
 const node = (tag, text, cls) => {const element=document.createElement(tag);if(text!==undefined)element.textContent=text;if(cls)element.className=cls;return element;};
@@ -73,6 +73,7 @@ function renderRun(job) {
   if(job?.mode==="guided"||(!job&&guidedMode())){renderGuided(job);return;}
   $("guided-controls").hidden=true;$("boundary-text").parentElement.hidden=false;
   $("guided-point").hidden=true;$("guided-results").hidden=true;$("html-report").hidden=true;
+  const recovering=job?.mode==="report_recovery";
   const active=Boolean(model.active_id), selected=job?.workflows||chosen();
   const physical=job?(job.mode==="physical"||(job.mode==="reference_suite"&&job.meter_mode==="physical")):(physicalMode()||referenceSuiteBench());
   const phase=job?.phase||"ready", results=job?.results||[], completed=results.filter(row=>row.execution==="completed").length;
@@ -91,6 +92,11 @@ function renderRun(job) {
     }
     if(phase==="failed"){headline="The run needs attention";description=job.error||"The worker did not finish. Captured evidence is retained.";}
   }
+  if(recovering){
+    headline=phase==="failed"?"Report regeneration failed":phase==="finished"?"Reports regenerated":"Regenerating saved reports";
+    description=phase==="failed"?(job.error+" Original evidence is retained. Select the saved capture to try a new report attempt."):"No new measurement. Original capture: "+job.source_job_id+". This is a separate report attempt.";
+    $("run-title").textContent="Report regeneration";
+  }
   setText("run-headline",headline);setText("run-description",description);
   $("progress-label").textContent=job?"Workflow completion":"Selected tests";$("progress-count").textContent=`${completed} / ${selected.length}`;
   $("progress").max=Math.max(selected.length,1);$("progress").value=completed;
@@ -105,6 +111,9 @@ function renderRun(job) {
     item.append(node("span",kind,"step-code"),text,node("span",status,"step-status"));$("steps").append(item);
   }
   }
+  $("steps").hidden=recovering;
+  if(recovering){$("progress-label").textContent="Report publication";$("progress-count").textContent=phase==="finished"?"1 / 1":"0 / 1";$("progress").max=1;$("progress").value=phase==="finished"?1:0;}
+  $("boundary-text").parentElement.hidden=recovering;
   const pending=Boolean(job?.cancel_requested&&active&&["starting","running"].includes(phase));
   $("boundary-text").parentElement.classList.toggle("pending",pending);
   let boundary="The current test finishes and verifies RF off and supply restoration before cancellation takes effect. Later tests do not start.";
@@ -134,6 +143,7 @@ function renderHistory() {
   for(const job of past){
     const tr=node("tr");tr.append(node("td",job.profile_name),node("td",new Date(job.started_utc).toLocaleString()),node("td",job.phase==="failed"?(job.outcome?"Report error":"Run error"):job.outcome==="interrupted"?"Cancelled":job.outcome==="failed"?"Stopped":"Complete"));
     const cell=node("td");if(job.pdf_ready){const link=node("a","Open PDF");link.href=`/artifacts/${job.job_id}/report.pdf`;link.target="_blank";link.rel="noopener";cell.append(link);}else cell.textContent="Not available";
+    if(job.mode==="report_recovery"){tr.firstChild.textContent+=" · report regeneration";tr.children[2].textContent=job.phase==="failed"?"Report error":"Reports ready";}
     tr.append(cell);$("history-body").append(tr);
   }
 }
@@ -159,7 +169,7 @@ async function refresh(force=false) {
     if(activeRefSuite&&hydratedReferenceSuite!==activeRefSuite.job_id){hydratedReferenceSuite=activeRefSuite.job_id;$("mode").value="reference_suite";$("reference-suite-source").value=activeRefSuite.meter_mode;for(const input of document.querySelectorAll('#reference-suite-tests input'))input.checked=activeRefSuite.workflows.includes(input.value);$("operator").value=activeRefSuite.operator||"";}
     const activeGuided=model.jobs.find(job=>job.job_id===model.active_id&&job.mode==="guided");
     if(activeGuided&&hydratedGuided!==activeGuided.job_id){const p=activeGuided.sweep_plan;hydratedGuided=activeGuided.job_id;$("mode").value="guided";for(const [id,value] of Object.entries({"guided-name":p.name,"guided-series":p.series,"guided-frequencies":p.frequencies.join(", "),"guided-drives":p.drives.join(", "),"guided-order":p.order,"guided-samples":p.samples,"guided-interval":p.interval_s,"guided-settling":p.settling_s,"guided-notes":p.measurement_notes,"guided-meter":activeGuided.meter_mode,"operator":activeGuided.operator||""}))$(id).value=value;}
-    modeChanged(false);renderRun(model.jobs.find(job=>job.job_id===model.active_id)||model.jobs.find(job=>job.job_id===model.pending_reference)||model.jobs[0]||null);renderHistory();
+    modeChanged(false);renderRun(model.jobs.find(job=>job.job_id===model.active_id)||model.jobs.find(job=>job.job_id===model.pending_reference)||model.jobs[0]||null);renderHistory();renderRecoveryControls();
   }catch(exc){$("connection").textContent="Connection to the local operator service was lost. Existing worker runs are not restarted. Reload this page to reconnect and view their status.";$("connection").hidden=false;$("start").disabled=true;$("cancel").disabled=true;$("guided-capture").disabled=true;$("guided-stop").disabled=true;}
   })();inflight=task;try{await task;}finally{if(inflight===task)inflight=null;}
 }
@@ -213,3 +223,25 @@ refresh();setInterval(refresh,500);
 
 for(const input of document.querySelectorAll('#reference-suite-tests input'))input.addEventListener('change',selectionChanged);
 $("reference-suite-source").addEventListener('change',()=>modeChanged(true));
+
+function renderRecoveryControls(){
+ const sources=model.report_sources||[],signature=JSON.stringify(sources);
+ if(signature!==recoverySignature){
+  recoverySignature=signature;const selected=$("recovery-source").value;
+  $("recovery-source").replaceChildren(...sources.map(source=>{const option=node("option",`${new Date(source.started_utc).toLocaleString()} · ${source.workflows.join(" + ")} · ${source.outcome||"capture retained"} · ${source.job_id.slice(0,8)}`);option.value=source.job_id;return option;}));
+  if(sources.some(x=>x.job_id===selected))$("recovery-source").value=selected;
+ }
+ const attempt=model.jobs.find(job=>job.mode==="report_recovery");
+ setText("recovery-status",attempt?(attempt.phase==="failed"?"Report regeneration failed: "+attempt.error+" Original measurements are retained; select the capture to try again.":attempt.phase==="finished"?"Reports regenerated from saved capture "+attempt.source_job_id+". No new measurements.":"Validating saved evidence and generating reports. No meter connection."):"");
+ $("recovery-pdf").hidden=!attempt?.pdf_ready;$("recovery-package").hidden=!attempt?.package_ready;
+ if(attempt){$("recovery-pdf").href=`/artifacts/${attempt.job_id}/report.pdf`;$("recovery-package").href=`/artifacts/${attempt.job_id}/package.zip`;}
+ const disabled=busy||Boolean(model.active_id)||!sources.length;
+ $("recovery-source").disabled=disabled;$("recover-report").disabled=disabled;
+ setText("recovery-note",!sources.length?"No sealed POWER REF captures are available in this run directory.":model.active_id?"Wait for the active run or report attempt to finish.":"Creates a separate report attempt. Interrupted captures keep their partial results; source files are validated before publication.");
+}
+$("recover-report").addEventListener("click",async()=>{
+ if($("recover-report").disabled)return;busy=true;generation++;renderRecoveryControls();error("");
+ try{await api("/api/report-recovery",{source_job_id:$("recovery-source").value});}
+ catch(exc){error("Reports were not regenerated. "+exc.message+". Original measurements are retained; select another capture or repair a copy before retrying.");}
+ finally{busy=false;await refresh(true);}
+});

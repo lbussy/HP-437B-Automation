@@ -209,6 +209,10 @@ def server(manager, port=8765):
                         ),
                     )
                     return
+                if path == "/api/report-recovery":
+                    p._keys(body, ("source_job_id",))
+                    self._send(202, r.encoded(manager.regenerate_reports(body["source_job_id"])))
+                    return
                 if path == "/api/cancel":
                     p._keys(body, ("job_id",))
                     self._send(202, r.encoded(manager.cancel(body["job_id"])))
