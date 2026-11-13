@@ -447,3 +447,91 @@ def test_physical_job_pins_launch_configuration_and_requires_new_preparation(tmp
             manager.start_guided(quick_plan(), "Test", "synthetic", {})
     finally:
         manager.close()
+
+
+def reference_plan():
+    return {
+        **quick_plan(),
+        "name": "POWER REF bench exercise",
+        "series": "drive",
+        "frequencies": ["50 MHz nominal (POWER REF)"],
+        "drives": ["Repeat 1", "Repeat 2", "Repeat 3"],
+    }
+
+
+@pytest.mark.parametrize(
+    "reference,source,completed",
+    [(True, "power_ref", 3), (False, "power_ref", 0), (True, "external", 0)],
+)
+def test_explicit_reference_source_status_and_native_import(tmp_path, reference, source, completed):
+    wires = []
+
+    class Wire(DemoTransport):
+        def open(self, timeout):
+            pass
+
+        def read(self, deadline):
+            pending = self.pending
+            raw = super().read(deadline)
+            if pending == b"SM":
+                raw = raw[:16] + (b"1" if reference else b"0") + raw[17:]
+            return raw
+
+    def capture(*args, **kwargs):
+        wire = Wire()
+        wires.append(wire)
+        return g.capture_point(*args, **kwargs, transport_factory=lambda: wire)
+
+    folder, result = run(
+        tmp_path,
+        plan=reference_plan(),
+        mode="physical",
+        config={**config(), "signal_source": source},
+        prepared=dict.fromkeys(g.PREPARED, True),
+        capture=capture,
+    )
+    assert result["completed_points"] == completed
+    assert all(w.closed for w in wires)
+    assert g.load(folder)[1] == result
+    if completed:
+        output = tmp_path / "report"
+        reports.publish(folder, output, plot=False)
+        assert reports.validate_pair(folder, output) == result["run_id"]
+        assert "Operator-guided POWER REF repeats" in (output / "report.html").read_text()
+        session = folder / "P001/samples.csv.session.json"
+        value = json.loads(session.read_text())
+        raw = bytes.fromhex(value["initial_status_raw_hex"])
+        value["initial_status_raw_hex"] = (raw[:16] + b"0" + raw[17:]).hex()
+        session.write_bytes(r.encoded(value))
+        (folder / "artifacts.json").unlink()
+        _seal(folder, dict(schema=g.SCHEMA, mode="physical", run_id=result["run_id"]))
+        with pytest.raises(ValueError, match="Invalid initial meter status"):
+            g.load(folder)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        dict(frequencies=["20m"]),
+        dict(drives=["2 mA"]),
+        dict(samples=31),
+        dict(settling_s=21),
+        dict(series="combined"),
+    ],
+)
+def test_reference_plan_cannot_claim_sweep_or_unbounded_capture(tmp_path, changes):
+    with pytest.raises(ValueError, match="POWER REF bench exercise"):
+        run(
+            tmp_path,
+            plan={**reference_plan(), **changes},
+            mode="physical",
+            config={**config(), "signal_source": "power_ref"},
+            prepared=dict.fromkeys(g.PREPARED, True),
+        )
+    assert not (tmp_path / "capture").exists()
+
+
+def test_reference_configuration_is_explicit_and_legacy_is_unchanged():
+    assert g.configuration(config()) == config()
+    with pytest.raises(ValueError):
+        g.configuration({**config(), "signal_source": "anything"})

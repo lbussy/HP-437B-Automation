@@ -106,7 +106,13 @@ def points(plan):
 
 
 def configuration(document):
-    p._keys(document, ("resource", "meter_serial", "sensor_serial", "known_issues", "fixture"))
+    p.require(isinstance(document, dict), "Invalid meter configuration")
+    keys = ("resource", "meter_serial", "sensor_serial", "known_issues", "fixture")
+    p._keys(document, (*keys, "signal_source") if "signal_source" in document else keys)
+    p.require(
+        document.get("signal_source", "external") in ("external", "power_ref"),
+        "Invalid configured signal source",
+    )
     VisaTransport(document["resource"])  # Syntax only; no discovery or device I/O.
     for key in ("meter_serial", "sensor_serial", "fixture"):
         text(document[key], 1000 if key == "fixture" else 120)
@@ -117,6 +123,25 @@ def configuration(document):
     for issue in document["known_issues"]:
         text(issue, 500)
     return p._json(r.encoded(document))
+
+
+def reference_source(config):
+    return config is not None and config.get("signal_source") == "power_ref"
+
+
+def check_source_plan(plan, config):
+    if reference_source(config):
+        p.require(
+            plan["series"] == "drive"
+            and plan["frequencies"] == ["50 MHz nominal (POWER REF)"]
+            and plan["drives"]
+            in (["Repeat 1"], ["Repeat 1", "Repeat 2"], ["Repeat 1", "Repeat 2", "Repeat 3"])
+            and plan["samples"] <= 30
+            and plan["interval_s"] <= 1
+            and plan["settling_s"] <= 20
+            and plan["timeout_s"] <= 10,
+            "POWER REF bench exercise requires the fixed nominal frequency, 1–3 repeat labels, and bounded captures",
+        )
 
 
 class PointGate(Protocol):
@@ -215,9 +240,13 @@ def capture_point(
 
         def read_status(self):
             status = super().read_status()
+            expected_reference = reference_source(config)
             p.require(
-                not status.reference_on and not status.measurement_error and not status.entry_error,
-                "Meter must be ready with POWER REF off and no errors",
+                status.reference_on == expected_reference
+                and not status.measurement_error
+                and not status.entry_error,
+                "Meter must have no errors and POWER REF "
+                + ("on for reference captures" if expected_reference else "off"),
             )
             return status
 
@@ -264,6 +293,7 @@ def run(
     report_context.validate_operator(operator)
     if mode == "physical":
         config = configuration(config)
+        check_source_plan(plan, config)
         p.require(
             isinstance(prepared, dict)
             and set(prepared) == set(PREPARED)
@@ -376,7 +406,7 @@ def analyze_unsealed(source, record):
                 status = protocol.status(bytes.fromhex(session["initial_status_raw_hex"]))
                 p.require(
                     status.unit == "W"
-                    and not status.reference_on
+                    and status.reference_on == reference_source(record["equipment"])
                     and not status.measurement_error
                     and not status.entry_error,
                     "Invalid initial meter status",
@@ -483,6 +513,7 @@ def load(source):
     report_context.validate_operator(record["operator"])
     if record["mode"] == "physical":
         configuration(record["equipment"])
+        check_source_plan(record["plan"], record["equipment"])
         p.require(
             isinstance(record["prepared"], dict)
             and set(record["prepared"]) == set(PREPARED)

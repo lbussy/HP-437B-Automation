@@ -123,7 +123,8 @@ def publish(source, output, *, plot=True, package=True):
         writer.writerows(result["points"])
     images = plots(output, record, result) if plot else []
     esc = lambda value: html.escape(str(value))  # noqa: E731
-    title = "Operator-guided radio sweep"
+    reference = sweep.reference_source(record["equipment"])
+    title = "Operator-guided POWER REF repeats" if reference else "Operator-guided radio sweep"
     description = (
         "Recorded measurements" if record["mode"] == "physical" else "SIMULATED measurements"
     )
@@ -133,6 +134,11 @@ def publish(source, output, *, plot=True, package=True):
         "Measurement notes: " + record["plan"]["measurement_notes"],
         "Acceptance: NOT EVALUATED. No acceptance limits were supplied.",
     ]
+    if reference:
+        notes.insert(
+            0,
+            "Fixed nominal 50 MHz POWER REF; repeat labels are capture order, not changed drive settings. No transmitter or frequency sweep was tested. Operator switches POWER REF manually and must turn it off after stopping or finishing.",
+        )
     if record["equipment"]:
         notes += [
             "Known equipment issues: "
@@ -141,7 +147,7 @@ def publish(source, output, *, plot=True, package=True):
     notes += ["Stop reason: " + record["error"]] if record["error"] else []
     lines = [
         "Test: " + title,
-        "Radio: " + record["plan"]["name"],
+        ("Source: " if reference else "Radio: ") + record["plan"]["name"],
         "Operator: " + (record["operator"] or "Not recorded"),
         "When: " + record["started_utc"],
         "Execution: " + result["execution"] + "; acceptance: NOT EVALUATED",

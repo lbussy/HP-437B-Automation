@@ -239,6 +239,7 @@ class Jobs:
                     self.sweep_config is not None, "A sweep meter must be configured at launch"
                 )
                 config = guided.configuration(self.sweep_config)
+                guided.check_source_plan(plan, config)
                 p.require(
                     isinstance(prepared, dict)
                     and set(prepared) == set(guided.PREPARED)
@@ -507,6 +508,7 @@ class Jobs:
             "mode": request.get("mode", "synthetic"),
             "meter_mode": request.get("meter_mode"),
             "sweep_plan": request.get("sweep_plan"),
+            "sweep_config": request.get("sweep_config"),
             "stage": state.get("stage") if request.get("mode") == "guided" else stage,
             "front_panel_confirmed": (path / "operator-confirmation.json").is_file(),
             "profile_name": request["profile"]["dut"]["name"],

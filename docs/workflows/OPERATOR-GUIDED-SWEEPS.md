@@ -1,6 +1,6 @@
 # Operator-guided radio sweeps
 
-Status: delivered to `devel` at `d64617f`, November 13, 2026; [Python 3.11/3.14 software/reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43433860223). Physical bench execution remains a separate acceptance step. The guided runner uses the production meter logger, with a fresh operator confirmation before every point. The earlier WF-04/WF-05 synthetic workflows retain their existing five-point contracts.
+Status: delivered to `devel` at `d64617f`, November 13, 2026; [Python 3.11/3.14 software/reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43433860223). [Current-Mac fixed POWER REF browser execution passed](../validation/GUIDED-POWER-REF-20261113.md), with thirty valid readings and owner-confirmed final state; external-radio frequency/drive acceptance remains separate. The guided runner uses the production meter logger, with a fresh operator confirmation before every point. The earlier WF-04/WF-05 synthetic workflows retain their existing five-point contracts.
 
 ## Test series
 
@@ -42,7 +42,7 @@ Setup JSON has these exact fields; replace placeholders with the actual resource
 
 Loading this file validates syntax without discovering or opening equipment. The service does not accept arbitrary device resources through the browser or HTTP start request. A measured run requires fresh RF-path, meter-preparation, reference-off, and operator-availability confirmations. Follow the [equipment manuals and individual records](../EQUIPMENT.md), including sensor input limits, warm-up, zero/CAL, and applicable frequency factors. Preparation booleans in an older run are not authorization for a new run.
 
-Each point uses the existing `Instrument`, `VisaTransport`, and finite `logger.collect` implementation. It opens the configured meter only after point confirmation and settling, requests absolute W, records identity, transport, initial status, raw frames, receipt timing, cleanup, and closure. POWER REF must be off, and reported meter errors stop the point. The meter's existing calibration-factor, offset, and duty corrections are retained. Prepare and record the relevant corrections for each frequency before confirming. The application does not interpolate factors, apply additional fixture corrections, perform automatic zero/CAL, or subtract a baseline. Reports describe **meter-indicated power at sensor input**. Radio-output power requires the actual RF path and its correction basis to be established separately.
+Each point uses the existing `Instrument`, `VisaTransport`, and finite `logger.collect` implementation. It opens the configured meter only after point confirmation and settling, requests absolute W, records identity, transport, initial status, raw frames, receipt timing, cleanup, and closure. For the default external-radio source, POWER REF must be off; the explicit fixed-reference option below requires it on during capture. Reported meter errors stop the point. The meter's existing calibration-factor, offset, and duty corrections are retained. Prepare and record the relevant corrections for each frequency before confirming. The application does not interpolate factors, apply additional fixture corrections, perform automatic zero/CAL, or subtract a baseline. Reports describe **meter-indicated power at sensor input**. Radio-output power requires the actual RF path and its correction basis to be established separately.
 
 The bench integration is software-tested with injected transports; this is not a new physical host/backend or radio qualification claim. [Existing named Mac/Pi evidence](../VALIDATION.md) retains its recorded scope.
 
@@ -111,3 +111,13 @@ python -m hp437b.guided_client --url http://127.0.0.1:8765 stop --job-id JOB_ID
 ```
 
 The CLI confirmation checks the supplied point ID and labels against the pending token before posting. It does not advance other points or infer that a radio has changed settings.
+
+## Supervised fixed POWER REF exercise
+
+An explicit launch configuration may additionally contain `"signal_source": "power_ref"`. The default, including older setup files, remains external RF with POWER REF off. This option is confined to GUIDED-01; ordinary logging and the WF-01–WF-03 reference runners are unchanged. A reference-configured service accepts only a drive-series plan with frequency label `50 MHz nominal (POWER REF)` and one to three labels `Repeat 1`, `Repeat 2`, and `Repeat 3`, in that order. Each point permits at most thirty samples, one-second spacing, twenty-second settling, and ten-second operation timeouts.
+
+This is a fixed-source exercise of point authorization, production capture, closure, and reporting. Repeat labels indicate capture order, not changed drive or independently measured frequency. The report explicitly identifies POWER REF and the supplied fixture/known issues. It does not establish physical frequency/drive sweeps or external radio integration.
+
+Start with the reference off and freshly confirm the prepared direct sensor-to-reference path, warm-up/correction history, closed other control applications, and operator availability. Start only allocates the series and waits. The operator then turns POWER REF on, allows twenty seconds to settle, and confirms each specific repeat before capture. Native status must indicate reference **on**, with no meter errors. External-radio captures still require reference **off**. Sealed import enforces the same source-specific status and plan rules. No source-control command, zero/CAL, correction change, preset, retry, or automatic restart is added.
+
+The operator must turn POWER REF off after finishing, stopping, or failure and confirm live readings/RMT off/reference off. Stop does not switch RF off. Keep the operator present throughout; no unattended reference-source profile is declared. The normal healthy logger close provides its existing TR3/GTL behavior, while uncertain I/O retains the existing shutdown policy. Capture/report evidence records status at acquisition; final front-panel/source-off observations remain a separate supplement and never rewrite sealed files.
