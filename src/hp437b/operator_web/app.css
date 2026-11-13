@@ -9,3 +9,6 @@
 .history-tools{display:flex;align-items:flex-end;gap:16px;margin:18px 0;flex-wrap:wrap}.history-tools .field{flex:1;min-width:220px;margin:0}.history-links a,.history-links button{display:block;margin:6px 0}.saved-detail{margin-top:28px}.history td{overflow-wrap:anywhere}.history small{display:block;color:var(--muted);margin-top:4px}.history caption{text-align:left;color:var(--muted);padding:16px 0 10px}.history input[type=checkbox]{width:18px;height:18px;accent-color:var(--blue)}#comparison table{min-width:850px}#run-detail table{min-width:600px}
 
 #history-body td:first-child{width:54px}#history> .table-scroll table{min-width:700px}#detail-body td:not(:first-child),#comparison-body td:nth-child(n+2):nth-child(-n+6){white-space:nowrap;overflow-wrap:normal;text-align:right}
+
+#assessment-form{max-width:760px}#assessment-form details{font-size:14px;margin:20px 0}#assessment-form summary{font-weight:600;color:var(--ink);min-height:36px}#assessment-form .capture-fields{margin:16px 0}#assess-run{margin-top:20px}
+#assessment-form .capture-fields{align-items:end}#assessment-status{margin-top:16px}

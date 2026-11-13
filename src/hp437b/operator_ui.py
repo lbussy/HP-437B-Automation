@@ -223,6 +223,17 @@ def server(manager, port=8765):
                         200, r.encoded(manager.compare_runs(body["job_ids"], body["workflow"]))
                     )
                     return
+                if path == "/api/acceptance-review":
+                    p._keys(body, ("source_job_id", "criteria", "assessor"))
+                    self._send(
+                        202,
+                        r.encoded(
+                            manager.assess_run(
+                                body["source_job_id"], body["criteria"], body["assessor"]
+                            )
+                        ),
+                    )
+                    return
                 if path == "/api/report-recovery":
                     p._keys(body, ("source_job_id",))
                     self._send(202, r.encoded(manager.regenerate_reports(body["source_job_id"])))

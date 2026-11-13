@@ -76,7 +76,13 @@ def _pair(source, report):
     source_inv = _exact_inventory(evidence)
     output = p.Bundle(report)
     report_inv = _exact_inventory(output)
-    if report_inv.get("schema") == "hp437b.reference-suite-report.v1":
+    if report_inv.get("schema") == "hp437b.acceptance-report.v1":
+        from . import acceptance_review
+
+        run_id = acceptance_review.validate_pair(source, report)
+        schema = acceptance_review.REPORT_SCHEMA
+        expected = output.json("results.json")
+    elif report_inv.get("schema") == "hp437b.reference-suite-report.v1":
         from . import reference_suite
 
         run_id = reference_suite.validate_pair(source, report)
@@ -132,7 +138,8 @@ def _pair(source, report):
         and source_inv.get(
             "run_id",
             evidence.json("workflow.json").get("run_id")
-            if schema == "hp437b.reference-report.v1"
+            if schema in ("hp437b.reference-report.v1", "hp437b.acceptance-report.v1")
+            and "workflow.json" in evidence.entries
             else None,
         )
         == run_id,

@@ -46,6 +46,10 @@ The owner authorized frequency, drive-setting, and combined measurement series o
 
 RUN-HISTORY-01 adds read-only saved history, twenty runs per page, with measurement/report-attempt filters, report links, verified native POWER REF details, and original front-panel attestation bound to the source inventory hash. Compare two to four distinct acquisitions for matching WF-01–WF-03 workflows: signed zero (µW), mean (mW), endpoint change (%), and cycle spread (µW) retain native definitions. Context, profile, resource, mode, and completeness differences remain visible; unknown, different, or partial evidence withholds arithmetic mean changes (µW). Report attempts trace their acquisition source and cannot count as new measurements. This extends the existing interface without new measurements, hardware qualification, or changes to normal logging; see [the workflow contract](docs/workflows/RUN-HISTORY-V1.md).
 
+## Saved POWER REF acceptance assessments
+
+ACCEPT-01 lets the operator supply optional criteria for sealed POWER REF captures through the local interface, with no default DUT limits. Each immutable post-capture assessment records criteria source, optional assessor, criteria/result/source hashes, and the inclusive-no-guard-band rule; coverage gates Pass, Fail, or Not evaluated for mean-power bounds, WF-02 absolute endpoint drift (%), and WF-03 cycle-mean spread (%). A one-page PDF/HTML, decision JSON, and portable ZIP preserve the original measurements, reports, and attestations. History identifies the assessment as derived evidence rather than a new measurement. Examples are illustrative software checks, not DUT specifications; no hardware, new capture, or normal logging behavior changes. See [the acceptance contract](docs/workflows/ACCEPTANCE-V1.md).
+
 ## Brand Commitments
 
 Use HP 437B Automation as the project name and retain the existing report styling. Reports remain titled RF Output Power Test, with operator, signed pre-RF zero, and Report Harness provenance.

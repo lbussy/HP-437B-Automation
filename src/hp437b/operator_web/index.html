@@ -74,10 +74,22 @@
 <p id="recovery-status" role="status" aria-live="polite"></p><div class="report-actions"><a id="recovery-pdf" class="primary link-button" target="_blank" rel="noopener" hidden>Open regenerated PDF</a><a id="recovery-package" class="secondary link-button" hidden>Download regenerated package</a></div>
 <button id="recover-report" class="secondary" type="button" disabled>Regenerate PDF &amp; package</button>
 </section>
+<section class="history" aria-labelledby="assessment-title">
+<h2 id="assessment-title">Assess saved POWER REF limits</h2>
+<p class="hint">Create a separate post-capture decision from supplied limits. Original reports stay unchanged. No default DUT limits, new measurement, or uncertainty guard band.</p>
+<form id="assessment-form">
+<div class="field"><label for="assessment-source">Capture to assess</label><select id="assessment-source" disabled></select></div>
+<div class="field"><label for="criteria-source">Criteria source / supplied by</label><input id="criteria-source" type="text" maxlength="240" placeholder="Person or specification supplying these limits"><p class="hint">Required when supplying limits or coverage requirements. Examples are not DUT specifications.</p></div>
+<div class="field"><label for="assessment-assessor">Assessor <span class="optional">optional</span></label><input id="assessment-assessor" type="text" maxlength="120" autocomplete="name"></div>
+<p class="hint">Inclusive lower/upper limits. Leave unwanted limits blank. A performance limit, minimum valid samples, and maximum gap are required to evaluate each workflow. Unassessed or incomplete workflows prevent an overall Pass.</p>
+<div id="criteria-workflows"></div><button id="assess-run" class="secondary" type="submit" disabled>Create assessment PDF &amp; package</button>
+</form>
+<p id="assessment-status" role="status"></p><div class="report-actions"><a id="assessment-pdf" class="primary link-button" target="_blank" rel="noopener" hidden>Open assessment PDF</a><a id="assessment-package" class="secondary link-button" hidden>Download assessment package</a><a id="assessment-json" class="secondary link-button" target="_blank" rel="noopener" hidden>Open decision record</a></div>
+</section>
 <section class="history" id="history" aria-labelledby="history-title">
 <h2 id="history-title">Saved run history</h2>
 <p class="hint">Browse saved measurements and separate report attempts. POWER REF details and comparisons are read from verified captures; no new measurement starts here.</p>
-<div class="history-tools"><div class="field"><label for="history-filter">Show saved runs</label><select id="history-filter"><option value="all">Measurements and report attempts</option><option value="measurements">Measurements only</option><option value="reports">Report regenerations only</option></select></div><button id="history-refresh" class="secondary" type="button">Refresh history</button></div>
+<div class="history-tools"><div class="field"><label for="history-filter">Show saved runs</label><select id="history-filter"><option value="all">Measurements and report attempts</option><option value="measurements">Measurements only</option><option value="reports">Reports and assessments only</option></select></div><button id="history-refresh" class="secondary" type="button">Refresh history</button></div>
 <p id="history-note" role="status" class="hint"></p>
 <div class="table-scroll" tabindex="0" aria-label="Scrollable saved-run table"><table><caption>Saved runs — select two to four POWER REF measurements to compare</caption><thead><tr><th scope="col">Select</th><th scope="col">Run / source</th><th scope="col">Started</th><th scope="col">Outcome</th><th scope="col">Reports and details</th></tr></thead><tbody id="history-body"></tbody></table></div>
 <p class="hint">On narrow screens, scroll tables sideways to see every column.</p>

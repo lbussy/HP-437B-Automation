@@ -471,6 +471,16 @@ class Jobs:
             return self.get(job_id)
 
     def regenerate_reports(self, source_job_id):
+        return self._saved_report(source_job_id, "report_recovery")
+
+    def assess_run(self, source_job_id, criteria, assessor):
+        from . import acceptance_review
+
+        criteria = acceptance_review.validate(criteria)
+        r.report_context.validate_operator(assessor)
+        return self._saved_report(source_job_id, "acceptance_review", criteria, assessor)
+
+    def _saved_report(self, source_job_id, mode, criteria=None, assessor=None):
         from . import report_recovery
 
         with self.mutex:
@@ -484,13 +494,18 @@ class Jobs:
             )
             original = read(source / "request.json")
             source_hash = report_recovery.inspect(source, original)
+            if criteria is not None:
+                p.require(
+                    set(criteria["workflows"]) <= set(original["workflows"]),
+                    "Criteria include workflows outside this capture",
+                )
             job_id = uuid.uuid4().hex
             path = self.root / job_id
             delivery.preflight_delivery(source / "capture", path / "report", pdf=True, package=True)
             path.mkdir(mode=0o700)
             request = dict(
                 schema="hp437b.operator-request.v1",
-                mode="report_recovery",
+                mode=mode,
                 job_id=job_id,
                 profile=original["profile"],
                 workflows=original["workflows"],
@@ -500,6 +515,8 @@ class Jobs:
                 source_job_id=source_job_id,
                 source_inventory_sha256=source_hash,
             )
+            if mode == "acceptance_review":
+                request.update(criteria=criteria, assessor=assessor)
             atomic(path / "request.json", request)
             atomic(
                 path / "state.json",
@@ -618,6 +635,7 @@ class Jobs:
             **state,
             "mode": request.get("mode", "synthetic"),
             "source_job_id": request.get("source_job_id"),
+            "assessment_outcome": state.get("assessment_outcome"),
             "report_recovery_available": request.get("mode") in ("physical", "reference_suite")
             and state["phase"] not in ACTIVE
             and (path / "capture/artifacts.json").is_file(),
@@ -721,7 +739,7 @@ class Jobs:
                     continue
                 try:
                     job = self.get(path.name)
-                    report = job["mode"] == "report_recovery"
+                    report = job["mode"] in ("report_recovery", "acceptance_review")
                     if (
                         category == "reports"
                         and not report
@@ -745,6 +763,7 @@ class Jobs:
                                 "pdf_ready",
                                 "package_ready",
                                 "report_recovery_available",
+                                "assessment_outcome",
                             )
                         }
                     )
@@ -764,7 +783,11 @@ class Jobs:
         with self.mutex:
             self._reap()
             job = self.get(job_id)
-            source_id = job["source_job_id"] if job["mode"] == "report_recovery" else job_id
+            source_id = (
+                job["source_job_id"]
+                if job["mode"] in ("report_recovery", "acceptance_review")
+                else job_id
+            )
             source = self._path(source_id)
             source_job = self.get(source_id)
             p.require(
@@ -795,7 +818,7 @@ class Jobs:
             return dict(
                 job_id=job_id,
                 source_job_id=source_id,
-                report_attempt=job["mode"] == "report_recovery",
+                report_attempt=job["mode"] in ("report_recovery", "acceptance_review"),
                 front_panel_confirmation=value,
                 **detail,
             )
@@ -826,7 +849,7 @@ class Jobs:
             p.require(self.active_id == job_id, "This suite is no longer running")
             state = self.get(job_id)
             p.require(
-                state["mode"] != "report_recovery",
+                state["mode"] not in ("report_recovery", "acceptance_review"),
                 "Report regeneration has no measurement to cancel; wait for publication",
             )
             p.require(
@@ -888,6 +911,8 @@ def worker(path, *, lock_fd=None):
         expected += ("mode", "reference_config", "prepared_setup")
     if request.get("mode") == "reference_suite":
         expected += ("mode", "meter_mode", "reference_config", "prepared_setup")
+    if request.get("mode") == "acceptance_review":
+        expected += ("mode", "source_job_id", "source_inventory_sha256", "criteria", "assessor")
     if request.get("mode") == "report_recovery":
         expected += ("mode", "source_job_id", "source_inventory_sha256")
     if request.get("mode") == "guided":
@@ -915,7 +940,7 @@ def worker(path, *, lock_fd=None):
             emit(current=None, results=list(rows), index=event["index"])
 
     try:
-        if request.get("mode") == "report_recovery":
+        if request.get("mode") in ("report_recovery", "acceptance_review"):
             from . import report_recovery
 
             source_id = request["source_job_id"]
@@ -930,13 +955,29 @@ def worker(path, *, lock_fd=None):
             )
             p.require(source_state["phase"] not in ACTIVE, "Source run is still active")
             emit(phase="reporting", current=None)
-            report_recovery.publish(
-                source,
-                path / "report",
-                original,
-                request["source_inventory_sha256"],
-                plots=request["plots"],
-            )
+            if request["mode"] == "acceptance_review":
+                from . import acceptance_review
+
+                result = acceptance_review.publish(
+                    source,
+                    path / "report",
+                    original,
+                    request["criteria"],
+                    request["assessor"],
+                    expected_hash=request["source_inventory_sha256"],
+                )
+                emit(
+                    assessment_outcome=result["outcome"],
+                    assessment_source=request["criteria"]["source"],
+                )
+            else:
+                report_recovery.publish(
+                    source,
+                    path / "report",
+                    original,
+                    request["source_inventory_sha256"],
+                    plots=request["plots"],
+                )
             emit(phase="finished", outcome="completed", index=1, error=None)
             return
         if request.get("mode") == "reference_suite":
