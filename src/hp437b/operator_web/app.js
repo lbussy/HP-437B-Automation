@@ -57,6 +57,7 @@ function profileChanged() {
   selectionChanged();
 }
 function selectionChanged() {
+  if(referenceSuiteMode())referenceSelectionChanged();
   const count=chosen().length;
   $("selection-note").hidden=guidedMode();
   $("selection-note").textContent=physicalMode()?"One workflow per run. Confirm the setup again before each start.":count?`${count} ${count===1?"test":"tests"} selected. Runs in the order shown.`:"Select at least one test.";
@@ -71,6 +72,7 @@ function formatResult(row) {
   return parts.join(" · ");
 }
 function renderRun(job) {
+  renderProfileAssessment(job);
   if(job?.mode==="guided"||(!job&&guidedMode())){renderGuided(job);return;}
   $("guided-controls").hidden=true;$("boundary-text").parentElement.hidden=false;
   $("guided-point").hidden=true;$("guided-results").hidden=true;$("html-report").hidden=true;
@@ -89,6 +91,7 @@ function renderRun(job) {
     if(phase==="finished"){
       headline=job.outcome==="interrupted"?"Suite cancelled":job.outcome==="failed"?"Suite stopped":"Suite complete";
       description=`${job.profile_name}. ${completed}/${selected.length} tests complete. ${job.acceptance==="NOT EVALUATED"?"No complete acceptance decision; see the report for supplied limits and coverage.":"Acceptance: "+job.acceptance+"."}`;
+      if(job.test_profile)description=`${job.profile_name}. ${completed}/${selected.length} tests complete. Original measurement results are retained; see the separate profile assessment below.`;
       if(job.cancel_requested&&job.outcome==="completed")description+=" All tests finished before cancellation could take effect.";
     }
     if(phase==="failed"){headline="The run needs attention";description=job.error||"The worker did not finish. Captured evidence is retained.";}
@@ -137,6 +140,7 @@ function renderRun(job) {
   $("front-panel-check").disabled=Boolean(job?.front_panel_confirmed);
   $("profile").disabled=active;$("operator").disabled=active;$("import").disabled=active;
   for(const input of document.querySelectorAll('#test-options input,#reference-suite-setup input,#reference-suite-setup select'))input.disabled=active;
+  $("save-reference-profile").disabled=active||busy;
   $("start").textContent=active?"Run in progress…":referenceSuiteMode()?"Start POWER REF suite":physicalMode()?"Start POWER REF workflow":"Start suite";$("start").disabled=!canStart();
 }
 function renderHistory(){if(!historyLoaded&&!historyBusy)loadHistory();}
@@ -162,12 +166,12 @@ async function refresh(force=false) {
     if(activeRefSuite&&hydratedReferenceSuite!==activeRefSuite.job_id){hydratedReferenceSuite=activeRefSuite.job_id;$("mode").value="reference_suite";$("reference-suite-source").value=activeRefSuite.meter_mode;for(const input of document.querySelectorAll('#reference-suite-tests input'))input.checked=activeRefSuite.workflows.includes(input.value);$("operator").value=activeRefSuite.operator||"";}
     const activeGuided=model.jobs.find(job=>job.job_id===model.active_id&&job.mode==="guided");
     if(activeGuided&&hydratedGuided!==activeGuided.job_id){const p=activeGuided.sweep_plan;hydratedGuided=activeGuided.job_id;$("mode").value="guided";for(const [id,value] of Object.entries({"guided-name":p.name,"guided-series":p.series,"guided-frequencies":p.frequencies.join(", "),"guided-drives":p.drives.join(", "),"guided-order":p.order,"guided-samples":p.samples,"guided-interval":p.interval_s,"guided-settling":p.settling_s,"guided-notes":p.measurement_notes,"guided-meter":activeGuided.meter_mode,"operator":activeGuided.operator||""}))$(id).value=value;}
-    modeChanged(false);renderRun(model.jobs.find(job=>job.job_id===model.active_id)||model.jobs.find(job=>job.job_id===model.pending_reference)||model.jobs[0]||null);renderHistory();renderRecoveryControls();renderAssessmentControls();
+    renderReferenceProfiles();modeChanged(false);renderRun(model.jobs.find(job=>job.job_id===model.active_id)||model.jobs.find(job=>job.job_id===model.pending_reference)||model.jobs[0]||null);renderHistory();renderRecoveryControls();renderAssessmentControls();
   }catch(exc){$("connection").textContent="Connection to the local operator service was lost. Existing worker runs are not restarted. Reload this page to reconnect and view their status.";$("connection").hidden=false;$("start").disabled=true;$("cancel").disabled=true;$("guided-capture").disabled=true;$("guided-stop").disabled=true;}
   })();inflight=task;try{await task;}finally{if(inflight===task)inflight=null;}
 }
 $("profile").addEventListener("change",profileChanged);
-$("run-form").addEventListener("submit",async event=>{event.preventDefault();if(busy||model.active_id)return;busy=true;generation++;error("");$("start").disabled=true;try{const job=referenceSuiteMode()?await api("/api/reference-suite",{workflows:chosen(),meter_mode:$("reference-suite-source").value,operator:$("operator").value.trim()||null,prepared:referenceSuiteBench()?preparedValues():{}}):guidedMode()?await api("/api/guided",{plan:guidedPlan(),operator:$("operator").value.trim()||null,meter_mode:$("guided-meter").value,prepared:$("guided-meter").value==="physical"?guidedPrepared():{}}):physicalMode()?await api("/api/reference",{workflow:$("reference-workflow").value,operator:$("operator").value.trim()||null,prepared:preparedValues()}):await api("/api/jobs",{profile_key:$("profile").value,workflows:chosen(),operator:$("operator").value.trim()||null});for(const input of document.querySelectorAll("#prepared input,#guided-prepared input"))input.checked=false;model.active_id=job.job_id;model.jobs=[job,...model.jobs.filter(item=>item.job_id!==job.job_id)];renderRun(job);await refresh(true);}catch(exc){error(exc.message);}finally{busy=false;selectionChanged();}});
+$("run-form").addEventListener("submit",async event=>{event.preventDefault();if(busy||model.active_id)return;busy=true;generation++;error("");$("start").disabled=true;try{const job=referenceSuiteMode()&&$("reference-profile").value?await api("/api/reference-profile-run",{profile_key:$("reference-profile").value,meter_mode:$("reference-suite-source").value,operator:$("operator").value.trim()||null,prepared:referenceSuiteBench()?preparedValues():{}}):referenceSuiteMode()?await api("/api/reference-suite",{workflows:chosen(),meter_mode:$("reference-suite-source").value,operator:$("operator").value.trim()||null,prepared:referenceSuiteBench()?preparedValues():{}}):guidedMode()?await api("/api/guided",{plan:guidedPlan(),operator:$("operator").value.trim()||null,meter_mode:$("guided-meter").value,prepared:$("guided-meter").value==="physical"?guidedPrepared():{}}):physicalMode()?await api("/api/reference",{workflow:$("reference-workflow").value,operator:$("operator").value.trim()||null,prepared:preparedValues()}):await api("/api/jobs",{profile_key:$("profile").value,workflows:chosen(),operator:$("operator").value.trim()||null});for(const input of document.querySelectorAll("#prepared input,#guided-prepared input"))input.checked=false;model.active_id=job.job_id;model.jobs=[job,...model.jobs.filter(item=>item.job_id!==job.job_id)];renderRun(job);await refresh(true);}catch(exc){error(exc.message);}finally{busy=false;selectionChanged();}});
 $("cancel").addEventListener("click",async()=>{if(!model.active_id)return;generation++;$("cancel").disabled=true;error("");try{await api("/api/cancel",{job_id:model.active_id});await refresh(true);}catch(exc){error(exc.message);await refresh();}});
 $("import").addEventListener("click",()=>$("profile-file").click());
 $("profile-file").addEventListener("change",async()=>{const file=$("profile-file").files[0];if(!file)return;generation++;error("");try{if(file.size>256*1024)throw new Error("Profile exceeds 256 KiB.");const raw=await file.text();const imported=await api("/api/profiles",{profile_json:raw});await refresh(true);$("profile").value=imported.key;profileChanged();}catch(exc){error("Profile was not imported: "+exc.message);}finally{$("profile-file").value="";}});
@@ -256,7 +260,7 @@ async function loadHistory(){
    const report=["report_recovery","acceptance_review"].includes(job.mode),assessment=job.mode==="acceptance_review",subject=node("td");subject.append(node("div",job.profile_name),node("small",`${assessment?"Acceptance assessment":report?"Report regeneration":"Measurement"} · ${job.job_id.slice(0,8)}${report?" · source "+job.source_job_id.slice(0,8):" · "+job.workflows.join(" + ")}`));
    const outcome=job.phase==="failed"?(report?"Report error":"Needs attention"):job.phase!=="finished"?job.phase:report?(assessment?"Assessed: "+job.assessment_outcome:"Reports ready"):job.outcome==="interrupted"?"Cancelled":job.outcome==="failed"?"Stopped":"Complete";
    tr.append(select,subject,node("td",new Date(job.started_utc).toLocaleString()),node("td",outcome));
-   const actions=node("td",undefined,"history-links");if(job.pdf_ready)actions.append(reportLink(job,"report.pdf","PDF"));if(job.package_ready)actions.append(reportLink(job,"package.zip","Package"));
+   const actions=node("td",undefined,"history-links");if(job.pdf_ready)actions.append(reportLink(job,"report.pdf","PDF"));if(job.package_ready)actions.append(reportLink(job,"package.zip","Package"));if(job.assessment_ready){actions.append(reportLink(job,"assessment/report.pdf","Assessed PDF"),reportLink(job,"assessment/package.zip","Assessment package"));}
    if(job.report_recovery_available||report){const button=node("button","View details","text-button");button.type="button";button.setAttribute("aria-label",`View details for ${job.job_id.slice(0,8)}`);button.addEventListener("click",()=>showRunDetails(job.job_id));actions.append(button);}
    if(!actions.childNodes.length)actions.textContent="No report available";tr.append(actions);return tr;
   });$("history-body").replaceChildren(...rows);
@@ -291,13 +295,17 @@ $("compare-runs").addEventListener("click",async()=>{
 });
 
 function buildCriteriaFields(){
- const source=(model.report_sources||[]).find(x=>x.job_id===$("assessment-source").value);assessmentFormSource=source?.job_id;$("criteria-workflows").replaceChildren();
- for(const kind of source?.workflows||[]){
-  const group=node("details");group.open=source.workflows.length===1;group.append(node("summary",kind+" · optional criteria"));
+ const source=(model.report_sources||[]).find(x=>x.job_id===$("assessment-source").value);assessmentFormSource=source?.job_id;$("saved-assessment-profile").value="";
+ criteriaFields("criteria-workflows",source?.workflows||[]);
+}
+function criteriaFields(target,kinds,values={}){
+ $(target).replaceChildren();
+ for(const kind of kinds){
+  const group=node("details");group.open=kinds.length===1;group.append(node("summary",kind+" · optional criteria"));
   const grid=node("div",undefined,"capture-fields");
   const fields=[["mean_min_mW","Mean minimum (mW)"],["mean_max_mW","Mean maximum (mW)"],["min_valid_samples",kind==="WF-02"?"Minimum valid samples per bin":kind==="WF-03"?"Minimum valid samples per cycle":"Minimum valid plateau samples"],["max_gap_s","Maximum gap (s)"]];
   if(kind==="WF-02")fields.push(["max_abs_endpoint_change_percent","Maximum absolute endpoint change (%)"]);if(kind==="WF-03")fields.push(["max_cycle_spread_percent","Maximum cycle-mean spread (%)"]);
-  for(const [key,text] of fields){const field=node("div",undefined,"field"),label=node("label",kind+" "+text),input=node("input");input.id=`criteria-${kind}-${key}`;label.htmlFor=input.id;input.type=key==="min_valid_samples"?"number":"text";input.inputMode=key==="min_valid_samples"?"numeric":"decimal";if(key==="min_valid_samples"){input.min="1";input.max="1000000";input.step="1";}input.dataset.workflow=kind;input.dataset.limit=key;field.append(label,input);grid.append(field);}group.append(grid);$("criteria-workflows").append(group);
+  for(const [key,text] of fields){const field=node("div",undefined,"field"),label=node("label",kind+" "+text),input=node("input");input.id=`${target}-${kind}-${key}`;label.htmlFor=input.id;input.type=key==="min_valid_samples"?"number":"text";input.inputMode=key==="min_valid_samples"?"numeric":"decimal";if(key==="min_valid_samples"){input.min="1";input.max="1000000";input.step="1";}input.maxLength=64;input.value=values[kind]?.[key]??"";input.dataset.workflow=kind;input.dataset.limit=key;field.append(label,input);grid.append(field);}group.append(grid);$(target).append(group);
  }
 }
 function renderAssessmentControls(){
@@ -305,6 +313,7 @@ function renderAssessmentControls(){
  if(signature!==assessmentSignature){assessmentSignature=signature;const selected=$("assessment-source").value;$("assessment-source").replaceChildren(...sources.map(source=>{const option=node("option",`${new Date(source.started_utc).toLocaleString()} · ${source.workflows.join(" + ")} · ${source.outcome||"capture retained"} · ${source.job_id.slice(0,8)}`);option.value=source.job_id;return option;}));if(sources.some(x=>x.job_id===selected))$("assessment-source").value=selected;}
  if(assessmentFormSource!==$("assessment-source").value)buildCriteriaFields();
  const disabled=busy||Boolean(model.active_id)||!sources.length;for(const input of document.querySelectorAll('#assessment-form input,#assessment-form select,#assessment-form button'))input.disabled=disabled;
+ assessmentProfileControls(disabled);
  const attempt=model.jobs.find(job=>job.mode==="acceptance_review");setText("assessment-status",!sources.length?"No sealed POWER REF capture is available.":attempt?attempt.phase==="failed"?"Assessment report failed: "+attempt.error+". Original evidence is retained.":attempt.phase==="finished"?"Latest assessment of "+attempt.source_job_id.slice(0,8)+": "+attempt.assessment_outcome+". Criteria source: "+(attempt.assessment_source||"see decision record")+". Separate post-capture review; original reports unchanged.":"Validating saved evidence and applying supplied criteria. No meter connection.":"No acceptance assessment has been created.");
  $("assessment-pdf").hidden=!attempt?.pdf_ready;$("assessment-package").hidden=!attempt?.package_ready;$("assessment-json").hidden=!attempt?.pdf_ready;if(attempt){$("assessment-pdf").href=`/artifacts/${attempt.job_id}/report.pdf`;$("assessment-package").href=`/artifacts/${attempt.job_id}/package.zip`;$("assessment-json").href=`/artifacts/${attempt.job_id}/results.json`;}
 }
@@ -314,7 +323,70 @@ $("assessment-form").addEventListener("submit",async event=>{
  const workflows={};for(const input of document.querySelectorAll('#criteria-workflows input')){const value=input.value.trim();(workflows[input.dataset.workflow]??={})[input.dataset.limit]=value?(input.dataset.limit==="min_valid_samples"?Number(value):value):null;}
  const criteria={schema:"hp437b.acceptance-criteria.v1",source:$("criteria-source").value.trim()||null,decision_rule:"inclusive-no-guard-band",workflows};
  busy=true;generation++;error("");renderAssessmentControls();
- try{const job=await api("/api/acceptance-review",{source_job_id:$("assessment-source").value,criteria,assessor:$("assessment-assessor").value.trim()||null});model.active_id=job.job_id;model.jobs=[job,...model.jobs.filter(x=>x.job_id!==job.job_id)];renderRun(job);historyLoaded=false;}
+ try{const job=$("saved-assessment-profile").value?await api("/api/reference-profile-assessment",{source_job_id:$("assessment-source").value,profile_key:$("saved-assessment-profile").value,assessor:$("assessment-assessor").value.trim()||null}):await api("/api/acceptance-review",{source_job_id:$("assessment-source").value,criteria,assessor:$("assessment-assessor").value.trim()||null});model.active_id=job.job_id;model.jobs=[job,...model.jobs.filter(x=>x.job_id!==job.job_id)];renderRun(job);historyLoaded=false;}
  catch(exc){error("Assessment was not started: "+exc.message);}
  finally{busy=false;await refresh(true);}
 });
+
+let referenceProfileSignature="",referenceCriteriaSignature="",savedProfileSignature="";
+const referenceDocuments=()=>model.reference_profiles||[];
+const referenceDocument=key=>referenceDocuments().find(x=>x.key===key)?.document;
+function readCriteria(target,source){
+ const workflows={};for(const input of document.querySelectorAll(`#${target} input`)){const value=input.value.trim();(workflows[input.dataset.workflow]??={})[input.dataset.limit]=value?(input.dataset.limit==="min_valid_samples"?Number(value):value):null;}
+ return {schema:"hp437b.acceptance-criteria.v1",source:source.trim()||null,decision_rule:"inclusive-no-guard-band",workflows};
+}
+function referenceSelectionChanged(){
+ const kinds=[...document.querySelectorAll('#reference-suite-tests input:checked')].map(x=>x.value),signature=kinds.join();
+ if(signature!==referenceCriteriaSignature){const values=readCriteria("reference-criteria-workflows","").workflows;referenceCriteriaSignature=signature;criteriaFields("reference-criteria-workflows",kinds,values);}
+}
+function renderReferenceProfiles(){
+ const rows=referenceDocuments(),signature=JSON.stringify(rows);
+ if(signature!==referenceProfileSignature){referenceProfileSignature=signature;const selected=$("reference-profile").value;$("reference-profile").replaceChildren(new Option("Unsaved selection — no automatic assessment",""),...rows.map(x=>new Option(`${x.document.profile_id} · r${x.document.revision}`,x.key)));if(referenceDocument(selected))$("reference-profile").value=selected;}
+ const active=model.jobs.find(x=>x.job_id===model.active_id&&x.mode==="reference_suite");
+ if(active?.test_profile)$("reference-profile").value=active.test_profile.profile_sha256;
+ const doc=referenceDocument($("reference-profile").value);
+ setText("reference-profile-note",doc?`${doc.description}. Saved tests and limits will be frozen at Start; the operator below may override the saved name. Subject: Internal POWER REF.`:"Choose a saved profile to reuse its tests, operator, and optional limits. POWER REF measures the internal reference, not a transmitter.");
+ referenceSelectionChanged();
+ const issues=model.reference_profile_issues||[];if(issues.length)setText("reference-profile-status","Some reference profiles could not be read: "+issues.join("; "));
+}
+function referenceProfileChanged(){
+ const doc=referenceDocument($("reference-profile").value);
+ if(doc){
+  for(const input of document.querySelectorAll('#reference-suite-tests input'))input.checked=doc.workflows.includes(input.value);
+  $("operator").value=doc.operator||"";$("reference-profile-id").value=doc.profile_id;$("reference-profile-revision").value=doc.revision;$("reference-profile-description").value=doc.description;$("reference-criteria-source").value=doc.criteria.source||"";
+  referenceCriteriaSignature=doc.workflows.join();criteriaFields("reference-criteria-workflows",doc.workflows,doc.criteria.workflows);
+ }
+ setText("reference-profile-status",doc?`Loaded ${doc.profile_id} r${doc.revision}. Changes require a new revision.`:"Unsaved selection. Save a revision to enable automatic assessment.");
+ for(const input of document.querySelectorAll('#prepared input'))input.checked=false;
+ renderReferenceProfiles();selectionChanged();
+}
+$("reference-profile").addEventListener("change",referenceProfileChanged);
+for(const input of document.querySelectorAll('#reference-suite-tests input'))input.addEventListener("change",()=>{$("reference-profile").value="";setText("reference-profile-status","Selection changed. Save a profile revision to enable automatic assessment.");renderReferenceProfiles();});
+$("reference-profile-editor").addEventListener("input",()=>{$("reference-profile").value="";setText("reference-profile-status","Unsaved edits. Save this revision before using it for automatic assessment.");renderReferenceProfiles();});
+$("save-reference-profile").addEventListener("click",async()=>{
+ if(busy||model.active_id)return;busy=true;generation++;error("");$("save-reference-profile").disabled=true;
+ const profile={schema:"hp437b.reference-test-profile.v1",profile_id:$("reference-profile-id").value.trim(),revision:Number($("reference-profile-revision").value),description:$("reference-profile-description").value.trim(),subject:"Internal POWER REF",operator:$("operator").value.trim()||null,workflows:chosen(),criteria:readCriteria("reference-criteria-workflows",$("reference-criteria-source").value)};
+ try{const result=await api("/api/reference-profiles",{profile});await refresh(true);$("reference-profile").value=result.key;referenceProfileChanged();setText("reference-profile-status",`Saved ${profile.profile_id} r${profile.revision}. No measurement started.`);}
+ catch(exc){error("Profile was not saved: "+exc.message);}
+ finally{busy=false;$("save-reference-profile").disabled=Boolean(model.active_id);selectionChanged();}
+});
+function assessmentProfileControls(disabled){
+ const source=(model.report_sources||[]).find(x=>x.job_id===$("assessment-source").value),rows=referenceDocuments().filter(x=>JSON.stringify(x.document.workflows)===JSON.stringify(source?.workflows));
+ const signature=JSON.stringify(rows.map(x=>x.key))+":"+source?.job_id;
+ if(signature!==savedProfileSignature){savedProfileSignature=signature;const selected=$("saved-assessment-profile").value;$("saved-assessment-profile").replaceChildren(new Option("Enter criteria below",""),...rows.map(x=>new Option(`${x.document.profile_id} · r${x.document.revision}`,x.key)));if(rows.some(x=>x.key===selected))$("saved-assessment-profile").value=selected;}
+ const doc=referenceDocument($("saved-assessment-profile").value);
+ $("criteria-source").disabled=disabled||Boolean(doc);for(const input of document.querySelectorAll('#criteria-workflows input'))input.disabled=disabled||Boolean(doc);
+ setText("saved-assessment-profile-note",doc?`Use ${doc.profile_id} r${doc.revision}. Applied now as post-capture criteria; original measurement operator and reports remain unchanged.`:"Only profiles with the same selected workflows can assess this capture. Applied now, these remain post-capture criteria.");
+}
+$("saved-assessment-profile").addEventListener("change",()=>{
+ const doc=referenceDocument($("saved-assessment-profile").value),source=(model.report_sources||[]).find(x=>x.job_id===$("assessment-source").value);
+ $("criteria-source").value=doc?.criteria.source||"";criteriaFields("criteria-workflows",source?.workflows||[],doc?.criteria.workflows||{});renderAssessmentControls();
+});
+function renderProfileAssessment(job){
+ const binding=job?.mode==="reference_suite"&&job?.test_profile;$("profile-assessment").hidden=!binding;
+ if(!binding)return;
+ const doc=binding.profile;setText("profile-assessment-note",`${doc.profile_id} r${doc.revision}: `+(job.assessment_error?"Assessment publication failed: "+job.assessment_error+". The original measurement report is retained; retry from the saved capture below.":job.assessment_outcome?job.assessment_outcome+". Post-capture decision using the profile selected before capture; original measurements are unchanged.":"The saved profile will be assessed after capture and native reporting finish."));
+ for(const [id,name] of [["profile-assessment-pdf","report.pdf"],["profile-assessment-package","package.zip"]]){$(id).hidden=!job.assessment_ready;$(id).href=`/artifacts/${job.job_id}/assessment/${name}`;}
+}
+
+$("reference-profile-editor").addEventListener("keydown",event=>{if(event.key==="Enter"&&event.target.tagName==="INPUT")event.preventDefault();});

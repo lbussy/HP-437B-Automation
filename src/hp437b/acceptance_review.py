@@ -313,7 +313,7 @@ def evaluate(data, criteria):
 
 
 def provenance(data, meta):
-    return dict(
+    value = dict(
         source_run_id=data["run_id"],
         source_inventory_sha256=data["source_inventory_sha256"],
         original_setup=data["setup"],
@@ -324,6 +324,9 @@ def provenance(data, meta):
         criteria_sha256=meta["criteria_sha256"],
         timing="post_capture",
     )
+    if "test_profile" in meta:
+        value["test_profile"] = meta["test_profile"]
+    return value
 
 
 def validate_pair(source, output):
@@ -336,6 +339,12 @@ def validate_pair(source, output):
     )
     data = collect(source, meta["source_workflow"])
     result = evaluate(data, bundle.json("criteria.json"))
+    if "test_profile" in meta:
+        from . import reference_profiles
+
+        reference_profiles.validate_binding(
+            meta["test_profile"], data["workflows"], result["criteria"]
+        )
     p.require(
         bundle.json("results.json") == result
         and meta["criteria_sha256"] == result["criteria_sha256"]
@@ -350,7 +359,9 @@ def validate_pair(source, output):
     return data["run_id"]
 
 
-def publish(source_job, output, request, criteria, assessor=None, *, expected_hash=None):
+def publish(
+    source_job, output, request, criteria, assessor=None, *, expected_hash=None, test_profile=None
+):
     from . import report_delivery as delivery
 
     source_job, output = Path(source_job), Path(output)
@@ -363,6 +374,10 @@ def publish(source_job, output, request, criteria, assessor=None, *, expected_ha
             "Source capture changed",
         )
         result = evaluate(data, criteria)
+        if test_profile is not None:
+            from . import reference_profiles
+
+            reference_profiles.validate_binding(test_profile, data["workflows"], result["criteria"])
         delivery.preflight_delivery(source, output, pdf=True, package=True)
         output.mkdir()
         producer = report_identity.identify()
@@ -379,6 +394,8 @@ def publish(source_job, output, request, criteria, assessor=None, *, expected_ha
             assessor=report_context.validate_operator(assessor),
             report_producer=producer,
         )
+        if test_profile is not None:
+            meta["test_profile"] = test_profile
         for name, value in [
             ("criteria.json", result["criteria"]),
             ("results.json", result),
@@ -435,6 +452,12 @@ def publish(source_job, output, request, criteria, assessor=None, *, expected_ha
             + "; supplied-limit result: "
             + result["outcome"],
         ]
+        if test_profile is not None:
+            profile = test_profile["profile"]
+            lines.insert(
+                1,
+                f"Profile: {profile['profile_id']} r{profile['revision']} (selected {test_profile['selected'].replace('_', ' ')})",
+            )
         notes = [
             "Post-capture decision; original reports and measurements are unchanged.",
             "Inclusive boundaries; no uncertainty guard band. No accuracy, calibration, or compliance verdict.",

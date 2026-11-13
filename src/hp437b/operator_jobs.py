@@ -11,7 +11,7 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from . import guided_sweep, pdf_reports
+from . import guided_sweep, pdf_reports, reference_profiles
 from . import provenance as p
 from . import report_delivery as delivery
 from . import reporting as r
@@ -79,6 +79,11 @@ class Jobs:
         self.profile_root = self.root / "profiles"
         p.require(not self.profile_root.is_symlink(), "Symlink profile directory is unsupported")
         self.profile_root.mkdir(exist_ok=True)
+        self.reference_profile_root = self.root / "reference-profiles"
+        p.require(
+            not self.reference_profile_root.is_symlink(), "Symlink reference profiles unsupported"
+        )
+        self.reference_profile_root.mkdir(exist_ok=True)
         for path in self.root.iterdir():
             if (
                 path.is_dir()
@@ -121,6 +126,66 @@ class Jobs:
                 except (ValueError, KeyError, TypeError, OSError) as exc:
                     issues.append(path.name + ": " + str(exc))
         return found, issues
+
+    def reference_catalog(self):
+        found, issues = {}, []
+        for path in sorted(self.reference_profile_root.glob("*.json"))[:100]:
+            try:
+                doc = reference_profiles.validate(read(path))
+                key = r.digest(r.encoded(doc))
+                p.require(path.name == key + ".json", "Profile content/hash mismatch")
+                found[key] = doc
+            except (ValueError, KeyError, TypeError, OSError) as exc:
+                issues.append(path.name + ": " + str(exc))
+        return found, issues
+
+    def save_reference_profile(self, document):
+        doc = reference_profiles.validate(document)
+        key = r.digest(r.encoded(doc))
+        with self.mutex:
+            docs, issues = self.reference_catalog()
+            p.require(not issues, "Resolve unreadable reference profiles before saving")
+            for old_key, old in docs.items():
+                p.require(
+                    (old["profile_id"], old["revision"]) != (doc["profile_id"], doc["revision"])
+                    or old_key == key,
+                    "That profile revision already exists; increment the revision",
+                )
+            p.require(key in docs or len(docs) < 100, "At most 100 reference profiles may be saved")
+            target = self.reference_profile_root / (key + ".json")
+            p.require(not target.is_symlink(), "Symlink profile unsupported")
+            if not target.exists():
+                atomic(target, doc)
+        return key
+
+    def reference_profile(self, key):
+        docs, _ = self.reference_catalog()
+        p.require(isinstance(key, str) and key in docs, "Select an available reference profile")
+        return docs[key]
+
+    def start_reference_profile(self, key, meter_mode, operator, prepared):
+        p.require(meter_mode in ("synthetic", "physical"), "Select a valid reference source")
+        with self.mutex:
+            doc = self.reference_profile(key)
+            return self.start_reference(
+                doc["workflows"],
+                operator if operator is not None else doc["operator"],
+                prepared,
+                suite_mode=meter_mode,
+                test_profile=reference_profiles.bind(doc, "before_capture"),
+            )
+
+    def assess_reference_profile(self, source_job_id, key, assessor):
+        r.report_context.validate_operator(assessor)
+        with self.mutex:
+            doc = self.reference_profile(key)
+            return self._saved_report(
+                source_job_id,
+                "acceptance_review",
+                doc["criteria"],
+                assessor,
+                reference_profiles.bind(doc, "post_capture"),
+            )
 
     def _path(self, job_id):
         p.require(isinstance(job_id, str) and ID.fullmatch(job_id), "Invalid job ID")
@@ -352,13 +417,17 @@ class Jobs:
         p.require(meter_mode in ("synthetic", "physical"), "Invalid suite source")
         return self.start_reference(workflows, operator, prepared, suite_mode=meter_mode)
 
-    def start_reference(self, kind, operator, prepared, *, suite_mode=None):
+    def start_reference(self, kind, operator, prepared, *, suite_mode=None, test_profile=None):
         from . import operator_reference as ref
         from . import reference_suite
 
         with self.mutex:
             self._reap()
             workflows = reference_suite.selection(kind) if suite_mode is not None else [kind]
+            if test_profile is not None:
+                reference_profiles.validate_binding(
+                    test_profile, workflows, test_profile["profile"]["criteria"]
+                )
             p.require(
                 suite_mode is None or suite_mode in ("synthetic", "physical"),
                 "Invalid suite source",
@@ -426,6 +495,8 @@ class Jobs:
             )
             if suite_mode is not None:
                 request["meter_mode"] = suite_mode
+            if test_profile is not None:
+                request["test_profile"] = test_profile
             atomic(path / "request.json", request)
             atomic(
                 path / "state.json",
@@ -480,7 +551,7 @@ class Jobs:
         r.report_context.validate_operator(assessor)
         return self._saved_report(source_job_id, "acceptance_review", criteria, assessor)
 
-    def _saved_report(self, source_job_id, mode, criteria=None, assessor=None):
+    def _saved_report(self, source_job_id, mode, criteria=None, assessor=None, test_profile=None):
         from . import report_recovery
 
         with self.mutex:
@@ -494,6 +565,8 @@ class Jobs:
             )
             original = read(source / "request.json")
             source_hash = report_recovery.inspect(source, original)
+            if test_profile is not None:
+                reference_profiles.validate_binding(test_profile, original["workflows"], criteria)
             if criteria is not None:
                 p.require(
                     set(criteria["workflows"]) <= set(original["workflows"]),
@@ -517,6 +590,8 @@ class Jobs:
             )
             if mode == "acceptance_review":
                 request.update(criteria=criteria, assessor=assessor)
+            if test_profile is not None:
+                request["test_profile"] = test_profile
             atomic(path / "request.json", request)
             atomic(
                 path / "state.json",
@@ -636,6 +711,9 @@ class Jobs:
             "mode": request.get("mode", "synthetic"),
             "source_job_id": request.get("source_job_id"),
             "assessment_outcome": state.get("assessment_outcome"),
+            "test_profile": request.get("test_profile"),
+            "assessment_ready": (path / "assessment/artifacts.json").is_file()
+            and (path / "assessment/report.pdf").is_file(),
             "report_recovery_available": request.get("mode") in ("physical", "reference_suite")
             and state["phase"] not in ACTIVE
             and (path / "capture/artifacts.json").is_file(),
@@ -662,6 +740,7 @@ class Jobs:
         with self.mutex:
             self._reap()
             docs, issues = self.catalog()
+            reference_docs, reference_issues = self.reference_catalog()
             items = []
             for key, doc in docs.items():
                 items.append(
@@ -692,6 +771,10 @@ class Jobs:
                         continue
             jobs.sort(key=lambda item: item["started_utc"], reverse=True)
             return dict(
+                reference_profiles=[
+                    dict(key=key, document=doc) for key, doc in reference_docs.items()
+                ],
+                reference_profile_issues=reference_issues,
                 profiles=sorted(
                     items, key=lambda item: (item["name"], item["profile_id"], item["revision"])
                 ),
@@ -764,6 +847,7 @@ class Jobs:
                                 "package_ready",
                                 "report_recovery_available",
                                 "assessment_outcome",
+                                "assessment_ready",
                             )
                         }
                     )
@@ -866,6 +950,33 @@ class Jobs:
 
     def artifact(self, job_id, name):
         path = self._path(job_id)
+        if name.startswith("assessment/"):
+            name = name[len("assessment/") :]
+            if name == "package.zip":
+                delivery.verify(path / "assessment.zip")
+                return (path / "assessment.zip").read_bytes(), "application/zip", True
+            p.require(
+                name
+                in (
+                    "report.pdf",
+                    "report.html",
+                    "results.json",
+                    "criteria.json",
+                    "metadata.json",
+                    "provenance.json",
+                ),
+                "Unsupported assessment artifact",
+            )
+            bundle = p.Bundle(path / "assessment")
+            bundle.inventory("artifacts.json", p._json(bundle.read("artifacts.json"))["mode"])
+            media = (
+                "application/pdf"
+                if name.endswith(".pdf")
+                else "text/html; charset=utf-8"
+                if name.endswith(".html")
+                else "application/json"
+            )
+            return bundle.read(name), media, False
         if name == "package.zip":
             target = path / "report.zip"
             delivery.verify(target)
@@ -917,6 +1028,12 @@ def worker(path, *, lock_fd=None):
         expected += ("mode", "source_job_id", "source_inventory_sha256")
     if request.get("mode") == "guided":
         expected += ("mode", "sweep_plan", "meter_mode", "sweep_config", "prepared")
+    if "test_profile" in request:
+        p.require(
+            request.get("mode") in ("reference_suite", "acceptance_review"),
+            "Unsupported profile worker mode",
+        )
+        expected += ("test_profile",)
     p._keys(request, expected)
     p.require(
         request["schema"] == "hp437b.operator-request.v1"
@@ -958,6 +1075,11 @@ def worker(path, *, lock_fd=None):
             if request["mode"] == "acceptance_review":
                 from . import acceptance_review
 
+                if "test_profile" in request:
+                    p.require(
+                        request["test_profile"]["selected"] == "post_capture",
+                        "Saved-run profile must be selected post capture",
+                    )
                 result = acceptance_review.publish(
                     source,
                     path / "report",
@@ -965,6 +1087,7 @@ def worker(path, *, lock_fd=None):
                     request["criteria"],
                     request["assessor"],
                     expected_hash=request["source_inventory_sha256"],
+                    test_profile=request.get("test_profile"),
                 )
                 emit(
                     assessment_outcome=result["outcome"],
@@ -983,7 +1106,38 @@ def worker(path, *, lock_fd=None):
         if request.get("mode") == "reference_suite":
             from . import reference_suite
 
-            reference_suite.run(path, request, emit, lock_fd=lock_fd)
+            binding = request.get("test_profile")
+            if binding is not None:
+                p.require(
+                    binding["selected"] == "before_capture",
+                    "Run profile must be selected before capture",
+                )
+                reference_profiles.validate_binding(
+                    binding, request["workflows"], binding["profile"]["criteria"]
+                )
+
+            def capture_emit(**values):
+                if binding is not None and values.get("phase") == "finished":
+                    values["phase"] = "reporting"
+                emit(**values)
+
+            reference_suite.run(path, request, capture_emit, lock_fd=lock_fd)
+            if binding is not None:
+                from . import acceptance_review
+
+                try:
+                    result = acceptance_review.publish(
+                        path,
+                        path / "assessment",
+                        request,
+                        binding["profile"]["criteria"],
+                        request["operator"],
+                        test_profile=binding,
+                    )
+                    emit(assessment_outcome=result["outcome"], assessment_error=None)
+                except (OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
+                    emit(assessment_error=str(exc)[:500], assessment_outcome=None)
+                emit(phase="finished", current=None)
             return
         if request.get("mode") == "guided":
             from . import guided_report

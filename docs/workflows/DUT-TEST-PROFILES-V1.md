@@ -65,3 +65,7 @@ PROFILE-01 implements reusable configuration and individual fake workflow runs. 
 ## Optional PDF and portable delivery
 
 Add `--pdf` to a report-producing command for one-page PDFs, or `--package` for PDFs plus a sibling portable ZIP containing sealed reports/provenance and original evidence. Install the optional `pdf` extra; rendering dependencies and ZIP reservations are checked before acquisition. Existing defaults remain unchanged. See [REPORT-EXPORT-01](PDF-EXPORT-V1.md) for commands, verification, scope, and report-only recovery.
+
+## POWER REF extension
+
+[Reusable POWER REF profiles](REFERENCE-TEST-PROFILES-V1.md) extend PROFILE-01 with named WF-01–WF-03 selections, operator, optional attributed criteria, and automatic post-capture assessment/report publication. This separate schema fixes the subject to Internal POWER REF; it does not repurpose the fake transmitter profile as a physical radio driver. The original fake profiles and ordinary logging remain unchanged.

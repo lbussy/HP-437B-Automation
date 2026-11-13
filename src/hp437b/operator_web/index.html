@@ -33,12 +33,23 @@
 <p id="guided-plan" class="hint"></p><fieldset id="guided-prepared" hidden><legend>Confirm the bench setup</legend></fieldset>
 </div>
 <div id="reference-suite-setup" hidden>
+<div class="field"><label for="reference-profile">Saved reference profile</label><select id="reference-profile"><option value="">Unsaved selection — no automatic assessment</option></select><p id="reference-profile-note" class="hint">Choose a saved profile to reuse its tests, operator, and optional limits. POWER REF measures the internal reference, not a transmitter.</p></div>
 <div class="field"><label for="reference-suite-source">Suite source</label><select id="reference-suite-source"><option value="synthetic">Simulated reference — no hardware</option><option value="physical" disabled>Configured current meter</option></select><p class="hint">One start, one suite report. Bench runs require fresh preparation and an operator present.</p></div>
 <fieldset id="reference-suite-tests"><legend>Reference tests to run</legend>
 <label class="test-option"><input type="checkbox" value="WF-01" checked><span>WF-01 · Output and baseline (~7 min on bench)</span></label>
 <label class="test-option"><input type="checkbox" value="WF-02" checked><span>WF-02 · Sustained stability (~32 min on bench)</span></label>
 <label class="test-option"><input type="checkbox" value="WF-03" checked><span>WF-03 · Five-cycle repeatability (up to 15 min on bench)</span></label>
 </fieldset><p id="reference-suite-note" class="hint">Runs in the order shown. Simulated time does not represent elapsed bench time.</p>
+<details id="reference-profile-editor"><summary>Save or revise a reference profile</summary>
+<p class="hint">Select tests above and record the operator below. Revisions are immutable; increment the revision to change a saved profile. Limits are optional, with inclusive boundaries and no uncertainty guard band.</p>
+<div class="field"><label for="reference-profile-id">Profile ID</label><input id="reference-profile-id" type="text" maxlength="64" placeholder="my-reference-check"></div>
+<div class="field"><label for="reference-profile-revision">Revision</label><input id="reference-profile-revision" type="number" min="1" max="1000000" step="1" value="1"></div>
+<div class="field"><label for="reference-profile-description">Description</label><input id="reference-profile-description" type="text" maxlength="240"></div>
+<div class="field"><label for="reference-criteria-source">Criteria source / supplied by</label><input id="reference-criteria-source" type="text" maxlength="240"><p class="hint">Required for any limits or coverage requirements. A performance limit, minimum valid samples, and maximum gap are required for each evaluated test.</p></div>
+<div id="reference-criteria-workflows"></div>
+<button id="save-reference-profile" class="secondary" type="button">Save profile revision</button>
+<p id="reference-profile-status" class="hint" role="status"></p>
+</details>
 </div>
 <div id="reference-setup" hidden><h3>Prepared POWER REF path</h3><p id="reference-identity" class="hint"></p><p id="reference-issues" class="hint"></p><div class="field"><label for="reference-workflow">POWER REF workflow</label><select id="reference-workflow"><option value="WF-01">WF-01 · Output (~7 min)</option><option value="WF-02">WF-02 · Stability (~32 min)</option><option value="WF-03">WF-03 · Five cycles (up to 15 min)</option></select></div><fieldset id="prepared"><legend>Confirm before each run</legend></fieldset></div>
 <div class="field"><label for="operator">Operator <span class="optional">optional</span></label><input id="operator" type="text" maxlength="120" autocomplete="name" placeholder="Name to include in the report"></div>
@@ -64,6 +75,7 @@
 <div id="guided-results" class="table-scroll" hidden><table><caption>Meter-indicated mean power at sensor input (mW)</caption><thead id="guided-results-head"></thead><tbody id="guided-results-body"></tbody></table></div>
 <div class="boundary"><h3>Cancellation boundary</h3><p id="boundary-text">The current test finishes and verifies RF off and supply restoration before cancellation takes effect. Later tests do not start.</p><button id="cancel" class="secondary danger" type="button" disabled>Request cancellation</button></div>
 <div class="reports"><h3>Reports</h3><p id="report-note" class="hint">PDF and portable package appear after capture and reporting finish.</p><div class="report-actions"><a id="html-report" class="secondary link-button" target="_blank" rel="noopener" hidden>Open full report</a><a id="pdf" class="primary link-button" target="_blank" rel="noopener" hidden>Open PDF report</a><a id="package" class="secondary link-button" hidden>Download package</a></div></div>
+<div id="profile-assessment" class="reports" hidden><h3>Profile assessment</h3><p id="profile-assessment-note" class="hint" role="status"></p><div class="report-actions"><a id="profile-assessment-pdf" class="primary link-button" target="_blank" rel="noopener" hidden>Open assessed PDF</a><a id="profile-assessment-package" class="secondary link-button" hidden>Download assessment package</a></div></div>
 <div id="front-panel" class="boundary" hidden><h3>Confirm after Python closes</h3><p>Check the actual front panel. If recovery is needed, use PRESET/LOCAL and the documented manual recovery before confirming. Protocol observations remain separate.</p><label class="test-option"><input id="front-panel-check" type="checkbox"><span>Live numeric readings, RMT off, and POWER REF off</span></label><button id="front-panel-save" class="secondary" type="button" disabled>Record front-panel confirmation</button><p id="front-panel-result" class="hint"></p></div>
 </section>
 </div>
@@ -81,6 +93,7 @@
 <div class="field"><label for="assessment-source">Capture to assess</label><select id="assessment-source" disabled></select></div>
 <div class="field"><label for="criteria-source">Criteria source / supplied by</label><input id="criteria-source" type="text" maxlength="240" placeholder="Person or specification supplying these limits"><p class="hint">Required when supplying limits or coverage requirements. Examples are not DUT specifications.</p></div>
 <div class="field"><label for="assessment-assessor">Assessor <span class="optional">optional</span></label><input id="assessment-assessor" type="text" maxlength="120" autocomplete="name"></div>
+<div class="field"><label for="saved-assessment-profile">Reuse a reference profile <span class="optional">optional</span></label><select id="saved-assessment-profile"><option value="">Enter criteria below</option></select><p id="saved-assessment-profile-note" class="hint">Only profiles with the same selected workflows can assess this capture. Applied now, these remain post-capture criteria.</p></div>
 <p class="hint">Inclusive lower/upper limits. Leave unwanted limits blank. A performance limit, minimum valid samples, and maximum gap are required to evaluate each workflow. Unassessed or incomplete workflows prevent an overall Pass.</p>
 <div id="criteria-workflows"></div><button id="assess-run" class="secondary" type="submit" disabled>Create assessment PDF &amp; package</button>
 </form>

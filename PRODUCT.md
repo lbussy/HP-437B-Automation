@@ -50,6 +50,10 @@ RUN-HISTORY-01 adds read-only saved history, twenty runs per page, with measurem
 
 ACCEPT-01 lets the operator supply optional criteria for sealed POWER REF captures through the local interface, with no default DUT limits. Each immutable post-capture assessment records criteria source, optional assessor, criteria/result/source hashes, and the inclusive-no-guard-band rule; coverage gates Pass, Fail, or Not evaluated for mean-power bounds, WF-02 absolute endpoint drift (%), and WF-03 cycle-mean spread (%). A one-page PDF/HTML, decision JSON, and portable ZIP preserve the original measurements, reports, and attestations. History identifies the assessment as derived evidence rather than a new measurement. Examples are illustrative software checks, not DUT specifications; no hardware, new capture, or normal logging behavior changes. See [the acceptance contract](docs/workflows/ACCEPTANCE-V1.md).
 
+## Reusable POWER REF profiles
+
+PROFILE-01 saves immutable named revisions of WF-01–WF-03 selections, an optional operator, and optional attributed acceptance criteria for Internal POWER REF. An explicit profile-started capture freezes the selected revision and automatically publishes a separate assessed PDF/package after the original measurement reports. Matching profiles can also assess saved captures, with selection explicitly recorded as post capture; assessment computation always follows capture. Existing physical-source configuration, fresh setup confirmations, and separate front-panel confirmation still apply. Original evidence, fake DUT profiles, and normal logging remain unchanged; no new hardware run was performed. See [the profile contract](docs/workflows/REFERENCE-TEST-PROFILES-V1.md).
+
 ## Brand Commitments
 
 Use HP 437B Automation as the project name and retain the existing report styling. Reports remain titled RF Output Power Test, with operator, signed pre-RF zero, and Report Harness provenance.

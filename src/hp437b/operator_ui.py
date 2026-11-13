@@ -141,6 +141,37 @@ def server(manager, port=8765):
                 p.require(0 < length <= MAX_REQUEST, "Request is missing or too large")
                 body = p._json(self.rfile.read(length))
                 path = urlsplit(self.path).path
+                if path == "/api/reference-profiles":
+                    p._keys(body, ("profile",))
+                    self._send(
+                        201, r.encoded(dict(key=manager.save_reference_profile(body["profile"])))
+                    )
+                    return
+                if path == "/api/reference-profile-run":
+                    p._keys(body, ("profile_key", "meter_mode", "operator", "prepared"))
+                    self._send(
+                        202,
+                        r.encoded(
+                            manager.start_reference_profile(
+                                body["profile_key"],
+                                body["meter_mode"],
+                                body["operator"],
+                                body["prepared"],
+                            )
+                        ),
+                    )
+                    return
+                if path == "/api/reference-profile-assessment":
+                    p._keys(body, ("source_job_id", "profile_key", "assessor"))
+                    self._send(
+                        202,
+                        r.encoded(
+                            manager.assess_reference_profile(
+                                body["source_job_id"], body["profile_key"], body["assessor"]
+                            )
+                        ),
+                    )
+                    return
                 if path == "/api/profiles":
                     p._keys(body, ("profile_json",))
                     p.require(

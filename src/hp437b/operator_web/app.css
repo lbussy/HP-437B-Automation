@@ -12,3 +12,5 @@
 
 #assessment-form{max-width:760px}#assessment-form details{font-size:14px;margin:20px 0}#assessment-form summary{font-weight:600;color:var(--ink);min-height:36px}#assessment-form .capture-fields{margin:16px 0}#assess-run{margin-top:20px}
 #assessment-form .capture-fields{align-items:end}#assessment-status{margin-top:16px}
+
+#reference-profile-editor summary{font-weight:600;color:var(--ink);min-height:36px}#reference-profile-editor .capture-fields{align-items:end;margin:16px 0}#reference-profile-editor .field{margin-top:16px}#reference-profile-editor .capture-fields{grid-template-columns:1fr}#reference-profile-status{margin-top:16px}
