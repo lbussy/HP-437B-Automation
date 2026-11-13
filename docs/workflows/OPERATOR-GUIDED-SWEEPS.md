@@ -1,6 +1,6 @@
 # Operator-guided radio sweeps
 
-Status: implemented locally, November 13, 2026. Physical bench execution remains a separate acceptance step. The guided runner uses the production meter logger, with a fresh operator confirmation before every point. The earlier WF-04/WF-05 synthetic workflows retain their existing five-point contracts.
+Status: delivered to `devel` at `d64617f`, November 13, 2026; [Python 3.11/3.14 software/reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43433860223). Physical bench execution remains a separate acceptance step. The guided runner uses the production meter logger, with a fresh operator confirmation before every point. The earlier WF-04/WF-05 synthetic workflows retain their existing five-point contracts.
 
 ## Test series
 
