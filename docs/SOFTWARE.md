@@ -196,3 +196,7 @@ The [E2E-01/VAL-01 runner](validation/PIPELINE-ACCEPTANCE.md) executes seven fre
 ## Human-started deterministic reports
 
 Use [RUN-01](workflows/DETERMINISTIC-RUN.md) for the optional `--report-output` workflow argument or `python -m hp437b.workflow_report` saved-bundle command. It generates provenance and a richer report automatically after capture closes. No model/provider integration is involved; normal logger behavior and defaults remain unchanged.
+
+## Operator-guided series
+
+[GUIDED-01](workflows/OPERATOR-GUIDED-SWEEPS.md) adds a separate guided runner and local interface mode for frequency, drive-setting, and combined radio sweeps. The existing finite logger performs each confirmed capture. `python -m hp437b.operator_ui --sweep-setup FILE.json` enables an explicitly configured bench meter; simulated operation remains available without that option. `python -m hp437b.guided_client --help` exposes local orchestration actions, and `python -m hp437b.guided_report --help` supports report-only regeneration. Read the linked setup/evidence limits before measured captures; new physical sweep acceptance remains pending.

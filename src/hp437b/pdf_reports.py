@@ -64,6 +64,7 @@ def _write(
     plot=None,
     suite=None,
     physical=False,
+    source_label=None,
 ):
     root = preflight()
     from reportlab.lib import colors
@@ -94,9 +95,12 @@ def _write(
     content = [
         paragraph("RF Output Power Test", heading),
         paragraph(
-            "POWER REF - recorded measurement"
-            if physical
-            else "SYNTHETIC - fictional measurements; no physical RF",
+            source_label
+            or (
+                "POWER REF - recorded measurement"
+                if physical
+                else "SYNTHETIC - fictional measurements; no physical RF"
+            ),
             bold,
         ),
     ]

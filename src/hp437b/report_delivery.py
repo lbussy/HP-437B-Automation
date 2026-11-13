@@ -92,6 +92,12 @@ def _pair(source, report):
         schema = "hp437b.test-suite-report.v1"
         for item in cap["children"]:
             _pair(Path(source) / item["path"], Path(report) / "workflows" / item["workflow"])
+    elif report_inv.get("schema") == "hp437b.guided-sweep-report.v1":
+        from . import guided_report
+
+        run_id = guided_report.validate_pair(source, report)
+        schema = guided_report.SCHEMA
+        expected = output.json("results.json")
     elif report_inv.get("schema") == "hp437b.reference-report.v1":
         from . import reference_report
 
@@ -177,7 +183,12 @@ def package(source, report, target=None):
     if manifest["mode"] == "physical":
         readme = readme.replace(
             b"All included measurements are synthetic.",
-            b"Recorded POWER REF measurements; equipment/setup limits and separate front-panel confirmation apply.",
+            (
+                b"Recorded operator-guided radio measurements; operator-confirmed labels and equipment/setup limits apply."
+                if p._json(output.read("artifacts.json")).get("schema")
+                == "hp437b.guided-sweep-report.v1"
+                else b"Recorded POWER REF measurements; equipment/setup limits and separate front-panel confirmation apply."
+            ),
         )
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = None

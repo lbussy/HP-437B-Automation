@@ -11,14 +11,14 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from . import pdf_reports
+from . import guided_sweep, pdf_reports
 from . import provenance as p
 from . import report_delivery as delivery
 from . import reporting as r
 from . import test_profiles as profiles
 from . import test_suite as suite
 
-ACTIVE = ("starting", "running", "reporting")
+ACTIVE = ("starting", "waiting", "running", "reporting")
 ID = re.compile(r"[0-9a-f]{32}")
 
 
@@ -44,8 +44,11 @@ def read(path):
 
 
 class Jobs:
-    def __init__(self, root, *, profiles_dir=None, plots=True, reference_config=None):
+    def __init__(
+        self, root, *, profiles_dir=None, plots=True, reference_config=None, sweep_config=None
+    ):
         self.reference_config = reference_config
+        self.sweep_config = sweep_config
         self.external = Path(profiles_dir).resolve() if profiles_dir else None
         p.require(
             self.external is None or self.external.is_dir(), "Profiles directory does not exist"
@@ -220,6 +223,127 @@ class Jobs:
                 raise
             return self.get(job_id)
 
+    def start_guided(self, plan, operator, meter_mode, prepared):
+        from . import guided_sweep as guided
+
+        with self.mutex:
+            self._reap()
+            p.require(self.process is None, "A run is already active")
+            p.require(self.pending_reference() is None, "Confirm the prior reference run first")
+            plan = guided.validate(plan)
+            operator = r.report_context.validate_operator(operator)
+            p.require(meter_mode in ("synthetic", "physical"), "Select a meter source")
+            config = None
+            if meter_mode == "physical":
+                p.require(
+                    self.sweep_config is not None, "A sweep meter must be configured at launch"
+                )
+                config = guided.configuration(self.sweep_config)
+                p.require(
+                    isinstance(prepared, dict)
+                    and set(prepared) == set(guided.PREPARED)
+                    and all(value is True for value in prepared.values()),
+                    "Confirm the prepared RF path and meter before starting",
+                )
+            else:
+                p.require(prepared == {}, "Simulated sweeps do not use bench attestations")
+            job_id = uuid.uuid4().hex
+            path = self.root / job_id
+            delivery.preflight_delivery(path / "capture", path / "report", pdf=True, package=True)
+            request = dict(
+                schema="hp437b.operator-request.v1",
+                mode="guided",
+                job_id=job_id,
+                profile=dict(
+                    dut=dict(name=plan["name"]), profile_id="operator-guided", operator=operator
+                ),
+                workflows=["GUIDED"],
+                operator=operator,
+                plots=self.plots,
+                started_utc=datetime.now(UTC).isoformat(),
+                sweep_plan=plan,
+                meter_mode=meter_mode,
+                sweep_config=config,
+                prepared=prepared,
+            )
+            path.mkdir(mode=0o700)
+            atomic(path / "request.json", request)
+            atomic(
+                path / "state.json",
+                dict(
+                    job_id=job_id,
+                    phase="starting",
+                    current="GUIDED",
+                    index=0,
+                    total=len(guided.points(plan)),
+                    results=[],
+                    point_results=[],
+                    prompt=None,
+                    error=None,
+                    outcome=None,
+                ),
+            )
+            self.log = (path / "worker.log").open("xb")
+            try:
+                self.process = subprocess.Popen(
+                    [sys.executable, "-m", "hp437b.operator_jobs", "--job", str(path)],
+                    stdin=subprocess.DEVNULL,
+                    stdout=self.log,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,
+                    pass_fds=(self.lockfile.fileno(),),
+                )
+                self.active_id = job_id
+            except BaseException:
+                self.log.close()
+                self.log = None
+                state = read(path / "state.json")
+                state.update(phase="failed", error="Unable to start guided worker")
+                atomic(path / "state.json", state)
+                raise
+            return self.get(job_id)
+
+    def confirm_guided(self, job_id, confirmation):
+        from . import guided_sweep as guided
+
+        with self.mutex:
+            self._reap()
+            p.require(self.active_id == job_id, "This sweep is no longer active")
+            job = self.get(job_id)
+            p.require(
+                job["mode"] == "guided"
+                and job["phase"] == "waiting"
+                and not job["cancel_requested"],
+                "No point is awaiting confirmation",
+            )
+            prompt = job["prompt"]
+            # The service timestamps authorization; clients cannot backdate a capture.
+            p._keys(
+                confirmation,
+                (
+                    "point_id",
+                    "frequency",
+                    "drive",
+                    "token",
+                    "operator",
+                    "frequency_confirmed",
+                    "drive_confirmed",
+                ),
+            )
+            value = {**confirmation, "confirmed_utc": datetime.now(UTC).isoformat()}
+            guided.check_confirmation(value, prompt, prompt["token"])
+            path = self._path(job_id) / ("confirm-" + prompt["token"] + ".json")
+            p.require(not path.exists(), "This point has already been confirmed")
+            # Atomic publication prevents the worker reading a partially written receipt.
+            temporary = path.with_suffix(".tmp")
+            with temporary.open("xb") as handle:
+                handle.write(r.encoded(value))
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.link(temporary, path)
+            temporary.unlink()
+            return self.get(job_id)
+
     def start_reference(self, kind, operator, prepared):
         from . import operator_reference as ref
 
@@ -380,8 +504,10 @@ class Jobs:
                 pass
         return {
             **state,
-            "mode": "physical" if physical else "synthetic",
-            "stage": stage,
+            "mode": request.get("mode", "synthetic"),
+            "meter_mode": request.get("meter_mode"),
+            "sweep_plan": request.get("sweep_plan"),
+            "stage": state.get("stage") if request.get("mode") == "guided" else stage,
             "front_panel_confirmed": (path / "operator-confirmation.json").is_file(),
             "profile_name": request["profile"]["dut"]["name"],
             "profile_id": request["profile"]["profile_id"],
@@ -440,6 +566,10 @@ class Jobs:
                 active_id=self.active_id,
                 pending_reference=self.pending_reference(),
                 plots=self.plots,
+                guided=dict(
+                    default_plan=guided_sweep.example(),
+                    meter=self.sweep_config,
+                ),
                 reference=(
                     dict(
                         resource=self.reference_config["resource"],
@@ -458,7 +588,7 @@ class Jobs:
             p.require(self.active_id == job_id, "This suite is no longer running")
             state = self.get(job_id)
             p.require(
-                state["phase"] in ("starting", "running"),
+                state["phase"] in ("starting", "waiting", "running"),
                 "Capture has finished; reports are being prepared",
             )
             path = self._path(job_id) / "cancel.requested"
@@ -514,6 +644,8 @@ def worker(path, *, lock_fd=None):
     expected = ("schema", "job_id", "profile", "workflows", "operator", "plots", "started_utc")
     if request.get("mode") == "physical":
         expected += ("mode", "reference_config", "prepared_setup")
+    if request.get("mode") == "guided":
+        expected += ("mode", "sweep_plan", "meter_mode", "sweep_config", "prepared")
     p._keys(request, expected)
     p.require(
         request["schema"] == "hp437b.operator-request.v1"
@@ -537,6 +669,39 @@ def worker(path, *, lock_fd=None):
             emit(current=None, results=list(rows), index=event["index"])
 
     try:
+        if request.get("mode") == "guided":
+            from . import guided_report
+
+            result = guided_sweep.run(
+                path / "capture",
+                request["sweep_plan"],
+                guided_sweep.FileGate(path, emit),
+                mode=request["meter_mode"],
+                config=request["sweep_config"],
+                operator=request["operator"],
+                prepared=request["prepared"],
+                emit=emit,
+            )
+            emit(
+                phase="reporting",
+                prompt=None,
+                current=None,
+                outcome=result["execution"],
+                acceptance=result["acceptance"],
+                point_results=result["points"],
+                results=[
+                    dict(
+                        workflow="GUIDED",
+                        execution=result["execution"],
+                        acceptance=result["acceptance"],
+                        completed_points=result["completed_points"],
+                        requested_points=result["requested_points"],
+                    )
+                ],
+            )
+            guided_report.publish(path / "capture", path / "report", plot=request["plots"])
+            emit(phase="finished", error=None)
+            return
         if request.get("mode") == "physical":
             from . import operator_reference
 

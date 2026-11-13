@@ -156,6 +156,23 @@ def server(manager, port=8765):
                     result = manager.start(body["profile_key"], body["workflows"], body["operator"])
                     self._send(202, r.encoded(result))
                     return
+                if path == "/api/guided":
+                    p._keys(body, ("plan", "operator", "meter_mode", "prepared"))
+                    self._send(
+                        202,
+                        r.encoded(
+                            manager.start_guided(
+                                body["plan"], body["operator"], body["meter_mode"], body["prepared"]
+                            )
+                        ),
+                    )
+                    return
+                if path == "/api/guided-confirm":
+                    p._keys(body, ("job_id", "confirmation"))
+                    self._send(
+                        202, r.encoded(manager.confirm_guided(body["job_id"], body["confirmation"]))
+                    )
+                    return
                 if path == "/api/reference":
                     p._keys(body, ("workflow", "operator", "prepared"))
                     self._send(
@@ -205,6 +222,11 @@ def main(argv=None):
     parser.add_argument("--runs-dir", type=Path, default=Path("output/reports/operator-runs"))
     parser.add_argument("--profiles-dir", type=Path)
     parser.add_argument("--no-plots", action="store_true")
+    parser.add_argument(
+        "--sweep-setup",
+        type=Path,
+        help="Explicit meter/equipment JSON for operator-guided captures",
+    )
     parser.add_argument("--power-ref-setup", type=Path)
     parser.add_argument("--resource")
     parser.add_argument("--bench-python", type=Path)
@@ -226,18 +248,25 @@ def main(argv=None):
             reference_config = configuration(
                 args.reference_root, args.power_ref_setup, args.resource, args.bench_python
             )
+        sweep_config = None
+        if args.sweep_setup:
+            from .guided_sweep import configuration
+
+            p.require(args.sweep_setup.stat().st_size <= 32 * 1024, "Sweep setup exceeds limit")
+            sweep_config = configuration(p._json(args.sweep_setup.read_bytes()))
         manager = jobs.Jobs(
             args.runs_dir,
             profiles_dir=args.profiles_dir,
             plots=not args.no_plots,
             reference_config=reference_config,
+            sweep_config=sweep_config,
         )
         app = server(manager, args.port)
         print(f"Operator interface: http://127.0.0.1:{app.server_port}", flush=True)
         print(
             "POWER REF available with fresh UI confirmation."
             if reference_config
-            else "Fakes only. Cancellation takes effect between tests.",
+            else "Operator-guided sweeps and simulated suites available.",
             flush=True,
         )
         app.serve_forever(poll_interval=0.25)

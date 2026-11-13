@@ -30,6 +30,10 @@ The Python logger, fake transmitter/supply controls, profiles, suites, provenanc
 - PDF and ZIP delivery use existing optional reporting dependencies. Normal logging and base runtime pins remain unchanged.
 - No remote service, external assets, AI provider, credential setup, or physical device discovery. Physical mode uses a trusted checkout, selected USB resource, bench interpreter, and retained equipment setup.
 
+## Operator-guided sweeps
+
+The owner authorized frequency, drive-setting, and combined measurement series on November 13, 2026. Support all 17 requested band labels and at least five drive labels; the implemented limits are 32 frequencies and 16 drive labels. Pause for fresh operator label confirmation before every capture. Use the production meter logger with an explicitly configured bench source, retain a simulated path, and expose equivalent local orchestration actions. Labels are declarations, separate from measured power.
+
 ## Brand Commitments
 
 Use HP 437B Automation as the project name and retain the existing report styling. Reports remain titled RF Output Power Test, with operator, signed pre-RF zero, and Report Harness provenance.
@@ -40,4 +44,4 @@ See docs/OPEN-WORK.md, docs/VALIDATION.md, docs/workflows/DUT-TEST-PROFILES-V1.m
 
 ## Product Principles
 
-Make the next action obvious. Show recorded truth rather than invented results. Preserve native evidence and distinguish test failure, cancellation, and report errors. Keep external transmitter/supply controls and AI automation outside this interface’s scope.
+Make the next action obvious. Show recorded truth rather than invented results. Preserve native evidence and distinguish test failure, cancellation, and report errors. Use generic radio terminology. Operator-guided sweeps confirm every point through a shared browser/local-client API; future orchestration can coordinate that boundary. Radio-specific drivers and AI automation remain separate work.

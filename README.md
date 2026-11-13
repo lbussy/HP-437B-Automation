@@ -8,6 +8,10 @@ The [current project scope](docs/PROJECT-SCOPE.md) was clarified by the owner on
 
 The interface/logger and named Mac/Pi interaction cases are implemented. The offline campaign is integrated into `devel` at `6bda91d`: 421 local tests with stress enabled and [CI passing on Python 3.11/3.14](https://github.com/lbussy/HP-437B-Automation/actions/runs/43214328205). Normal logging/runtime remains unchanged. See the [current checklist](docs/RELEASE-CHECKLIST.md).
 
+## Operator-guided radio sweeps
+
+[Operator-guided sweeps](docs/workflows/OPERATOR-GUIDED-SWEEPS.md) now support frequency, drive-setting, and combined series through the local interface: all 17 requested bands, up to 32 frequency labels and 16 drive labels, either point order, and a fresh label confirmation before every capture. An explicitly configured bench meter uses the production logger; simulated capture remains available. Full tables, optional comparison plots, a PDF summary, and portable evidence packages retain partial results. A local Python/HTTP client exposes start, status, confirm-one-point, and stop actions for future orchestration. New physical bench acceptance remains pending.
+
 ## Recorded bench evidence
 
 The following November 11 results concern software interactions with the identified equipment. Earlier replacement-gate wording is superseded by the current scope; the evidence and measurement limits remain valid within their recorded scopes.

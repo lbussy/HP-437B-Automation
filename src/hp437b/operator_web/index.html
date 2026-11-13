@@ -16,10 +16,21 @@
 <section class="setup" aria-labelledby="setup-title">
 <h2 id="setup-title">Test setup</h2>
 <form id="run-form">
-<div class="field"><label for="mode">Operating mode</label><select id="mode"><option value="synthetic">Simulated transmitter suite</option><option value="physical" disabled>POWER REF — current meter</option></select><p id="mode-note" class="hint">POWER REF must be explicitly enabled when launching this service.</p></div>
+<div class="field"><label for="mode">Operating mode</label><select id="mode"><option value="synthetic">Simulated transmitter suite</option><option value="guided">Operator-guided radio sweep</option><option value="physical" disabled>POWER REF — current meter</option></select><p id="mode-note" class="hint">POWER REF must be explicitly enabled when launching this service.</p></div>
 <div id="fake-setup">
 <div class="field"><label for="profile">DUT profile</label><select id="profile" aria-describedby="profile-description" required><option>Loading profiles…</option></select><p id="profile-description" class="hint"></p></div>
 <div class="profile-import"><button id="import" class="text-button" type="button">Import profile JSON</button><input id="profile-file" type="file" accept=".json,application/json" hidden></div>
+</div>
+<div id="guided-setup" hidden>
+<div class="field"><label for="guided-name">Radio / DUT name</label><input id="guided-name" type="text" maxlength="120" value="Radio under test"></div>
+<div class="field"><label for="guided-meter">Meter source</label><select id="guided-meter"><option value="synthetic">Simulated meter</option><option value="physical" disabled>Configured bench meter</option></select><p id="guided-meter-note" class="hint"></p></div>
+<div class="field"><label for="guided-series">Test series</label><select id="guided-series"><option value="combined">Frequency × drive setting</option><option value="frequency">Frequency versus power</option><option value="drive">Drive setting versus power</option></select></div>
+<div class="field"><label for="guided-frequencies">Frequency labels</label><textarea id="guided-frequencies" rows="4" maxlength="2000">2200m, 630m, 160m, 80m, 60m, 40m, 30m, 20m, 17m, 15m, 12m, 10m, 8m, 6m, 5m, 4m, 2m</textarea><p id="guided-frequency-hint" class="hint">Comma-separated labels; up to 32. Include exact frequencies in the labels as needed.</p></div>
+<div class="field"><label for="guided-drives">Drive setting labels</label><input id="guided-drives" type="text" maxlength="1000" value="2 mA, 4 mA, 8 mA, 12 mA"><p id="guided-drive-hint" class="hint">Comma-separated labels; up to 16, including custom setting names.</p></div>
+<div class="field"><label for="guided-order">Sweep order</label><select id="guided-order"><option value="frequency">Frequency first</option><option value="drive">Drive setting first</option></select></div>
+<div class="capture-fields"><div class="field"><label for="guided-samples">Samples per point</label><input id="guided-samples" type="number" min="1" max="1000" value="10"></div><div class="field"><label for="guided-interval">Interval (s)</label><input id="guided-interval" type="number" min="0.1" max="60" step="0.1" value="1"></div><div class="field"><label for="guided-settling">Settling (s)</label><input id="guided-settling" type="number" min="0" max="120" step="0.1" value="5"></div></div>
+<div class="field"><label for="guided-notes">RF path and measurement notes</label><textarea id="guided-notes" rows="3" maxlength="1000">Meter-indicated power at sensor input; record the RF path and meter corrections here.</textarea></div>
+<p id="guided-plan" class="hint"></p><fieldset id="guided-prepared" hidden><legend>Confirm the bench setup</legend></fieldset>
 </div>
 <div id="reference-setup" hidden><h3>Prepared POWER REF path</h3><p id="reference-identity" class="hint"></p><p id="reference-issues" class="hint"></p><div class="field"><label for="reference-workflow">POWER REF workflow</label><select id="reference-workflow"><option value="WF-01">WF-01 · Output (~7 min)</option><option value="WF-02">WF-02 · Stability (~32 min)</option><option value="WF-03">WF-03 · Five cycles (up to 15 min)</option></select></div><fieldset id="prepared"><legend>Confirm before each run</legend></fieldset></div>
 <div class="field"><label for="operator">Operator <span class="optional">optional</span></label><input id="operator" type="text" maxlength="120" autocomplete="name" placeholder="Name to include in the report"></div>
@@ -33,11 +44,18 @@
 <section class="run" aria-labelledby="run-title">
 <div class="run-heading"><h2 id="run-title">Suite progress</h2><span id="run-state" class="state">Ready</span></div>
 <div class="run-summary" aria-live="polite" aria-atomic="true"><h3 id="run-headline">No test is running</h3><p id="run-description">Start a suite when your selection is ready.</p></div>
+<div id="guided-point" class="boundary" hidden>
+<h3 id="guided-target">Waiting for a point</h3><p id="guided-instruction"></p>
+<div id="guided-point-checks"><label class="test-option"><input id="guided-frequency-confirm" type="checkbox"><span id="guided-frequency-label"></span></label><label class="test-option"><input id="guided-drive-confirm" type="checkbox"><span id="guided-drive-label"></span></label><p class="hint">Labels are recorded as operator-confirmed declarations.</p></div>
+<button id="guided-capture" class="primary" type="button" disabled>Confirm labels &amp; capture</button>
+</div>
+<div id="guided-controls" hidden><button id="guided-stop" class="secondary danger" type="button" disabled>Stop series</button><p id="guided-stop-note" class="hint">Capture stops before the next measurement. Turn radio RF off when finished.</p></div>
 <div class="progress-heading"><span id="progress-label">Selected tests</span><span id="progress-count"></span></div>
 <progress id="progress" value="0" max="3" aria-label="Completed tests"></progress>
 <ol id="steps" class="steps" aria-label="Workflow progress"></ol>
+<div id="guided-results" class="table-scroll" hidden><table><caption>Meter-indicated mean power at sensor input (mW)</caption><thead id="guided-results-head"></thead><tbody id="guided-results-body"></tbody></table></div>
 <div class="boundary"><h3>Cancellation boundary</h3><p id="boundary-text">The current test finishes and verifies RF off and supply restoration before cancellation takes effect. Later tests do not start.</p><button id="cancel" class="secondary danger" type="button" disabled>Request cancellation</button></div>
-<div class="reports"><h3>Reports</h3><p id="report-note" class="hint">PDF and portable package appear after capture and reporting finish.</p><div class="report-actions"><a id="pdf" class="primary link-button" target="_blank" rel="noopener" hidden>Open PDF report</a><a id="package" class="secondary link-button" hidden>Download package</a></div></div>
+<div class="reports"><h3>Reports</h3><p id="report-note" class="hint">PDF and portable package appear after capture and reporting finish.</p><div class="report-actions"><a id="html-report" class="secondary link-button" target="_blank" rel="noopener" hidden>Open full report</a><a id="pdf" class="primary link-button" target="_blank" rel="noopener" hidden>Open PDF report</a><a id="package" class="secondary link-button" hidden>Download package</a></div></div>
 <div id="front-panel" class="boundary" hidden><h3>Confirm after Python closes</h3><p>Check the actual front panel. If recovery is needed, use PRESET/LOCAL and the documented manual recovery before confirming. Protocol observations remain separate.</p><label class="test-option"><input id="front-panel-check" type="checkbox"><span>Live numeric readings, RMT off, and POWER REF off</span></label><button id="front-panel-save" class="secondary" type="button" disabled>Record front-panel confirmation</button><p id="front-panel-result" class="hint"></p></div>
 </section>
 </div>
