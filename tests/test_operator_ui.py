@@ -132,7 +132,7 @@ def test_cross_origin_token_host_and_content_type_writes_refused(http_server, he
     assert exc.value.code == 400 and manager.actions == 0
 
 
-def test_session_required_unknown_routes_and_oversized_body(http_server):
+def test_session_required_unknown_routes_and_oversized_length(http_server):
     server, manager, request, _, _ = http_server()
     origin = f"http://127.0.0.1:{server.server_port}"
     with pytest.raises(urllib.error.HTTPError) as exc:
@@ -141,8 +141,16 @@ def test_session_required_unknown_routes_and_oversized_body(http_server):
     with pytest.raises(urllib.error.HTTPError) as exc:
         request("/no-route")
     assert exc.value.code == 404
-    with pytest.raises(urllib.error.HTTPError):
-        request("/api/profiles", dict(profile_json=" " * ui.MAX_REQUEST))
+    # Reject the declared length before reading a body. Sending a huge body can
+    # race the server closing the socket and produce BrokenPipeError on Linux.
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        request("/api/profiles", {}, {"Content-Length": str(ui.MAX_REQUEST + 1)})
+    assert exc.value.code == 400
+    assert "too large" in json.load(exc.value)["error"]
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        request("/api/profiles", dict(profile_json=" " * (256 * 1024 + 1)))
+    assert exc.value.code == 400
+    assert "256 KiB" in json.load(exc.value)["error"]
     assert manager.actions == 0
 
 
