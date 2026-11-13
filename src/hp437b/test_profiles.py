@@ -157,6 +157,8 @@ def capture(
     operator=None,
     report_output=None,
     plots=True,
+    pdf=False,
+    package=False,
     fault=None,
     fault_point=None,
     stop_before=None,
@@ -171,6 +173,8 @@ def capture(
         operator=binding["operator"]["value"],
         report_output=report_output,
         plots=plots,
+        pdf=pdf,
+        package=package,
         fault=fault,
         fault_point=fault_point,
         stop_before=stop_before,
@@ -191,6 +195,8 @@ def main(argv=None):
     run.add_argument("--output", type=Path, required=True)
     run.add_argument("--report-output", type=Path)
     run.add_argument("--no-plots", action="store_true")
+    run.add_argument("--pdf", action="store_true")
+    run.add_argument("--package", action="store_true")
     run.add_argument("--fault", choices=s.FAULTS)
     run.add_argument("--fault-point")
     run.add_argument("--stop-before")
@@ -210,10 +216,16 @@ def main(argv=None):
             operator=args.operator,
             report_output=args.report_output,
             plots=not args.no_plots,
+            pdf=args.pdf,
+            package=args.package,
             fault=args.fault,
             fault_point=args.fault_point,
             stop_before=args.stop_before,
         )
+        if args.pdf or args.package:
+            from .report_delivery import announce
+
+            announce(args.report_output, pdf=args.pdf, package=args.package)
         return 0 if result["status"] == "completed" else 1
     except (OSError, ValueError, KeyError, TypeError) as exc:
         print(f"DUT profile: {exc}", file=sys.stderr)

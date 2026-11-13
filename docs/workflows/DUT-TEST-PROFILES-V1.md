@@ -61,3 +61,7 @@ PROV-01 adds supplied DUT identity and an evidence-bound profile record. The mai
 ## Completion boundary
 
 PROFILE-01 implements reusable configuration and individual fake workflow runs. [SUITE-01](TEST-SUITES-V1.md) now implements human-started multi-workflow orchestration, a compact summary, and cross-workflow cancellation/failure checks using fakes. Physical transmitter/supply/observer drivers, rated fixtures, physical correction programming, and hardware acceptance remain separate. This work accesses no hardware or AI provider.
+
+## Optional PDF and portable delivery
+
+Add `--pdf` to a report-producing command for one-page PDFs, or `--package` for PDFs plus a sibling portable ZIP containing sealed reports/provenance and original evidence. Install the optional `pdf` extra; rendering dependencies and ZIP reservations are checked before acquisition. Existing defaults remain unchanged. See [REPORT-EXPORT-01](PDF-EXPORT-V1.md) for commands, verification, scope, and report-only recovery.

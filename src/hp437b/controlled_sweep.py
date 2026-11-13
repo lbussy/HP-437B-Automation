@@ -348,6 +348,8 @@ def run(
     fault=None,
     fault_point=None,
     stop_before=None,
+    pdf=False,
+    package=False,
     test_profile=None,
     suite_context=None,
     hardware=None,
@@ -404,10 +406,15 @@ def run(
         )
     else:
         p.require(hardware is None and epoch is None, "Shared state requires suite context")
+    pdf = pdf or package
+    p.require(not pdf or report_output is not None, "PDF/package delivery requires report output")
     output = Path(output).resolve()
     p.require(not output.exists() and not p.sidecar_path(output).exists(), "Capture output exists")
     if report_output is not None:
         preflight(output, report_output, plots=plots)
+        from .report_delivery import preflight_delivery
+
+        preflight_delivery(output, report_output, pdf=pdf, package=package)
     started = epoch if suite_context is not None else datetime.now(UTC)
     record = dict(
         schema=SCHEMA,
@@ -490,7 +497,7 @@ def run(
     (output / "samples.csv").write_bytes(csv_bytes(rows))
     _seal(output, dict(schema=SCHEMA, mode="synthetic", run_id=record["run_id"]))
     if report_output is not None:
-        w.publish(output, report_output, plots=plots)
+        w.publish(output, report_output, plots=plots, pdf=pdf, package=package)
     return record
 
 

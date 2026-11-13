@@ -25,3 +25,11 @@ The package uses ordinary dependencies; their source is obtained through their p
 Development pins and transitive versions are in [requirements-dev.lock](requirements-dev.lock). pytest, Ruff, build, setuptools, iniconfig, pluggy, and pyproject_hooks use MIT licenses; Pygments uses BSD-2-Clause; packaging uses Apache-2.0 OR BSD-2-Clause. Package distributions carry the authoritative license notices. R&S VISA is proprietary royalty-free software, not part of this project's MIT grant, and is not bundled here.
 
 Product names and trademarks remain those of their owners. The original copied download manifest describes the earlier download; migration details are recorded separately in [project provenance](docs/PROVENANCE.md).
+
+## Optional PDF report rendering
+
+The optional PDF extra uses ReportLab 5.1.0 under its upstream BSD license, Pillow 13.0.0 under the MIT-CMU license, and charset-normalizer 3.5.2 under the MIT license. Distributions carry their authoritative notices; see the [ReportLab distribution](https://pypi.org/project/reportlab/5.1.0/) and [upstream documentation](https://docs.reportlab.com/). These dependencies are installed separately, not vendored here.
+
+PDFs embed ReportLab's bundled Bitstream Vera font subsets. The original Bitstream Vera copyright/permission notice is copied without alteration from the installed distribution into each report's `font-license.txt` and retained in PDF Subject metadata, including when reports are packaged. The font is not relicensed by this project's MIT grant. No publisher manual or private calibration document is included automatically.
+
+The reporting test parser, pypdf 7.0.1, uses BSD-3-Clause and is pinned only in `requirements-pdf-test.lock`; it is not a runtime dependency.

@@ -62,3 +62,7 @@ Reusable PROV-01 records include configured equipment identities, simulated repo
 Automated tests cover all three controlled paths, independent numeric oracles, single-application corrections, shared state, repeated anchors, observed-voltage results, failed/unattempted points, cleanup uncertainty, empty baselines, tamper rejection, immutable re-reporting, CLI compatibility, plots, and storage failures. See the [validation record](../VALIDATION.md#shared-control-sweep-integration--november-12-2026) for current results.
 
 This establishes fake control/capture/provenance/report integration only. Physical transmitter/supply/observer drivers, rated fixtures, shutdown qualification, sensor correction programming, and hardware acceptance remain separate work. Normal logger behavior is unchanged.
+
+## Optional PDF and portable delivery
+
+Add `--pdf` to a report-producing command for one-page PDFs, or `--package` for PDFs plus a sibling portable ZIP containing sealed reports/provenance and original evidence. Install the optional `pdf` extra; rendering dependencies and ZIP reservations are checked before acquisition. Existing defaults remain unchanged. See [REPORT-EXPORT-01](PDF-EXPORT-V1.md) for commands, verification, scope, and report-only recovery.

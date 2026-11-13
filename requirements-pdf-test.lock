@@ -1,0 +1,2 @@
+# PDF inspection in reporting CI and isolated QA; not a runtime dependency.
+pypdf==7.0.1

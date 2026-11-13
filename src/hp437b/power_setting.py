@@ -202,6 +202,8 @@ def simulate(
     operator=None,
     report_output=None,
     plots=True,
+    pdf=False,
+    package=False,
 ):
     """Generate virtual receipt samples, source acknowledgements, and sealed evidence."""
     p.require(scenario in SCENARIOS, "Unknown scenario")
@@ -211,10 +213,15 @@ def simulate(
     plan = validate_plan(default_plan(scenario) if plan is None else plan)
     validate_criteria(criteria, plan)
     operator = report_context.resolve_operator(operator)["value"]
+    pdf = pdf or package
+    p.require(not pdf or report_output is not None, "PDF/package delivery requires report output")
     output = Path(output).resolve()
     p.require(not output.exists() and not p.sidecar_path(output).exists(), "Capture output exists")
     if report_output is not None:
         preflight(output, report_output, plots=plots)
+        from .report_delivery import preflight_delivery
+
+        preflight_delivery(output, report_output, pdf=pdf, package=package)
     run_id, start = str(uuid.uuid4()), datetime.now(UTC)
     capture = dict(
         schema=SCHEMA,
@@ -341,7 +348,7 @@ def simulate(
         {"schema": "hp437b.power-setting-inventory.v1", "mode": "synthetic", "run_id": run_id},
     )
     if report_output is not None:
-        publish(output, report_output, plots=plots)
+        publish(output, report_output, plots=plots, pdf=pdf, package=package)
     return capture
 
 
@@ -788,8 +795,12 @@ def controlled(output, **kwargs):
     return run("WF-04", output, **kwargs)
 
 
-def publish(source, output, *, plots=True):
+def publish(source, output, *, plots=True, pdf=False, package=False):
+    from . import pdf_reports, report_delivery
+
+    pdf = pdf or package
     source, output = preflight(source, output, plots=plots)
+    report_delivery.preflight_delivery(source, output, pdf=pdf, package=package)
     capture, rows, bundle = load(source)
     result = analyze(capture, rows)
     record = provenance(capture, bundle)
@@ -950,6 +961,8 @@ def publish(source, output, *, plots=True):
         from .controlled_sweep import annotate_report
 
         annotate_report(output, capture)
+        if pdf:
+            pdf_reports.workflow(output, capture, result, producer, "WF-04")
         p.verify(record, source)
         p.require(
             r.digest(p.Bundle(source).read("artifacts.json")) == source_hash,
@@ -966,6 +979,8 @@ def publish(source, output, *, plots=True):
     except BaseException as exc:
         (output / "failure.json").write_bytes(r.encoded({"status": "failed", "error": str(exc)}))
         raise
+    if package:
+        report_delivery.package(source, output)
     return result
 
 
@@ -996,6 +1011,8 @@ def main(argv=None):
     for sub in (run, controlled_run, report):
         sub.add_argument("--output", required=True, type=Path)
         sub.add_argument("--no-plots", action="store_true")
+        sub.add_argument("--pdf", action="store_true")
+        sub.add_argument("--package", action="store_true", help="PDFs and a sibling portable ZIP")
     args = parser.parse_args(argv)
     try:
         if args.command in ("synthetic", "controlled"):
@@ -1012,6 +1029,8 @@ def main(argv=None):
                 operator=args.operator,
                 report_output=args.report_output,
                 plots=not args.no_plots,
+                pdf=args.pdf,
+                package=args.package,
                 **(
                     dict(
                         fault=args.fault, fault_point=args.fault_point, stop_before=args.stop_before
@@ -1020,8 +1039,18 @@ def main(argv=None):
                     else {}
                 ),
             )
+            if args.pdf or args.package:
+                from .report_delivery import announce
+
+                announce(args.report_output, pdf=args.pdf, package=args.package)
             return 0 if capture["status"] == "completed" else 1
-        publish(args.bundle, args.output, plots=not args.no_plots)
+        publish(
+            args.bundle, args.output, plots=not args.no_plots, pdf=args.pdf, package=args.package
+        )
+        if args.pdf or args.package:
+            from .report_delivery import announce
+
+            announce(args.output, pdf=args.pdf, package=args.package)
         return 0
     except (OSError, ValueError, KeyError, TypeError, csv.Error) as exc:
         print(f"WF-04: {exc}", file=sys.stderr)

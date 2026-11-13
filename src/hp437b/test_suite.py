@@ -156,6 +156,8 @@ def run(
     operator=None,
     report_output=None,
     plots=True,
+    pdf=False,
+    package=False,
     fault=None,
     fault_workflow=None,
     fault_point=None,
@@ -183,10 +185,15 @@ def run(
             point["point_id"] for point in document["workflows"][fault_workflow]["plan"]["points"]
         ]
         p.require(fault_point is None or fault_point in ids, "Fault point is not requested")
+    pdf = pdf or package
+    p.require(not pdf or report_output is not None, "PDF/package delivery requires report output")
     output = Path(output).resolve()
     p.require(not output.exists() and not p.sidecar_path(output).exists(), "Suite output exists")
     if report_output is not None:
         preflight(output, report_output, plots=plots)
+        from .report_delivery import preflight_delivery
+
+        preflight_delivery(output, report_output, pdf=pdf, package=package)
     epoch = datetime.now(UTC)
     record = dict(
         schema=SCHEMA,
@@ -279,7 +286,7 @@ def run(
         )
         raise
     if report_output is not None:
-        publish(output, report_output, plots=plots)
+        publish(output, report_output, plots=plots, pdf=pdf, package=package)
     return record
 
 
@@ -449,15 +456,19 @@ def load(source):
     return record, binding, bundle
 
 
-def publish(source, output, *, plots=True):
+def publish(source, output, *, plots=True, pdf=False, package=False):
+    from . import pdf_reports, report_delivery
+
+    pdf = pdf or package
     source, output = preflight(source, output, plots=plots)
+    report_delivery.preflight_delivery(source, output, pdf=pdf, package=package)
     record, binding, bundle = load(source)
     source_hash = r.digest(bundle.read("artifacts.json"))
     output.mkdir(parents=True)
     try:
         for item in record["children"]:
             s.module(item["workflow"]).publish(
-                source / item["path"], output / "workflows" / item["workflow"], plots=plots
+                source / item["path"], output / "workflows" / item["workflow"], plots=plots, pdf=pdf
             )
         profile = binding["profile"]
         results = {
@@ -480,6 +491,8 @@ def publish(source, output, *, plots=True):
             )
         )
         _render(output, results, producer)
+        if pdf:
+            pdf_reports.suite(output, results, producer)
         load(source)
         p.require(
             r.digest(p.Bundle(source).read("artifacts.json")) == source_hash,
@@ -489,13 +502,31 @@ def publish(source, output, *, plots=True):
             output,
             dict(schema="hp437b.test-suite-report.v1", mode="synthetic", run_id=record["suite_id"]),
         )
+        if package:
+            report_delivery.package(source, output)
         return results
     except BaseException as exc:
+        if (output / "artifacts.json").exists():
+            raise
         (output / "artifacts.json").unlink(missing_ok=True)
         (output / "failure.json").write_bytes(
             r.encoded(dict(status="unsealed", error_type=type(exc).__name__))
         )
         raise
+
+
+def stop_description(result):
+    reason = result["stop_reason"]
+    if reason:
+        category, kind = reason.split(":")
+        reason = {
+            "cancelled": f"Cancelled before {kind}",
+            "criteria": f"{kind} did not meet supplied acceptance criteria",
+            "execution": f"{kind} did not complete; see individual report",
+        }[category]
+    else:
+        reason = "None"
+    return reason
 
 
 def _render(output, result, producer):
@@ -525,16 +556,7 @@ def _render(output, result, producer):
         )
     harness = report_sheet.producer_note(producer)
     when = r.timestamp(result["started_utc"]).strftime("%d %b %Y, %H:%M:%S UTC")
-    reason = result["stop_reason"]
-    if reason:
-        category, kind = reason.split(":")
-        reason = {
-            "cancelled": f"Cancelled before {kind}",
-            "criteria": f"{kind} did not meet supplied acceptance criteria",
-            "execution": f"{kind} did not complete; see individual report",
-        }[category]
-    else:
-        reason = "None"
+    reason = stop_description(result)
     last = result["results"][-1] if result["results"] else None
     final = (
         f"RF {last['rf_state'].upper()}; supply restoration {'VERIFIED' if last['supply_restored'] else 'UNVERIFIED'}"
@@ -580,11 +602,23 @@ def main(argv=None):
     for sub in (capture, report):
         sub.add_argument("--output", required=True, type=Path)
         sub.add_argument("--no-plots", action="store_true")
+        sub.add_argument("--pdf", action="store_true")
+        sub.add_argument("--package", action="store_true")
     args = parser.parse_args(argv)
     previous = None
     try:
         if args.command == "report":
-            publish(args.bundle, args.output, plots=not args.no_plots)
+            publish(
+                args.bundle,
+                args.output,
+                plots=not args.no_plots,
+                pdf=args.pdf,
+                package=args.package,
+            )
+            if args.pdf or args.package:
+                from .report_delivery import announce
+
+                announce(args.output, pdf=args.pdf, package=args.package)
             return 0
         requested = False
 
@@ -600,12 +634,18 @@ def main(argv=None):
             operator=args.operator,
             report_output=args.report_output,
             plots=not args.no_plots,
+            pdf=args.pdf,
+            package=args.package,
             fault=args.fault,
             fault_workflow=args.fault_workflow,
             fault_point=args.fault_point,
             stop_before=args.stop_before,
             cancelled=lambda: requested,
         )
+        if args.pdf or args.package:
+            from .report_delivery import announce
+
+            announce(args.report_output, pdf=args.pdf, package=args.package)
         return (
             130
             if record["status"] == "interrupted"
