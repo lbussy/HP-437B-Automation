@@ -9,6 +9,35 @@ Updated November 12, 2026: the owner's [scope clarification](PROJECT-SCOPE.md) g
 
 Earlier bench-profile decisions and procedures below retain their limited scopes. They do not narrow the product to reference-bench logging or supersede the owner's clarified goal.
 
+## Actual remaining work
+
+The human-started, deterministic POWER REF deliverable is usable and has no outstanding mandatory feature work. Existing workflow, provenance, reporting, cancellation, and named recovery evidence remain accepted within their recorded scopes. Extra test combinations are not new completion gates.
+
+| Existing item | What actually remains | Dependency |
+| --- | --- | --- |
+| GUIDED-01 | Exercise the existing guided capture/report path on an actual transmitter; POWER REF browser acceptance is already complete | A transmitter and its suitable, documented RF measurement path |
+| WF-04–WF-06 | Physical results for the selected setting, frequency, or supply-voltage experiment; synthetic/shared-fake implementations are complete | A transmitter for setting/frequency changes; appropriate supply control only if the voltage experiment is selected |
+| HP-01 | Update equipment identity, applicable records, and relevant setup checks when equipment changes | Equipment exchange, when it happens; not a software completion gate |
+
+Automatic radio/supply drivers are optional; the existing operator-guided path permits human control. Fix demonstrated defects as they arise. No new report features, DUT limits, measurement claims, or blanket requalification are required here.
+
+## Optional enhancements and requested investigations
+
+These are separate from completion of the current deliverable. The owner requested a review of recovery and command expansion on November 13; that request does not mark implementation or physical fault trials as started.
+
+| Existing scope | Current status and bounded opportunity |
+| --- | --- |
+| PI-RECOVER-01: Broader/unattended recovery | ▧ Investigation requested. The integrated failed-read shutdown and fresh-session route already passed on Mac and Pi. Review bounded orchestration after faults using fakes first; distinguish restoring communication from resuming a test. Already-wedged repair and unattended continuation remain unqualified |
+| Broader command/bus support | ▧ Investigation requested. Use the existing inventory/coverage matrix to select useful commands, resolve framing and parameter ambiguities, and separate software tests from physical evidence. Full command coverage is not a release requirement |
+| DUT-CTRL-01 physical drivers | ▧ Optional. Implement only for a selected transmitter/supply; fake controls are complete, and manual operation remains supported |
+| AGENT-AUTO-01 | ▧ Deferred by owner. Human-started tests and deterministic reports remain the selected mode |
+
+### Requested investigation boundaries
+
+For recovery, start with fake fault cases and the existing [failed-read shutdown evidence](validation/PI-ONLY-RECOVERY.md#integrated-failed-read-shutdown-result). A separate opt-in supervisor could stop and preserve a failed run, dispose the uncertain session, make bounded fresh-session checks, and record whether communication is restored. Whether to start another test is a separate policy decision; never turn the failed sample into a successful retry. Preserve the existing operator confirmations and normal logger behavior. Software cannot guarantee restoration of an absent or already-wedged adapter. Prior USBTMC-clear experiments did not establish post-fault recovery; do not promote them to an automatic remedy. Any later physical trial needs its own explicit bounded procedure; none is authorized by this documentation update.
+
+For command support, use the [coverage matrix](inventory/COVERAGE.md) and [ambiguities](inventory/AMBIGUITIES.md). Of 118 variants, 78 are encodable/software-tested and 40 are guarded/deferred; that count is not physical acceptance. Useful first candidates are existing status/error queries and reversible range, filter, unit, and trigger settings, with documented parameter domains and restoration. Manual/source review, parser/encoder tests, and fake sequencing can proceed without hardware; selected source-off/POWER REF cases can later use the current meter. Persistent sensor-table edits, calibration procedures, binary learn/restore framing, and aliases need individual justification rather than blanket enabling. True bus trigger, serial poll, clear, and SRQ are separate adapter/backend capabilities; ASCII commands are not substitutes for their bus semantics. Keep current dependency pins and guards unless a separately selected change is demonstrated and accepted.
+
 ### User requirements and current state
 
 - Collect power readings from the 437B using a Mac or Raspberry Pi.
@@ -54,12 +83,12 @@ If a required operation fails, investigate configuration or a reproducible backe
 
 | Decision | Current position | Still needed |
 | --- | --- | --- |
-| Instrument and goal | Automated measurement/test orchestration and agent-assisted reports using the meter/sensor; reference-bench logging is the initial tested foundation | Define/implement the workflow, provenance, analysis/reporting, and end-to-end application contracts in [current scope](PROJECT-SCOPE.md) |
+| Instrument and goal | Automated measurement/test orchestration and agent-assisted reports using the meter/sensor; reference-bench logging is the initial tested foundation | Current workflow/provenance/deterministic reporting contracts are implemented; remaining physical use and optional investigations are separated above |
 | Adapter | Arrived: XyphroLabs USBGpib V2 (owner-reported marking), USB `03eb:2065`, detected on this Mac November 11 | Adapter firmware `V2.4` was read through the [documented internal query](validation/ADAPTER-IDENTIFICATION.md); Anker USB-C cable and front-panel meter GPIB address 13 are owner-reported; exact PCB revision is an accepted unknown. Recheck the replacement meter's identity and address during acceptance. Instrument USB identification content is not adapter firmware |
-| Language and API | Python/PyVISA interface/logger and named Mac/Pi interaction cases implemented | Build workflow and reporting layers; test newly required operations without changing established logging behavior silently |
+| Language and API | Python/PyVISA interface/logger and named Mac/Pi interaction cases implemented | Workflow and reporting layers are delivered; investigate selected extensions separately and preserve normal logging |
 | Open-source backend | Pinned PyVISA-py 0.8.1 with named current-unit Mac/Pi cases and explicit bus guards | Targeted validation for additional workflow requirements; unrelated bus gaps retain deferrals |
 | Host | MacBook Pro ARM64/macOS and Pi 5/aarch64 Debian with separate per-case environments; current-unit shutdown fix verified on both | Preserve per-host evidence; check relevant changes when equipment/workflows change; broader recovery remains separately scoped |
-| Logging behavior | [DEC-02 complete](validation/MEASUREMENT-POLICY.md): W, automatic range/filter, interval 1 second requested, duration 300 seconds, actual timing reported, existing CSV/sidecar | Keep this as an adopted test profile; workflow-specific policies remain to be defined; CLI defaults unchanged |
+| Logging behavior | [DEC-02 complete](validation/MEASUREMENT-POLICY.md): W, automatic range/filter, interval 1 second requested, duration 300 seconds, actual timing reported, existing CSV/sidecar | Keep this as an adopted test profile; existing workflow-specific policies are recorded with their profiles; CLI defaults unchanged |
 | Measurement setup | Prepared internal-reference path and actual sensor/factor policy recorded; [replacement procedure ready](validation/REPLACEMENT-ACCEPTANCE.md) | Capture identities, applicable records/factors, setup, and known issues in run provenance; perform equipment-specific checks when used |
 
 ### Qualification sequence after adapter arrival
@@ -97,11 +126,11 @@ The [pre-arrival review](validation/PRE-ARRIVAL-REVIEW.md) and [replacement proc
 
 ## Hardware-free software qualification
 
-The [offline campaign](validation/OFFLINE-QUALIFICATION-RESULTS.md) strengthened parameter, parser, logger, storage-fault, process/deadline, and clean-install evidence. Integrated and pushed to `devel` at `6bda91d`, with [Python 3.11/3.14 CI passing](https://github.com/lbussy/HP-437B-Automation/actions/runs/43214328205). Runtime source and pins are unchanged. This validates software foundations, not DUT accuracy or the unimplemented orchestration/reporting product.
+The [offline campaign](validation/OFFLINE-QUALIFICATION-RESULTS.md) strengthened parameter, parser, logger, storage-fault, process/deadline, and clean-install evidence. Integrated and pushed to `devel` at `6bda91d`, with [Python 3.11/3.14 CI passing](https://github.com/lbussy/HP-437B-Automation/actions/runs/43214328205). Runtime source and pins are unchanged. This validates software foundations, not DUT accuracy or acceptance of later orchestration/reporting capabilities; those have separate records below.
 
 ## First application workflow
 
-[WF-01 POWER REF measurement and repeatability](workflows/POWER-REFERENCE-V1.md) defines a finite off/on/off sequence, short and sustained captures, stop/cleanup behavior, provenance, and deterministic/agent-assisted report boundaries. A [shortened synthetic worked report](workflows/examples/POWER-REFERENCE-V1-SYNTHETIC.md) makes the inputs/calculations/output concrete without hardware. Definition is prepared, and the [synthetic prototype exercise](workflows/WF-01-EXERCISE.md) produced seven real synthetic output bundles/reports. The [first fixed physical POWER REF workflow](workflows/WF-01-PHYSICAL.md#current-meter-physical-result) then completed on the current Mac/meter with generated report and owner final-state confirmation. Wider workflow scope and the complete reporting product remain implementation work. Normal logger behavior stays unchanged.
+[WF-01 POWER REF measurement and repeatability](workflows/POWER-REFERENCE-V1.md) defines a finite off/on/off sequence, short and sustained captures, stop/cleanup behavior, provenance, and deterministic/agent-assisted report boundaries. A [shortened synthetic worked report](workflows/examples/POWER-REFERENCE-V1-SYNTHETIC.md) makes the inputs/calculations/output concrete without hardware. Definition is prepared, and the [synthetic prototype exercise](workflows/WF-01-EXERCISE.md) produced seven real synthetic output bundles/reports. The [first fixed physical POWER REF workflow](workflows/WF-01-PHYSICAL.md#current-meter-physical-result) then completed on the current Mac/meter with generated report and owner final-state confirmation. Later workflow/reporting deliveries are recorded below; this first-profile history does not create additional open requirements. Normal logger behavior stays unchanged.
 
 ## Reusable provenance
 

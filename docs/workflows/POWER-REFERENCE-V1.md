@@ -1,6 +1,6 @@
 # WF-01: POWER REF measurement and repeatability
 
-Definition v1, November 12, 2026. Status: contracts defined and a synthetic-only prototype exercised; the explicit [physical runner](WF-01-PHYSICAL.md) completed the selected current-Mac/meter POWER REF workflow with owner confirmation. The complete reporting product remains implementation work. The [worked synthetic report](examples/POWER-REFERENCE-V1-SYNTHETIC.md) illustrates the outputs. This definition advances [WF-01](../PROJECT-SCOPE.md#next-software-work) without changing the existing logger or requiring a radio/replacement meter. It authorizes no hardware run by itself.
+Definition v1, November 12, 2026. Status: contracts defined and a synthetic-only prototype exercised; the explicit [physical runner](WF-01-PHYSICAL.md) completed the selected current-Mac/meter POWER REF workflow with owner confirmation. Later deterministic reporting deliveries are recorded in the current scope. The [worked synthetic report](examples/POWER-REFERENCE-V1-SYNTHETIC.md) illustrates the outputs. This definition advances [WF-01](../PROJECT-SCOPE.md#current-delivery-and-remaining-scope) without changing the existing logger or requiring a radio/replacement meter. It authorizes no hardware run by itself.
 
 ## Purpose and operating modes
 
