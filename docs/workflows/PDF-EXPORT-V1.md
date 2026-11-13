@@ -1,6 +1,6 @@
 # REPORT-EXPORT-01: PDF reports and portable packages, v1
 
-Status: implemented. Covers WF-04–WF-06, their [profile commands](DUT-TEST-PROFILES-V1.md), and [fake suites](TEST-SUITES-V1.md). Existing report defaults and normal logging are unchanged. No hardware, backend, source, or provider access is added. WF-01–WF-03 PDF integration is outside this version's scope.
+Status: delivered. Delivered to `devel` at `40714e7`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43358371391). Covers WF-04–WF-06, their [profile commands](DUT-TEST-PROFILES-V1.md), and [fake suites](TEST-SUITES-V1.md). Existing report defaults and normal logging are unchanged. No hardware, backend, source, or provider access is added. WF-01–WF-03 PDF integration is outside this version's scope.
 
 Use `--pdf` to generate a one-page PDF automatically during report publication. Use `--package` to generate PDFs and a portable ZIP containing reports, provenance, and original sealed evidence. The commands print the PDF/ZIP paths. Open **report.pdf**, rather than an HTML source file, for the human-readable answer.
 
