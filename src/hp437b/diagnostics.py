@@ -104,6 +104,45 @@ def _value(value):
     return value
 
 
+def _collect_queries(
+    instrument,
+    rows,
+    started,
+    *,
+    before_query=lambda code: None,
+    after_query=lambda: None,
+    on_row=lambda row: None,
+    raw_reply=None,
+):
+    """Shared fixed-plan collection; callers own transport, deadlines, and cleanup."""
+    for row in rows:
+        before_query(row["command"])
+        row["started_elapsed_s"] = time.monotonic() - started
+        try:
+            reply = instrument.query(row["command"])
+            after_query()
+        except BaseException as exc:
+            raw = raw_reply() if raw_reply is not None else instrument.last_raw
+            row.update(
+                status="failed" if isinstance(exc, Exception) else "interrupted",
+                raw_hex=raw.hex(),
+                error=f"{type(exc).__name__}: {exc}",
+                elapsed_s=time.monotonic() - started,
+            )
+            on_row(row)
+            if not isinstance(exc, Exception):
+                raise
+            return "query_failed"
+        row.update(
+            status="completed",
+            raw_hex=reply.raw.hex(),
+            value=_value(reply.value),
+            elapsed_s=time.monotonic() - started,
+        )
+        on_row(row)
+    return "completed"
+
+
 def run_simulated(
     output,
     *,
@@ -166,29 +205,7 @@ def run_simulated(
     }
     started = time.monotonic()
     try:
-        for row in receipt["queries"]:
-            row["started_elapsed_s"] = time.monotonic() - started
-            try:
-                reply = instrument.query(row["command"])
-            except BaseException as exc:
-                row.update(
-                    status="failed" if isinstance(exc, Exception) else "interrupted",
-                    raw_hex=instrument.last_raw.hex(),
-                    error=f"{type(exc).__name__}: {exc}",
-                    elapsed_s=time.monotonic() - started,
-                )
-                if not isinstance(exc, Exception):
-                    raise
-                receipt["status"] = "query_failed"
-                break
-            row.update(
-                status="completed",
-                raw_hex=reply.raw.hex(),
-                value=_value(reply.value),
-                elapsed_s=time.monotonic() - started,
-            )
-        else:
-            receipt["status"] = "completed"
+        receipt["status"] = _collect_queries(instrument, receipt["queries"], started)
     except BaseException:
         receipt["status"] = "interrupted"
         raise

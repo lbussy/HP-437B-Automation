@@ -12,6 +12,8 @@ Legacy binary versus ASCII framing. §3-21 Learn Mode (printed 3-32/PDF 62) expl
 
 The service-mask prose (§3-29, printed 3-37/PDF 67) describes ASCII values for `@1`/RV, but the HP BASIC require-service example (§3-12, printed 3-22/PDF 52) uses `USING "2A,B";"@1",4`, a binary mask byte. §3-34 (printed 3-40/PDF 70) says service-mask value1byte/EOI while separately specifying three ASCII digits/CRLF for *SRE?. Preserve distinct APIs until raw captures establish RV versus *SRE? and @1 versus *SRE behavior. Read timeout recovery and arbitrary binary CR/LF handling also need qualification.
 
+The [November 13 basic wspr5 diagnostics pass](../validation/PI-DIAGNOSTICS-BASIC-20261113.md) captured one zero `*SRE?` response as three ASCII digits plus CR/LF with complete VISA framing. This accepts that current-host/current-firmware zero-mask query case; nonzero masks, RV, and @1 framing remain unresolved.
+
 ## A03
 
 Sensor-table syntax and traversal. Table 3-5 footnote2 (printed 3-42/PDF 72) says six ID characters; Sensor Data remote procedure (printed 3-87/PDF 117) and upload example (3-89/PDF 119) specify up to seven. AppendixA-4/PDF 154 describes ID error88 with1–9/A–Z, while the detailed procedure permits0–9/A–Z/underscore. Record six/seven/short-label behavior and case rules using a backed-up spare table.
