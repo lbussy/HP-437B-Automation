@@ -195,7 +195,9 @@ Serial poll enable / status byte — `SPE then meter talk address`.
 - Source: [00437-90047, §3-30, printed 3-38/PDF 68](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=68).
 - Open issue: A06.
 
-The subsequent [serial-poll investigation](../validation/SERIAL-POLL-INVESTIGATION.md) provides a fake-tested one-shot USB488 prototype only. Native normal-backend support and physical acceptance remain absent; firmware can hide an internal GPIB timeout and merge cached SRQ bits, so a valid adapter reply is not independent proof of a fresh successful poll.
+The subsequent [serial-poll investigation](../validation/SERIAL-POLL-INVESTIGATION.md) provides a fake-tested one-shot USB488 prototype only. Native normal-backend support remains absent; firmware can hide an internal GPIB timeout and merge cached SRQ bits, so a valid adapter reply is not independent proof of a fresh successful poll.
+
+The [single quiet-state wspr5 USB488 diagnostic](../validation/PI-DIAGNOSTICS-SERIAL-POLL-20261114.md) completed matching status-zero control/interrupt frames and following ordinary communication, with separate owner final confirmation. This is scoped USB exchange/followup evidence, not independent proof of fresh successful GPIB polling or status lifecycle; G015 normal support remains guarded.
 
 ### G016
 
