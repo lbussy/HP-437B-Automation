@@ -33,12 +33,35 @@ def main():
         action="store_true",
         help="Opaque read-only LP2 capture and post-read acquisition",
     )
+    parser.add_argument(
+        "--acquisition-settings",
+        action="store_true",
+        help="Reversible selected controls using POWER REF",
+    )
+    parser.add_argument("--confirm-reference-control", action="store_true")
     parser.add_argument("--confirm-fixed-error-fixtures", action="store_true")
     args = parser.parse_args()
-    if sum((args.lifecycle, args.err_selection, args.numeric_entry, args.lp2_snapshot)) > 1:
+    if (
+        sum(
+            (
+                args.lifecycle,
+                args.err_selection,
+                args.numeric_entry,
+                args.lp2_snapshot,
+                args.acquisition_settings,
+            )
+        )
+        > 1
+    ):
         parser.error("Select only one fixed experiment")
     if args.lp2_snapshot and args.include_latched_reads:
         parser.error("LP2 snapshot is a separate profile with explicit SM reads")
+    if args.acquisition_settings and (
+        not args.confirm_reference_control or args.include_latched_reads
+    ):
+        parser.error("Setting checks require reference-control confirmation and no passive flag")
+    if args.confirm_reference_control and not args.acquisition_settings:
+        parser.error("Reference control applies only to setting checks")
     experiment = args.lifecycle or args.err_selection or args.numeric_entry
     if experiment and (not args.confirm_fixed_error_fixtures or args.include_latched_reads):
         parser.error("Fixed experiment requires fixture confirmation and no passive latch flag")
@@ -69,6 +92,11 @@ def main():
             err_selection=args.err_selection,
             numeric_entry=args.numeric_entry,
             lp2_snapshot=args.lp2_snapshot,
+            acquisition_settings=args.acquisition_settings,
+            original_resolution=setup.get("original_resolution"),
+            confirmed_reference_control=args.confirm_reference_control,
+            work_s=60 if args.acquisition_settings else 20,
+            total_s=65 if args.acquisition_settings else 25,
             numeric_original_settings=setup.get("numeric_original_settings"),
             confirmed_error_fixtures=args.confirm_fixed_error_fixtures,
             cancelled=stop.is_set,

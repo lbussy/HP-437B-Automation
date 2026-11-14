@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from . import diagnostics as diag
+from . import diagnostics_acquisition as settings
 from . import diagnostics_err_selection as selection
 from . import diagnostics_lifecycle as life
 from . import diagnostics_snapshot as snapshot
@@ -73,6 +74,10 @@ def _worker(
     err_selection=False,
     numeric_entry=False,
     lp2_snapshot=False,
+    acquisition_settings=False,
+    original_resolution=None,
+    settings_settle_s=20.0,
+    settings_restore_refresh_s=4.0,
 ):
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # Parent owns cancellation and disposal.
     wire = None
@@ -82,7 +87,9 @@ def _worker(
         status="preflight_failed",
         stage="ownership",
         transport_closed=None,
-        queries=snapshot.plan()
+        queries=settings.plan(original_resolution, settings_settle_s, settings_restore_refresh_s)
+        if acquisition_settings
+        else snapshot.plan()
         if lp2_snapshot
         else selection.plan(numeric_entry=numeric_entry)
         if err_selection or numeric_entry
@@ -134,11 +141,25 @@ def _worker(
 
                 def row_ready(row):
                     row["visa_read_status"] = (
-                        wire.read_status if row.get("kind") != "wait" else None
+                        wire.read_status
+                        if row.get("kind") not in ("wait", "command")
+                        and row.get("io_attempted", True)
+                        else None
                     )
                     emit(row=row)
 
-                if lp2_snapshot:
+                if acquisition_settings:
+                    result["status"], result["acquisition_settings_assessment"] = settings.collect(
+                        instrument,
+                        result["queries"],
+                        started,
+                        deadline=deadline,
+                        before_step=before_query,
+                        after_step=check,
+                        on_row=row_ready,
+                        raw_reply=lambda: wire.captured_raw,
+                    )
+                elif lp2_snapshot:
                     result["status"], result["snapshot_assessment"] = snapshot.collect(
                         instrument,
                         result["queries"],
@@ -226,6 +247,9 @@ def run_physical(
     numeric_entry=False,
     numeric_original_settings=None,
     lp2_snapshot=False,
+    acquisition_settings=False,
+    original_resolution=None,
+    confirmed_reference_control=False,
     confirmed_error_fixtures=False,
     work_s=20.0,
     total_s=25.0,
@@ -261,12 +285,16 @@ def run_physical(
             err_selection,
             numeric_entry,
             lp2_snapshot,
+            acquisition_settings,
+            confirmed_reference_control,
             confirmed_error_fixtures,
         )
     ):
         raise ValueError("Experiment/fixture selections must be explicit booleans")
-    if sum((lifecycle, err_selection, numeric_entry, lp2_snapshot)) > 1:
+    if sum((lifecycle, err_selection, numeric_entry, lp2_snapshot, acquisition_settings)) > 1:
         raise ValueError("Select only one fixed experiment")
+    if acquisition_settings and include_latched_reads:
+        raise ValueError("Setting checks are a separate profile")
     if lp2_snapshot and include_latched_reads:
         raise ValueError("LP2 snapshot is a separate profile with explicit SM reads")
     experiment = lifecycle or err_selection or numeric_entry
@@ -293,6 +321,23 @@ def run_physical(
             )
     elif numeric_original_settings is not None:
         raise ValueError("Original numeric settings apply only to the numeric-entry profile")
+    if acquisition_settings:
+        if (
+            not confirmed_reference_control
+            or type(original_resolution) is not int
+            or original_resolution not in (1, 2, 3)
+        ):
+            raise ValueError(
+                "Confirm POWER REF control and record original front-panel resolution 1..3"
+            )
+        if any(prepared.get(key) is not True for key in ("direct_reference_path", "warmed_up")):
+            raise ValueError("Prepared warmed-up direct sensor-to-POWER-REF path required")
+        if (work_s, total_s) != (60, 65):
+            raise ValueError(
+                "Setting checks require fixed 60/65-second work/total budgets, including restoration reserve"
+            )
+    elif original_resolution is not None or confirmed_reference_control:
+        raise ValueError("Resolution/reference confirmation apply only to setting checks")
     for name, value, low, high in (("work_s", work_s, 0.25, 60), ("total_s", total_s, 5, 90)):
         if (
             isinstance(value, bool)
@@ -305,6 +350,30 @@ def run_physical(
         raise ValueError("Total budget must reserve native finish grace and worker disposal")
     if _factory_override is not None and getattr(_factory_override, "simulation", None) is not True:
         raise ValueError("Only explicitly simulated integration factories may be injected")
+    settings_settle_s = (
+        getattr(_factory_override, "settings_settle_s", settings.SETTLE_S)
+        if _factory_override
+        else settings.SETTLE_S
+    )
+    if acquisition_settings and (
+        isinstance(settings_settle_s, bool)
+        or not isinstance(settings_settle_s, (int, float))
+        or not math.isfinite(settings_settle_s)
+        or not 0 <= settings_settle_s <= settings.SETTLE_S
+    ):
+        raise ValueError("Injected fake settle time must be bounded; physical settle is fixed")
+    settings_restore_refresh_s = (
+        getattr(_factory_override, "settings_restore_refresh_s", settings.RESTORE_REFRESH_S)
+        if _factory_override
+        else settings.RESTORE_REFRESH_S
+    )
+    if acquisition_settings and (
+        isinstance(settings_restore_refresh_s, bool)
+        or not isinstance(settings_restore_refresh_s, (int, float))
+        or not math.isfinite(settings_restore_refresh_s)
+        or not 0 <= settings_restore_refresh_s <= settings.RESTORE_REFRESH_S
+    ):
+        raise ValueError("Injected restore refresh must be bounded; physical refresh is fixed")
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     path = output / "diagnostics.json"
@@ -322,6 +391,8 @@ def run_physical(
         )
     if lp2_snapshot:
         rows = snapshot.plan()
+    if acquisition_settings:
+        rows = settings.plan(original_resolution, settings_settle_s, settings_restore_refresh_s)
     result = dict(
         schema="hp437b.diagnostics.physical.v1",
         mode="physical",
@@ -345,10 +416,21 @@ def run_physical(
         err_selection_profile=err_selection,
         numeric_entry_profile=numeric_entry,
         lp2_snapshot_profile=lp2_snapshot,
+        acquisition_settings_profile=acquisition_settings,
+        acquisition_settings_plan_version=settings.PLAN_VERSION if acquisition_settings else None,
+        original_resolution=original_resolution,
+        confirmed_reference_control=confirmed_reference_control,
+        settings_prepared={key: prepared[key] for key in ("direct_reference_path", "warmed_up")}
+        if acquisition_settings
+        else None,
+        settings_settle_s=settings_settle_s if acquisition_settings else None,
+        settings_restore_refresh_s=settings_restore_refresh_s if acquisition_settings else None,
         numeric_settings_verified=False if numeric_entry else None,
         numeric_original_settings=dict(numeric_original_settings) if numeric_entry else None,
         fixed_error_fixtures_confirmed=confirmed_error_fixtures,
-        source_off_basis="Fresh operator assertion; no automatic SM preflight or continuous RF proof",
+        source_off_basis="Initial operator assertion and SM gate; selected profile controls POWER REF"
+        if acquisition_settings
+        else "Fresh operator assertion; no automatic SM preflight or continuous RF proof",
         host=dict(platform=platform.platform(), python=platform.python_version()),
         budgets=dict(
             work_s=work_s,
@@ -360,6 +442,15 @@ def run_physical(
         worker=None,
         transport_closed=None,
     )
+    if acquisition_settings:
+        result["acquisition_settings_assessment"] = dict(
+            stop_reason="No worker restoration receipt yet",
+            restoration_attempted=None,
+            auto_modes_reference_off_verified=False,
+            reference_may_be_on=True,
+            resolution_usb_verified=False,
+            accepted_full_case=False,
+        )
     _atomic_json(path, result)
     root = Path(workflow_lock_root)
     root.mkdir(parents=True, exist_ok=True)
@@ -381,6 +472,10 @@ def run_physical(
             err_selection,
             numeric_entry,
             lp2_snapshot,
+            acquisition_settings,
+            original_resolution,
+            settings_settle_s,
+            settings_restore_refresh_s,
         ),
     )
     process.daemon = True
@@ -482,6 +577,33 @@ def run_physical(
                 result["lifecycle_assessment"]["accepted_full_case"] = (
                     result["status"] == "completed"
                 )
+            if "acquisition_settings_assessment" in result:
+                result["acquisition_settings_assessment"]["accepted_full_case"] = (
+                    result["status"] == "completed"
+                )
+                accepted_restore = any(
+                    row.get("phase") == "restore"
+                    and row["command"] == "SM"
+                    and row["status"] == "completed"
+                    and row.get("accepted_before_deadline")
+                    for row in rows
+                )
+                accepted_reference_on = any(
+                    row.get("phase") not in ("baseline", "restore")
+                    and row["command"] == "SM"
+                    and row["status"] == "completed"
+                    and row.get("accepted_before_deadline")
+                    and row.get("value", {}).get("reference_on") is True
+                    for row in rows
+                )
+                if (not accepted_restore or not accepted_reference_on) and result[
+                    "acquisition_settings_assessment"
+                ]["restoration_attempted"]:
+                    result["acquisition_settings_assessment"][
+                        "auto_modes_reference_off_verified"
+                    ] = False
+                    result["acquisition_settings_assessment"]["reference_may_be_on"] = True
+
             if "snapshot_assessment" in result:
                 result["snapshot_assessment"]["accepted_full_case"] = (
                     result["status"] == "completed"
