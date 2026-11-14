@@ -16,6 +16,7 @@ from . import diagnostics_acquisition as settings
 from . import diagnostics_err_selection as selection
 from . import diagnostics_lifecycle as life
 from . import diagnostics_poll as polling
+from . import diagnostics_poll_entry as entry_poll
 from . import diagnostics_snapshot as snapshot
 from . import protocol
 from . import reconciliation as rec
@@ -95,6 +96,7 @@ def _worker(
     settings_settle_s=20.0,
     settings_restore_refresh_s=4.0,
     serial_poll_probe=False,
+    serial_poll_entry_error=False,
 ):
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # Parent owns cancellation and disposal.
     wire = None
@@ -104,7 +106,9 @@ def _worker(
         status="preflight_failed",
         stage="ownership",
         transport_closed=None,
-        queries=polling.plan()
+        queries=entry_poll.plan()
+        if serial_poll_entry_error
+        else polling.plan()
         if serial_poll_probe
         else settings.plan(original_resolution, settings_settle_s, settings_restore_refresh_s)
         if acquisition_settings
@@ -167,7 +171,19 @@ def _worker(
                     )
                     emit(row=row)
 
-                if serial_poll_probe:
+                if serial_poll_entry_error:
+                    result["status"], result["serial_poll_assessment"] = entry_poll.collect(
+                        instrument,
+                        wire,
+                        result["queries"],
+                        started,
+                        deadline=deadline,
+                        before_step=before_query,
+                        after_step=check,
+                        on_row=row_ready,
+                        stop=stop,
+                    )
+                elif serial_poll_probe:
                     result["status"], result["serial_poll_assessment"] = polling.collect(
                         instrument,
                         wire,
@@ -280,6 +296,7 @@ def run_physical(
     lp2_snapshot=False,
     acquisition_settings=False,
     serial_poll_probe=False,
+    serial_poll_entry_error=False,
     original_resolution=None,
     confirmed_reference_control=False,
     confirmed_error_fixtures=False,
@@ -319,6 +336,7 @@ def run_physical(
             lp2_snapshot,
             acquisition_settings,
             serial_poll_probe,
+            serial_poll_entry_error,
             confirmed_reference_control,
             confirmed_error_fixtures,
         )
@@ -333,25 +351,26 @@ def run_physical(
                 lp2_snapshot,
                 acquisition_settings,
                 serial_poll_probe,
+                serial_poll_entry_error,
             )
         )
         > 1
     ):
         raise ValueError("Select only one fixed experiment")
-    if serial_poll_probe and include_latched_reads:
+    if (serial_poll_probe or serial_poll_entry_error) and include_latched_reads:
         raise ValueError("Serial-poll probe is a separate profile")
     if acquisition_settings and include_latched_reads:
         raise ValueError("Setting checks are a separate profile")
     if lp2_snapshot and include_latched_reads:
         raise ValueError("LP2 snapshot is a separate profile with explicit SM reads")
-    experiment = lifecycle or err_selection or numeric_entry
+    experiment = lifecycle or err_selection or numeric_entry or serial_poll_entry_error
     if experiment and (not confirmed_error_fixtures or include_latched_reads):
         raise ValueError(
             "Fixed experiment requires separate fixed-error confirmation and no passive flag"
         )
     if confirmed_error_fixtures and not experiment:
         raise ValueError("Fixed-error confirmation applies only to a fixed experiment")
-    if numeric_entry:
+    if numeric_entry or serial_poll_entry_error:
         if (
             not isinstance(numeric_original_settings, dict)
             or set(numeric_original_settings) != {"frequency", "cal_factor"}
@@ -442,6 +461,8 @@ def run_physical(
         rows = settings.plan(original_resolution, settings_settle_s, settings_restore_refresh_s)
     if serial_poll_probe:
         rows = polling.plan()
+    if serial_poll_entry_error:
+        rows = entry_poll.plan()
     result = dict(
         schema="hp437b.diagnostics.physical.v1",
         mode="physical",
@@ -467,6 +488,7 @@ def run_physical(
         lp2_snapshot_profile=lp2_snapshot,
         acquisition_settings_profile=acquisition_settings,
         serial_poll_probe_profile=serial_poll_probe,
+        serial_poll_entry_error_profile=serial_poll_entry_error,
         acquisition_settings_plan_version=settings.PLAN_VERSION if acquisition_settings else None,
         original_resolution=original_resolution,
         confirmed_reference_control=confirmed_reference_control,
@@ -475,13 +497,15 @@ def run_physical(
         else None,
         settings_settle_s=settings_settle_s if acquisition_settings else None,
         settings_restore_refresh_s=settings_restore_refresh_s if acquisition_settings else None,
-        numeric_settings_verified=False if numeric_entry else None,
-        numeric_original_settings=dict(numeric_original_settings) if numeric_entry else None,
+        numeric_settings_verified=False if numeric_entry or serial_poll_entry_error else None,
+        numeric_original_settings=dict(numeric_original_settings)
+        if numeric_entry or serial_poll_entry_error
+        else None,
         fixed_error_fixtures_confirmed=confirmed_error_fixtures,
         source_off_basis="Initial operator assertion and SM gate; selected profile controls POWER REF"
         if acquisition_settings
         else "Initial operator assertion and SM gate; no reference-control writes"
-        if serial_poll_probe
+        if serial_poll_probe or serial_poll_entry_error
         else "Fresh operator assertion; no automatic SM preflight or continuous RF proof",
         host=dict(platform=platform.platform(), python=platform.python_version()),
         budgets=dict(
@@ -494,7 +518,7 @@ def run_physical(
         worker=None,
         transport_closed=None,
     )
-    if serial_poll_probe:
+    if serial_poll_probe or serial_poll_entry_error:
         result["serial_poll_assessment"] = polling.assessment("No worker receipt yet")
     if acquisition_settings:
         result["acquisition_settings_assessment"] = dict(
@@ -531,6 +555,7 @@ def run_physical(
             settings_settle_s,
             settings_restore_refresh_s,
             serial_poll_probe,
+            serial_poll_entry_error,
         ),
     )
     process.daemon = True
@@ -632,6 +657,28 @@ def run_physical(
                 result["serial_poll_assessment"]["accepted_full_case"] = (
                     result["status"] == "completed"
                 )
+            if serial_poll_entry_error:
+                accepted_poll = next(
+                    (
+                        r
+                        for r in rows
+                        if r["kind"] == "poll"
+                        and r["status"] == "completed"
+                        and r.get("accepted_before_deadline")
+                    ),
+                    None,
+                )
+                result["serial_poll_assessment"]["nonzero_entry_poll_observed"] = bool(
+                    accepted_poll and accepted_poll["value"].get("adapter_status_byte", 0) & 4
+                )
+                accepted_final = any(
+                    r.get("phase") == "final"
+                    and r["status"] == "completed"
+                    and r.get("accepted_before_deadline")
+                    for r in rows
+                )
+                if not accepted_final:
+                    result["serial_poll_assessment"]["quiet_cleanup_verified"] = False
             if "lifecycle_assessment" in result:
                 result["lifecycle_assessment"]["accepted_full_case"] = (
                     result["status"] == "completed"

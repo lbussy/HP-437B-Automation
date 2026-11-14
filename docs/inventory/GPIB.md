@@ -199,6 +199,8 @@ The subsequent [serial-poll investigation](../validation/SERIAL-POLL-INVESTIGATI
 
 The [single quiet-state wspr5 USB488 diagnostic](../validation/PI-DIAGNOSTICS-SERIAL-POLL-20261114.md) completed matching status-zero control/interrupt frames and following ordinary communication, with separate owner final confirmation. This is scoped USB exchange/followup evidence, not independent proof of fresh successful GPIB polling or status lifecycle; G015 normal support remains guarded.
 
+The subsequent [controlled entry-error experiment](../validation/SERIAL-POLL-NONZERO-FAKES.md) is implemented and fake/installed-package tested, with one fixed FR-3GZ condition and one native poll. Its [selected Pi pass](../validation/PI-DIAGNOSTICS-POLL-ENTRY-20261114.md) subsequently observed native status 4 correlated with ASCII 4/4 before and after polling, then SM 82→0/ESR 16→0 and quiet cleanup. Owner final state/settings were confirmed. This scoped correlation does not promote general G015 or fresh zero/CAL completion support.
+
 ### G016
 
 Serial poll disable — `SPD / unaddress talk / IFC`.
