@@ -36,9 +36,12 @@ class SerialPollProbe:
     A physical caller must raw-close/dispose after any failure, not send cleanup.
     """
 
-    def __init__(self, interface, *, cancelled=None):
+    def __init__(self, interface, *, cancelled=None, tag=TAG):
         if cancelled is not None and not callable(cancelled):
             raise ValueError("Cancellation check must be callable")
+        if type(tag) is not int or not 2 <= tag <= 127:
+            raise ValueError("Poll tag must be 2..127; no wraparound")
+        self._tag = tag
         self._cancelled = cancelled or (lambda: False)
         self._interface = interface
         self._used = False
@@ -47,7 +50,7 @@ class SerialPollProbe:
             profile=PROFILE,
             status="not_attempted",
             stage=None,
-            tag=TAG,
+            tag=tag,
             native_dispatched=False,
             poll_dispatched=False,
             instrument_poll_success_verified=False,
@@ -84,6 +87,12 @@ class SerialPollProbe:
             raise StateUncertain("One-shot probe already used; no retry or reconnect")
         if confirmed_source_off_idle is not True:
             raise ValueError("Explicit supervised source-off/idle confirmation required")
+        return self._exchange(deadline)
+
+    def _exchange(self, deadline):
+        """Private transfer for the separately supervised ZERO state machine."""
+        if self._used:
+            raise StateUncertain("One-shot probe already used; no retry or reconnect")
         self._check(deadline)
         self._used = True
         self._receipt.update(status="in_progress", stage="descriptor_preflight")
@@ -127,15 +136,15 @@ class SerialPollProbe:
                 raise ProtocolError("Malformed GET_CAPABILITIES reply")
             if caps[12:14] != b"\x00\x01" or not caps[14] & 4:
                 raise CapabilityUnavailable("USB488 1.0 status-byte path not advertised")
-            control = self._control("control", 128, TAG, index, 3, deadline)
-            if len(control) != 3 or control[0] != 1 or control[1] != TAG:
+            control = self._control("control", 128, self._tag, index, 3, deadline)
+            if len(control) != 3 or control[0] != 1 or control[1] != self._tag:
                 raise ProtocolError("Malformed/rejected READ_STATUS_BYTE control response")
             timeout = self._check(deadline)
             self._receipt["stage"] = "interrupt"
             interrupt = bytes(endpoint.read(2, timeout=timeout))
             self._receipt["interrupt_hex"] = interrupt.hex()
             self._check(deadline)
-            if len(interrupt) != 2 or interrupt[0] != 0x80 | TAG:
+            if len(interrupt) != 2 or interrupt[0] != 0x80 | self._tag:
                 raise ProtocolError("Unexpected interrupt/tag; no drain or retry")
             if interrupt[1] != control[2] or control[2] > 127:
                 raise ProtocolError("Inconsistent or invalid HP 437B status byte")

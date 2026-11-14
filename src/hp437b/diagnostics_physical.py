@@ -18,6 +18,7 @@ from . import diagnostics_lifecycle as life
 from . import diagnostics_poll as polling
 from . import diagnostics_poll_entry as entry_poll
 from . import diagnostics_snapshot as snapshot
+from . import diagnostics_zero as zero
 from . import protocol
 from . import reconciliation as rec
 from . import reconciliation_physical as phy
@@ -48,6 +49,8 @@ class _DiagnosticBridge(phy._Bridge):
         self.read_status = None
         self.poll_receipt = None
         self._poll_probe = None
+        self._zero_polls = None
+        self.zero_poll_receipt = None
 
     def write(self, data, deadline):
         self.captured_raw, self.read_status = b"", None
@@ -74,6 +77,16 @@ class _DiagnosticBridge(phy._Bridge):
         finally:
             self.poll_receipt = probe.receipt
 
+    def zero_poll(self, deadline, *, cancelled):
+        if self._zero_polls is None:
+            self._zero_polls = zero.PollSession(
+                session_interface(self.manager, self.handle), cancelled
+            )
+        try:
+            return self._zero_polls.poll(deadline)
+        finally:
+            self.zero_poll_receipt = self._zero_polls.receipt
+
 
 def _factory(resource):
     return _DiagnosticBridge(resource)
@@ -97,6 +110,7 @@ def _worker(
     settings_restore_refresh_s=4.0,
     serial_poll_probe=False,
     serial_poll_entry_error=False,
+    supervised_zero=False,
 ):
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # Parent owns cancellation and disposal.
     wire = None
@@ -106,7 +120,9 @@ def _worker(
         status="preflight_failed",
         stage="ownership",
         transport_closed=None,
-        queries=entry_poll.plan()
+        queries=zero.plan()
+        if supervised_zero
+        else entry_poll.plan()
         if serial_poll_entry_error
         else polling.plan()
         if serial_poll_probe
@@ -165,13 +181,25 @@ def _worker(
                 def row_ready(row):
                     row["visa_read_status"] = (
                         wire.read_status
-                        if row.get("kind") not in ("wait", "command", "poll")
+                        if row.get("kind") not in ("wait", "command", "poll", "poll_window")
                         and row.get("io_attempted", True)
                         else None
                     )
                     emit(row=row)
 
-                if serial_poll_entry_error:
+                if supervised_zero:
+                    result["status"], result["zero_assessment"] = zero.collect(
+                        instrument,
+                        wire,
+                        result["queries"],
+                        started,
+                        deadline=deadline,
+                        before_step=before_query,
+                        after_step=check,
+                        on_row=row_ready,
+                        stop=stop,
+                    )
+                elif serial_poll_entry_error:
                     result["status"], result["serial_poll_assessment"] = entry_poll.collect(
                         instrument,
                         wire,
@@ -297,6 +325,8 @@ def run_physical(
     acquisition_settings=False,
     serial_poll_probe=False,
     serial_poll_entry_error=False,
+    supervised_zero=False,
+    confirmed_zero=False,
     original_resolution=None,
     confirmed_reference_control=False,
     confirmed_error_fixtures=False,
@@ -337,6 +367,8 @@ def run_physical(
             acquisition_settings,
             serial_poll_probe,
             serial_poll_entry_error,
+            supervised_zero,
+            confirmed_zero,
             confirmed_reference_control,
             confirmed_error_fixtures,
         )
@@ -352,11 +384,19 @@ def run_physical(
                 acquisition_settings,
                 serial_poll_probe,
                 serial_poll_entry_error,
+                supervised_zero,
             )
         )
         > 1
     ):
         raise ValueError("Select only one fixed experiment")
+    if supervised_zero:
+        if not confirmed_zero or prepared.get("no_rf_input") is not True:
+            raise ValueError("Explicit no-RF path and stored ZERO-adjustment confirmation required")
+        if include_latched_reads or (work_s, total_s) != (45, 50):
+            raise ValueError("ZERO is a separate bounded 45/50-second profile")
+    elif confirmed_zero:
+        raise ValueError("ZERO confirmation applies only to supervised ZERO")
     if (serial_poll_probe or serial_poll_entry_error) and include_latched_reads:
         raise ValueError("Serial-poll probe is a separate profile")
     if acquisition_settings and include_latched_reads:
@@ -463,6 +503,8 @@ def run_physical(
         rows = polling.plan()
     if serial_poll_entry_error:
         rows = entry_poll.plan()
+    if supervised_zero:
+        rows = zero.plan()
     result = dict(
         schema="hp437b.diagnostics.physical.v1",
         mode="physical",
@@ -489,6 +531,8 @@ def run_physical(
         acquisition_settings_profile=acquisition_settings,
         serial_poll_probe_profile=serial_poll_probe,
         serial_poll_entry_error_profile=serial_poll_entry_error,
+        supervised_zero_profile=supervised_zero,
+        zero_prepared=dict(no_rf_input=True, confirmed_zero=True) if supervised_zero else None,
         acquisition_settings_plan_version=settings.PLAN_VERSION if acquisition_settings else None,
         original_resolution=original_resolution,
         confirmed_reference_control=confirmed_reference_control,
@@ -505,7 +549,7 @@ def run_physical(
         source_off_basis="Initial operator assertion and SM gate; selected profile controls POWER REF"
         if acquisition_settings
         else "Initial operator assertion and SM gate; no reference-control writes"
-        if serial_poll_probe or serial_poll_entry_error
+        if serial_poll_probe or serial_poll_entry_error or supervised_zero
         else "Fresh operator assertion; no automatic SM preflight or continuous RF proof",
         host=dict(platform=platform.platform(), python=platform.python_version()),
         budgets=dict(
@@ -518,6 +562,8 @@ def run_physical(
         worker=None,
         transport_closed=None,
     )
+    if supervised_zero:
+        result["zero_assessment"] = zero.assessment()
     if serial_poll_probe or serial_poll_entry_error:
         result["serial_poll_assessment"] = polling.assessment("No worker receipt yet")
     if acquisition_settings:
@@ -556,6 +602,7 @@ def run_physical(
             settings_restore_refresh_s,
             serial_poll_probe,
             serial_poll_entry_error,
+            supervised_zero,
         ),
     )
     process.daemon = True
@@ -653,6 +700,21 @@ def run_physical(
                 )
             ):
                 result["status"] = "worker_failed"
+            if supervised_zero:
+                a = result["zero_assessment"]
+                a["accepted_full_case"] = result["status"] == "completed"
+                timely = {
+                    r["step_id"]
+                    for r in rows
+                    if r["status"] == "completed" and r.get("accepted_before_deadline")
+                }
+                for field, step in (
+                    ("clear_baseline_observed", "baseline.poll"),
+                    ("completion_indication_observed", "zero.wait"),
+                    ("post_clear_observed", "after.poll"),
+                ):
+                    if step not in timely:
+                        a[field] = False
             if "serial_poll_assessment" in result:
                 result["serial_poll_assessment"]["accepted_full_case"] = (
                     result["status"] == "completed"

@@ -48,6 +48,8 @@ def main():
         action="store_true",
         help="Fixed FR-3GZ entry-bit poll/latch experiment",
     )
+    parser.add_argument("--supervised-zero", action="store_true")
+    parser.add_argument("--confirm-zero", action="store_true")
     parser.add_argument("--confirm-reference-control", action="store_true")
     parser.add_argument("--confirm-fixed-error-fixtures", action="store_true")
     args = parser.parse_args()
@@ -61,11 +63,16 @@ def main():
                 args.acquisition_settings,
                 args.serial_poll_probe,
                 args.serial_poll_entry_error,
+                args.supervised_zero,
             )
         )
         > 1
     ):
         parser.error("Select only one fixed experiment")
+    if args.supervised_zero and (not args.confirm_zero or args.include_latched_reads):
+        parser.error("Supervised ZERO requires explicit confirmation and no passive flag")
+    if args.confirm_zero and not args.supervised_zero:
+        parser.error("ZERO confirmation requires the ZERO profile")
     if (args.serial_poll_probe or args.serial_poll_entry_error) and args.include_latched_reads:
         parser.error("Serial-poll probe is a separate profile")
     if args.lp2_snapshot and args.include_latched_reads:
@@ -111,10 +118,12 @@ def main():
             acquisition_settings=args.acquisition_settings,
             serial_poll_probe=args.serial_poll_probe,
             serial_poll_entry_error=args.serial_poll_entry_error,
+            supervised_zero=args.supervised_zero,
+            confirmed_zero=args.confirm_zero,
             original_resolution=setup.get("original_resolution"),
             confirmed_reference_control=args.confirm_reference_control,
-            work_s=60 if args.acquisition_settings else 20,
-            total_s=65 if args.acquisition_settings else 25,
+            work_s=45 if args.supervised_zero else 60 if args.acquisition_settings else 20,
+            total_s=50 if args.supervised_zero else 65 if args.acquisition_settings else 25,
             numeric_original_settings=setup.get("numeric_original_settings"),
             confirmed_error_fixtures=args.confirm_fixed_error_fixtures,
             cancelled=stop.is_set,
