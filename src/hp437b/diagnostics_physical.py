@@ -14,6 +14,7 @@ from pathlib import Path
 from . import diagnostics as diag
 from . import diagnostics_err_selection as selection
 from . import diagnostics_lifecycle as life
+from . import diagnostics_snapshot as snapshot
 from . import protocol
 from . import reconciliation as rec
 from . import reconciliation_physical as phy
@@ -71,6 +72,7 @@ def _worker(
     lifecycle=False,
     err_selection=False,
     numeric_entry=False,
+    lp2_snapshot=False,
 ):
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # Parent owns cancellation and disposal.
     wire = None
@@ -80,7 +82,9 @@ def _worker(
         status="preflight_failed",
         stage="ownership",
         transport_closed=None,
-        queries=selection.plan(numeric_entry=numeric_entry)
+        queries=snapshot.plan()
+        if lp2_snapshot
+        else selection.plan(numeric_entry=numeric_entry)
         if err_selection or numeric_entry
         else life.plan()
         if lifecycle
@@ -134,7 +138,17 @@ def _worker(
                     )
                     emit(row=row)
 
-                if lifecycle or err_selection or numeric_entry:
+                if lp2_snapshot:
+                    result["status"], result["snapshot_assessment"] = snapshot.collect(
+                        instrument,
+                        result["queries"],
+                        started,
+                        before_step=before_query,
+                        after_step=check,
+                        on_row=row_ready,
+                        raw_reply=lambda: wire.captured_raw,
+                    )
+                elif lifecycle or err_selection or numeric_entry:
                     profile = selection if err_selection or numeric_entry else life
                     result["status"], result["lifecycle_assessment"] = profile.collect(
                         instrument,
@@ -211,6 +225,7 @@ def run_physical(
     err_selection=False,
     numeric_entry=False,
     numeric_original_settings=None,
+    lp2_snapshot=False,
     confirmed_error_fixtures=False,
     work_s=20.0,
     total_s=25.0,
@@ -241,11 +256,19 @@ def run_physical(
         raise ValueError("Latch reads require an explicit boolean")
     if any(
         type(value) is not bool
-        for value in (lifecycle, err_selection, numeric_entry, confirmed_error_fixtures)
+        for value in (
+            lifecycle,
+            err_selection,
+            numeric_entry,
+            lp2_snapshot,
+            confirmed_error_fixtures,
+        )
     ):
         raise ValueError("Experiment/fixture selections must be explicit booleans")
-    if sum((lifecycle, err_selection, numeric_entry)) > 1:
+    if sum((lifecycle, err_selection, numeric_entry, lp2_snapshot)) > 1:
         raise ValueError("Select only one fixed experiment")
+    if lp2_snapshot and include_latched_reads:
+        raise ValueError("LP2 snapshot is a separate profile with explicit SM reads")
     experiment = lifecycle or err_selection or numeric_entry
     if experiment and (not confirmed_error_fixtures or include_latched_reads):
         raise ValueError(
@@ -297,6 +320,8 @@ def run_physical(
             if err_selection or numeric_entry
             else life.plan()
         )
+    if lp2_snapshot:
+        rows = snapshot.plan()
     result = dict(
         schema="hp437b.diagnostics.physical.v1",
         mode="physical",
@@ -319,6 +344,7 @@ def run_physical(
         lifecycle_profile=lifecycle,
         err_selection_profile=err_selection,
         numeric_entry_profile=numeric_entry,
+        lp2_snapshot_profile=lp2_snapshot,
         numeric_settings_verified=False if numeric_entry else None,
         numeric_original_settings=dict(numeric_original_settings) if numeric_entry else None,
         fixed_error_fixtures_confirmed=confirmed_error_fixtures,
@@ -354,6 +380,7 @@ def run_physical(
             lifecycle,
             err_selection,
             numeric_entry,
+            lp2_snapshot,
         ),
     )
     process.daemon = True
@@ -455,6 +482,42 @@ def run_physical(
                 result["lifecycle_assessment"]["accepted_full_case"] = (
                     result["status"] == "completed"
                 )
+            if "snapshot_assessment" in result:
+                result["snapshot_assessment"]["accepted_full_case"] = (
+                    result["status"] == "completed"
+                )
+            if lp2_snapshot:
+                captured = next(
+                    (
+                        row
+                        for row in rows
+                        if row["command"] == "LP2"
+                        and row["status"] == "completed"
+                        and row.get("accepted_before_deadline")
+                    ),
+                    None,
+                )
+                if captured is not None:
+                    try:
+                        raw = protocol.snapshot(bytes.fromhex(captured["raw_hex"]))
+                        # Preserve a timely complete capture even if the later acquisition fails.
+                        temporary = output / "snapshot.bin.part"
+                        with temporary.open("xb") as handle:
+                            handle.write(raw)
+                        temporary.replace(output / "snapshot.bin")
+                        result["snapshot_artifact"] = dict(
+                            path="snapshot.bin",
+                            length=len(raw),
+                            sha256=hashlib.sha256(raw).hexdigest(),
+                            source_step_id=captured["step_id"],
+                            interpretation="opaque_only; no supported restore or decoded settings",
+                        )
+                    except Exception as exc:
+                        result.update(
+                            status="artifact_failed", artifact_error=f"{type(exc).__name__}: {exc}"
+                        )
+                        if "snapshot_assessment" in result:
+                            result["snapshot_assessment"]["accepted_full_case"] = False
             result.update(
                 finished_utc=datetime.now(UTC).isoformat(), elapsed_s=time.monotonic() - started
             )

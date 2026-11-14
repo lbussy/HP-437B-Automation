@@ -14,6 +14,8 @@ The service-mask prose (§3-29, printed 3-37/PDF 67) describes ASCII values for 
 
 The [November 13 basic wspr5 diagnostics pass](../validation/PI-DIAGNOSTICS-BASIC-20261113.md) captured one zero `*SRE?` response as three ASCII digits plus CR/LF with complete VISA framing. This accepts that current-host/current-firmware zero-mask query case; nonzero masks, RV, and @1 framing remain unresolved.
 
+The [supervised Pi LP2 pass](../validation/PI-DIAGNOSTICS-LP2-20261114.md) captured exactly `@2` plus 58 opaque bytes with complete backend framing, followed by a valid ordinary acquisition and normal live/local cleanup. This resolves that recorded C064 Pi readback case only; no byte layout, hash-to-setting equivalence, binary writeback/restore, legacy learn form, or Mac support is inferred.
+
 ## A03
 
 Sensor-table syntax and traversal. Table 3-5 footnote2 (printed 3-42/PDF 72) says six ID characters; Sensor Data remote procedure (printed 3-87/PDF 117) and upload example (3-89/PDF 119) specify up to seven. AppendixA-4/PDF 154 describes ID error88 with1–9/A–Z, while the detailed procedure permits0–9/A–Z/underscore. Record six/seven/short-label behavior and case rules using a backed-up spare table.
