@@ -38,6 +38,11 @@ def main():
         action="store_true",
         help="Reversible selected controls using POWER REF",
     )
+    parser.add_argument(
+        "--serial-poll-probe",
+        action="store_true",
+        help="One source-off USB488 diagnostic poll; no zero/CAL enablement",
+    )
     parser.add_argument("--confirm-reference-control", action="store_true")
     parser.add_argument("--confirm-fixed-error-fixtures", action="store_true")
     args = parser.parse_args()
@@ -49,11 +54,14 @@ def main():
                 args.numeric_entry,
                 args.lp2_snapshot,
                 args.acquisition_settings,
+                args.serial_poll_probe,
             )
         )
         > 1
     ):
         parser.error("Select only one fixed experiment")
+    if args.serial_poll_probe and args.include_latched_reads:
+        parser.error("Serial-poll probe is a separate profile")
     if args.lp2_snapshot and args.include_latched_reads:
         parser.error("LP2 snapshot is a separate profile with explicit SM reads")
     if args.acquisition_settings and (
@@ -93,6 +101,7 @@ def main():
             numeric_entry=args.numeric_entry,
             lp2_snapshot=args.lp2_snapshot,
             acquisition_settings=args.acquisition_settings,
+            serial_poll_probe=args.serial_poll_probe,
             original_resolution=setup.get("original_resolution"),
             confirmed_reference_control=args.confirm_reference_control,
             work_s=60 if args.acquisition_settings else 20,
