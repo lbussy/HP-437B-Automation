@@ -73,3 +73,7 @@ The [open-work register](OPEN-WORK.md) retains detailed foundation results and o
 ## Shared controls for WF-04–WF-06
 
 The [shared-control fake sweeps](workflows/CONTROLLED-SWEEPS-V1.md) now integrate DUT-CTRL-01 into ordered setting, frequency, and supply-voltage runs. Each point uses guarded transmitter/supply/observer operations and production logger capture through explicit fakes, carries shared fake hardware state, verifies shutdown/restoration, and stops on failure. Native point evidence feeds existing analyses, provenance, and reports. Legacy fixture commands and saved bundles remain supported. Delivered to `devel` at `d2f5584`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43337194421). Physical drivers and normal logging remain unchanged.
+
+## Selected serial-poll investigation
+
+The owner-selected [true serial-poll investigation](validation/SERIAL-POLL-INVESTIGATION.md) completed manual/source review and a separate one-shot prototype with 58 fake cases and 117 focused regression passes. It validates tagged control/interrupt framing but preserves the firmware hidden-GPIB-timeout/cache limitation: adapter success, including zero or a completion bit, does not prove fresh instrument polling or procedure completion. Physical worker integration/installed preflight and a supervised source-off wspr5 pass remain pending; no normal capability or zero/CAL guard is changed.

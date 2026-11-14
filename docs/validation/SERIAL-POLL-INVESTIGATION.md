@@ -1,0 +1,51 @@
+# True serial-poll investigation
+
+November 14, 2026. Status: **manual/source investigation and fake-only one-shot prototype complete; physical runner integration and bench test pending**. This is the owner-selected optional command/backend investigation, not a new release requirement. No meter, USB endpoint, native library, or wspr5 session was accessed. Normal logging, transport capabilities, dependency pins, zero/CAL guards, and existing physical runners remain unchanged.
+
+## Findings and decision
+
+True polling has a concrete adapter path, but the inspected firmware cannot independently prove that every successful USB response represents a successful, fresh instrument poll. Proceed with an opt-in diagnostic bridge first, not a general `serial_poll` transport capability or automatic zero/CAL enablement. A returned zero, or even a returned completion bit, must retain that evidence limitation.
+
+The [operating manual, printed 3-37–38/PDF 67–68](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=67), was visually reviewed. SPE followed by talk addressing obtains the binary status byte; bit 7 is zero. SPD or talk unaddressing after sending can clear the sent status, while buffered later conditions can remain. ASCII `*STB?` preserves status and is not an equivalent implementation. Polling is therefore a state-changing observation, even with POWER REF off. This experiment does not send CS, *CLS, mask setters, or an unfinished zero/calibration command.
+
+Primary source inspected at fixed revisions:
+
+| Source | Finding |
+| --- | --- |
+| [Adapter control handler, `88a1383`](https://github.com/xyphro/UsbGpib/blob/88a13830eea3e2d8bf9f6e33123cc1523f42c70a/SW/TestAndMeasurement/TestAndMeasurement.c#L669) | Class/interface IN READ_STATUS_BYTE request 128 receives a three-byte control reply: success, tag, status. It also queues a tagged two-byte interrupt response. Handler asserts REN and invokes a GPIB poll with a source-commented 1.5-second timeout |
+| [Adapter GPIB poll](https://github.com/xyphro/UsbGpib/blob/88a13830eea3e2d8bf9f6e33123cc1523f42c70a/SW/TestAndMeasurement/gpib.c#L149) | Executes listener addressing, SPE, meter talk addressing, read, SPD, and UNT; its timeout path calls internal recovery but returns only a status byte, without a separate error |
+| [Cached/unsolicited SRQ handling](https://github.com/xyphro/UsbGpib/blob/88a13830eea3e2d8bf9f6e33123cc1523f42c70a/SW/TestAndMeasurement/TestAndMeasurement.c#L1184) | Adapter can auto-poll SRQ, queue tag-1 interrupt notifications, and cache status bits. The explicit handler ORs cached bits into its reply and clears its cache. The byte is not guaranteed to contain exclusively fresh status from the requested poll |
+| [Upstream development reference, `be0aeb4`](https://github.com/pyvisa/pyvisa-py/blob/be0aeb4156e658426ce306a5c2bff399766be187/pyvisa_py/protocols/usbtmc.py#L593) | Shows USB488 control/interrupt polling and separate poll tags 2–127. This is a protocol lead, not an adopted dependency or evidence for the installed backend |
+| Installed pinned PyVISA-py 0.8.1 | USB interface already exposes its PyUSB control/interrupt objects, but the normal USB session does not implement true serial polling. Existing normal `VisaTransport` has no `serial_poll` capability |
+
+The GitHub web renderer did not serve the pinned pages during this investigation; exact raw files were fetched successfully from the same primary repositories. Ignored source SHA-256 values are `641e5af95bc1ca6b82833367c1dbb4d0a9ab2d2519fbacac742ff64155b26d36` (adapter handler), `5c6bd7ac411d83b2c6e2fa423cad90f4bc3d822878da8f4f7d76ca084a7f2cd4` (GPIB), and `fe5c91bbdbb0fd03dbd58710d8bee502413ee2f81adf3c826d25025f01b4c42b` (development reference). These are published-source findings, not proof of the binary installed in the adapter that previously reported V2.4. No third-party source is copied into committed runtime code.
+
+## One-shot prototype and limits
+
+[SerialPollProbe](../../src/hp437b/serial_poll_probe.py) is original project code with injected, already owned interface access; it neither opens nor discovers devices. There is no new CLI or physical worker integration in this batch. Construction performs no I/O. Explicit supervised source-off/idle confirmation and a finite monotonic deadline precede one attempt; native calls are capped at two seconds and use only the shrinking remaining budget.
+
+The sequence validates the actual `03eb:2065` USB488 interface and interrupt-IN endpoint, then requests GET_CAPABILITIES. It requires exact successful 24-byte framing, USB488 version 1.0, and the advertised USB488 bit. READ_STATUS_BYTE uses tag 2 and the actual interface number, not a bulk endpoint number or a hard-coded interface zero. The exact successful control reply and exact `0x82` interrupt notification must agree on a 0–127 status byte. Both raw replies are retained. This stricter adapter profile requires its interrupt endpoint; it does not fall back to a control-only result or ASCII query.
+
+A completed attempt is labeled **adapter_reply_validated**, never instrument-poll success or procedure completion. The receipt always retains `instrument_poll_success_verified: false`, `freshness_verified: false`, and `procedure_completion_verified: false`. A status bit alone does not unlock a procedure. Repeated polling/tag wraparound, SRQ-event delivery, pending bulk transfers, binary restore, resets, and fault recovery are outside this one-shot candidate.
+
+Malformed/rejected/mismatched responses, native exceptions, cancellation, late replies, and unexpected tag-1 SRQ notifications stop the attempt. There is no interrupt drain, second native poll, reconnect, automatic clear, or post-failure cleanup command. The used object refuses reuse even after a failed capability negotiation. Preserved receipt bytes do not turn failed or late responses into accepted results. No pending measurement or simultaneous use of the reused VISA/PyUSB interface is allowed.
+
+Native timeouts cannot stop a misbehaving C call by themselves. The eventual physical integration must run this code inside a child with an outer deadline, shared exact-resource lease, raw-close/failure-disposal handling, and no further instrument commands after an uncertain transaction. The prototype alone does not implement that process boundary and must not be invoked directly in a long-lived operator/UI process.
+
+## Fake verification
+
+[Independent USB endpoint doubles](../../tests/test_serial_poll_probe.py) passed **58 cases**; the combined probe, existing USB488 local-return, instrument, and transport regression passed **117 tests in 3.80 seconds**, through `tools/offline_qa.py`. Cases cover exact requests/interface/endpoint selection, no construction I/O, descriptor/capability rejection, control/interrupt lengths/status/tags, unsolicited SRQ rejection, inconsistent bytes, forbidden bit 7, per-call budgets, late/native failures, cancellation before/after calls, BaseException, one-shot reuse blocking, evidence-copy isolation, and unchanged zero/CAL capability guards.
+
+Independent countermodels return identical success/zero USB replies for quiet and internally timed-out GPIB worlds; the host cannot distinguish them. A cached completion-bit case also remains explicitly unverified. These tests establish conservative host interpretation, not physical adapter support or successful zero/calibration. No full parameter sweep or new mandatory campaign is created.
+
+Lint/formatting, Markdown links and inventory IDs, publisher-manual checksums, and `git diff --check` passed. Guarded wheel/source builds passed; the new module bytes matched both archives, and packaged logger/transport/instrument bytes matched unchanged source. Focused/build logs and downloaded source remain ignored under `tmp/serial-poll/`. No hosted CI, physical installed-package test, or full-regression rerun is claimed for this isolated prototype.
+
+## What is needed for a supervised wspr5 test
+
+First integrate the candidate into a separate opt-in diagnostic worker using the existing pinned synchronous bridge, resource lease, process deadline, and failure disposal. Fake-test the full worker sequence and hung/cancelled/native-failure paths, build a fresh isolated installation on wspr5, verify installed hashes/pins and the preserved normal logger/udev rule, and confirm no other control worker is active. The existing diagnostics command does not yet offer this probe; do not bypass its guards or call the prototype directly on the host.
+
+Then obtain fresh owner confirmation of the same wspr5 adapter, meter `3125U33223`, sensor `MY41094127`, unchanged GPIB/sensor path, live readings, RMT/POWER REF off, no pending operation, other control apps closed, and about five-minute availability with PRESET/LOCAL accessible. Leave POWER REF off throughout. No USB move, new cable, reference activation, resolution change, zero, calibration, deliberate timeout, unplugging, mask change, or firmware update is needed.
+
+The proposed first pass is bounded and passive apart from serial polling's documented status effects: exact identity and baseline SM, read `*SRE?` and `*STB?`, require source-off/free-run/no-error baseline and zero service mask, perform **one** USB488 poll, then only after accepted USB framing perform post-poll `*STB?`, one ordinary TR1 acquisition/SM, and healthy TR3/GTL closure. Preserve query order and all raw frames. Do not require a static equality between before/poll/after status: data-ready, poll clearing, buffering, and adapter caching can affect it. A native/protocol failure stops all later commands and uses raw close/disposal, followed by operator recovery as necessary. No probe retry is included.
+
+After closure request separate owner confirmation of live readings, RMT off, and POWER REF off without pressing keys. A quiet zero result can validate the selected USB exchange and following ordinary communication, but cannot by itself accept end-to-end poll success, clear/buffer semantics, fresh completion, or G015 broadly. A controlled nonzero/freshness experiment would need a separately selected sequence and a solution to the firmware's hidden-error/cache ambiguity before enabling zero/CAL. Do not promote the normal backend capability merely because one USB response is valid.
