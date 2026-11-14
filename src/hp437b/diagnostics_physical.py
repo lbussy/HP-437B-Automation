@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from . import diagnostics as diag
+from . import diagnostics_err_selection as selection
 from . import diagnostics_lifecycle as life
 from . import protocol
 from . import reconciliation as rec
@@ -60,7 +61,15 @@ def _factory(resource):
 
 
 def _worker(
-    pipe, stop, target, factory, deadline, lock_path, include_latched_reads, lifecycle=False
+    pipe,
+    stop,
+    target,
+    factory,
+    deadline,
+    lock_path,
+    include_latched_reads,
+    lifecycle=False,
+    err_selection=False,
 ):
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # Parent owns cancellation and disposal.
     wire = None
@@ -70,7 +79,9 @@ def _worker(
         status="preflight_failed",
         stage="ownership",
         transport_closed=None,
-        queries=life.plan()
+        queries=selection.plan()
+        if err_selection
+        else life.plan()
         if lifecycle
         else [dict(command=c, effect=diag.EFFECTS[c], status="not_attempted") for c in plan],
     )
@@ -117,11 +128,14 @@ def _worker(
                     instrument.timeout = min(phy.NATIVE_S, remaining(deadline))
 
                 def row_ready(row):
-                    row["visa_read_status"] = wire.read_status
+                    row["visa_read_status"] = (
+                        wire.read_status if row.get("kind") != "wait" else None
+                    )
                     emit(row=row)
 
-                if lifecycle:
-                    result["status"], result["lifecycle_assessment"] = life.collect(
+                if lifecycle or err_selection:
+                    profile = selection if err_selection else life
+                    result["status"], result["lifecycle_assessment"] = profile.collect(
                         instrument,
                         result["queries"],
                         started,
@@ -192,6 +206,7 @@ def run_physical(
     workflow_lock_root,
     include_latched_reads=False,
     lifecycle=False,
+    err_selection=False,
     confirmed_error_fixtures=False,
     work_s=20.0,
     total_s=25.0,
@@ -220,14 +235,19 @@ def run_physical(
         raise ValueError("Record bounded meter/sensor label identities")
     if type(include_latched_reads) is not bool:
         raise ValueError("Latch reads require an explicit boolean")
-    if type(lifecycle) is not bool or type(confirmed_error_fixtures) is not bool:
-        raise ValueError("Lifecycle/fixture selections must be explicit booleans")
-    if lifecycle and (not confirmed_error_fixtures or include_latched_reads):
+    if any(
+        type(value) is not bool for value in (lifecycle, err_selection, confirmed_error_fixtures)
+    ):
+        raise ValueError("Experiment/fixture selections must be explicit booleans")
+    if lifecycle and err_selection:
+        raise ValueError("Select only one fixed experiment")
+    experiment = lifecycle or err_selection
+    if experiment and (not confirmed_error_fixtures or include_latched_reads):
         raise ValueError(
-            "Lifecycle profile requires separate fixed-error confirmation and no passive flag"
+            "Fixed experiment requires separate fixed-error confirmation and no passive flag"
         )
-    if confirmed_error_fixtures and not lifecycle:
-        raise ValueError("Fixed-error confirmation applies only to the lifecycle profile")
+    if confirmed_error_fixtures and not experiment:
+        raise ValueError("Fixed-error confirmation applies only to a fixed experiment")
     for name, value, low, high in (("work_s", work_s, 0.25, 60), ("total_s", total_s, 5, 90)):
         if (
             isinstance(value, bool)
@@ -249,8 +269,8 @@ def run_physical(
         dict(command=c, effect=diag.EFFECTS[c], status="not_attempted")
         for c in diag.BASIC_QUERIES + (diag.LATCHED_QUERIES if include_latched_reads else ())
     ]
-    if lifecycle:
-        rows = life.plan()
+    if lifecycle or err_selection:
+        rows = selection.plan() if err_selection else life.plan()
     result = dict(
         schema="hp437b.diagnostics.physical.v1",
         mode="physical",
@@ -271,6 +291,7 @@ def run_physical(
         health_verdict="Not evaluated; diagnostic replies only",
         include_latched_reads=include_latched_reads,
         lifecycle_profile=lifecycle,
+        err_selection_profile=err_selection,
         fixed_error_fixtures_confirmed=confirmed_error_fixtures,
         source_off_basis="Fresh operator assertion; no automatic SM preflight or continuous RF proof",
         host=dict(platform=platform.platform(), python=platform.python_version()),
@@ -302,6 +323,7 @@ def run_physical(
             str(root / (key + ".lock")),
             include_latched_reads,
             lifecycle,
+            err_selection,
         ),
     )
     process.daemon = True

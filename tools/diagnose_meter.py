@@ -22,12 +22,18 @@ def main():
     parser.add_argument("--confirm-prior-worker-stopped", action="store_true")
     parser.add_argument("--include-latched-reads", action="store_true")
     parser.add_argument("--lifecycle", action="store_true")
+    parser.add_argument(
+        "--err-selection", action="store_true", help="QX-only query-order/timing experiment"
+    )
     parser.add_argument("--confirm-fixed-error-fixtures", action="store_true")
     args = parser.parse_args()
-    if args.lifecycle and (not args.confirm_fixed_error_fixtures or args.include_latched_reads):
-        parser.error("Lifecycle requires fixed-error confirmation and no passive latch flag")
-    if args.confirm_fixed_error_fixtures and not args.lifecycle:
-        parser.error("Fixed-error confirmation applies only to lifecycle")
+    if args.lifecycle and args.err_selection:
+        parser.error("Select only one fixed experiment")
+    experiment = args.lifecycle or args.err_selection
+    if experiment and (not args.confirm_fixed_error_fixtures or args.include_latched_reads):
+        parser.error("Fixed experiment requires fixture confirmation and no passive latch flag")
+    if args.confirm_fixed_error_fixtures and not experiment:
+        parser.error("Fixed-error confirmation applies only to a fixed experiment")
     if not args.confirm_supervised or not args.confirm_prior_worker_stopped:
         parser.error("Fresh supervised setup and prior-worker-stop confirmation required")
     if args.setup.stat().st_size > 16 * 1024:
@@ -50,6 +56,7 @@ def main():
             workflow_lock_root=args.workflow_lock_root,
             include_latched_reads=args.include_latched_reads,
             lifecycle=args.lifecycle,
+            err_selection=args.err_selection,
             confirmed_error_fixtures=args.confirm_fixed_error_fixtures,
             cancelled=stop.is_set,
         )
