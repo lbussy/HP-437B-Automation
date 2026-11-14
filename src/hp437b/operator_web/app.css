@@ -14,3 +14,6 @@
 #assessment-form .capture-fields{align-items:end}#assessment-status{margin-top:16px}
 
 #reference-profile-editor summary{font-weight:600;color:var(--ink);min-height:36px}#reference-profile-editor .capture-fields{align-items:end;margin:16px 0}#reference-profile-editor .field{margin-top:16px}#reference-profile-editor .capture-fields{grid-template-columns:1fr}#reference-profile-status{margin-top:16px}
+
+.preparation-receipt{max-width:900px}.preparation-receipt td{overflow-wrap:anywhere}.preparation-receipt th{width:40%}
+#preparation-effect{margin-bottom:18px}.preparation-receipt caption{text-align:left;color:var(--muted);padding-bottom:8px}

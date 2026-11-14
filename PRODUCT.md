@@ -54,6 +54,10 @@ ACCEPT-01 lets the operator supply optional criteria for sealed POWER REF captur
 
 PROFILE-01 saves immutable named revisions of WF-01–WF-03 selections, an optional operator, and optional attributed acceptance criteria for Internal POWER REF. An explicit profile-started capture freezes the selected revision and automatically publishes a separate assessed PDF/package after the original measurement reports. Matching profiles can also assess saved captures, with selection explicitly recorded as post capture; assessment computation always follows capture. Existing physical-source configuration, fresh setup confirmations, and separate front-panel confirmation still apply. Original evidence, fake DUT profiles, and normal logging remain unchanged; no new hardware run was performed. See [the profile contract](docs/workflows/REFERENCE-TEST-PROFILES-V1.md).
 
+## Meter preparation
+
+Meter preparation provides separately started ZERO and CAL actions through the accepted bounded runners. Simulation is the default; a local meter requires explicit service-launch configuration and fresh setup confirmations for each adjustment. CAL requires an explicit sensor REF CAL FACTOR and its source, with no assumed factor. Native stage progress, bounded cancellation, readable and raw preparation receipts, and a separate post-closure front-panel attestation preserve the distinction between protocol observations and operator evidence. Preparation is separate from RF test workflows: no chaining, automatic pre-test adjustment, new POWER REF requirement, or normal logger change is introduced. See [the preparation contract](docs/workflows/METER-PREPARATION.md).
+
 ## Brand Commitments
 
 Use HP 437B Automation as the project name and retain the existing report styling. Reports remain titled RF Output Power Test, with operator, signed pre-RF zero, and Report Harness provenance.

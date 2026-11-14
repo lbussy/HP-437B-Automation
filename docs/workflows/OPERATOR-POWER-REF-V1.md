@@ -31,7 +31,7 @@ Choose **POWER REF — current meter**, then one workflow:
 
 Confirm all six setup items for each run: USB on this Mac; sensor cable on SENSOR and sensor RF input directly on POWER REF; reference initially off; warmed up; other control apps closed; operator at the meter and able to use PRESET/LOCAL recovery. Enter an operator name if desired, then press **Start POWER REF workflow**. Checking items or changing mode never starts capture. Confirmations clear after Start or switching mode.
 
-One workflow runs at a time. Progress reports native stage starts/completion from the atomic checkpoint; it does not invent live samples. Source switching, automatic range/filter/unit preconditions, timeout policy, TR3/GTL closure, and uncertain-I/O handling remain in the existing runner. There is no transmitter/supply control, zero/CAL, factor adjustment, retry, reset, or fallback to synthetic data.
+One workflow runs at a time. Progress reports native stage starts/completion from the atomic checkpoint; it does not invent live samples. Source switching, automatic range/filter/unit preconditions, timeout policy, TR3/GTL closure, and uncertain-I/O handling remain in the existing runner. These workflow starts do not invoke ZERO/CAL or add transmitter/supply control, factor adjustment, retry, reset, or fallback to synthetic data. The separate owner-selected [Meter preparation mode](METER-PREPARATION.md) exposes the accepted ZERO/CAL runners only through explicit actions and its own fresh confirmations.
 
 ## Cancellation and closure
 

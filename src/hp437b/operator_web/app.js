@@ -5,7 +5,7 @@ let model = {profiles:[],jobs:[],active_id:null}, selectedProfile = null, busy =
 let stepsSignature="", inflight=null, generation=0, recoverySignature="",assessmentSignature="",assessmentFormSource=null;
 let historyLoaded=false,historyBusy=false,historyOffset=0,historyTotal=0,historySelection=new Set(),comparisonBusy=false,detailGeneration=0;
 const setText=(id,value)=>{if($(id).textContent!==value)$(id).textContent=value;};
-const titles = {"GUIDED":"Operator-guided sweep","WF-01":"POWER REF baseline and output","WF-02":"Sustained output stability","WF-03":"Transmission-cycle repeatability","WF-04":"Output versus setting","WF-05":"Output versus frequency","WF-06":"Supply-voltage sensitivity"};
+const titles = {"ZERO":"Sensor ZERO adjustment","CAL":"POWER REF CAL adjustment","GUIDED":"Operator-guided sweep","WF-01":"POWER REF baseline and output","WF-02":"Sustained output stability","WF-03":"Transmission-cycle repeatability","WF-04":"Output versus setting","WF-05":"Output versus frequency","WF-06":"Supply-voltage sensitivity"};
 const node = (tag, text, cls) => {const element=document.createElement(tag);if(text!==undefined)element.textContent=text;if(cls)element.className=cls;return element;};
 function error(message) {$("error").textContent=message||"";$("error").hidden=!message;if(message)$("error").focus();}
 async function api(path, data) {
@@ -14,6 +14,10 @@ async function api(path, data) {
 }
 const preparation = {adapter_on_mac:"Adapter USB is on this Mac",direct_sensor_reference_path:"Sensor cable is on SENSOR; sensor RF input is directly on POWER REF",reference_off:"POWER REF is off",warmed_up:"Meter and sensor are warmed up",other_apps_closed:"Other control applications are closed",operator_available:"I am at the meter and can use PRESET/LOCAL for recovery"};
 let confirmationJob=null, hydratedGuided=null, hydratedReferenceSuite=null;
+function preparationMode(){return $("mode").value==="meter_preparation";}
+function preparationBench(){return preparationMode()&&$("preparation-source").value==="physical";}
+function prepValues(){return Object.fromEntries([...document.querySelectorAll("#preparation-checks input")].map(x=>[x.value,x.checked]));}
+function prepFactorValid(){if($("preparation-action").value!=="CAL")return true;const n=Number($("preparation-factor").value);return $("preparation-factor").value.trim()!==""&&Number.isFinite(n)&&n>=50&&n<=120&&Math.abs(n*10-Math.round(n*10))<1e-8&&$("preparation-factor-source").value.trim().length>0;}
 function guidedMode(){return $("mode").value==="guided";}
 function referenceSuiteMode(){return $("mode").value==="reference_suite";}
 function referenceSuiteBench(){return referenceSuiteMode()&&$("reference-suite-source").value==="physical";}
@@ -21,6 +25,14 @@ function physicalMode(){return $("mode").value==="physical";}
 function preparedValues(){return Object.fromEntries([...document.querySelectorAll('#prepared input')].map(input=>[input.value,input.checked]));}
 function modeChanged(reset=true){
  const physical=physicalMode(), guided=guidedMode(), refSuite=referenceSuiteMode();
+ $("preparation-setup").hidden=!preparationMode();
+ if(preparationMode()){
+  for(const id of ["reference-suite-setup","guided-setup","fake-setup","fake-tests","reference-setup"])$(id).hidden=true;
+  setText("page-title","Prepare the meter");setText("intro-text","Run ZERO or CAL explicitly and retain its preparation receipt.");
+  setText("environment",preparationBench()?"Meter preparation · configured meter":"Meter preparation · simulation");
+  setText("mode-note","Preparation is separate from RF test workflows.");setText("scope",preparationBench()?"Use the configured local meter and remain available through closure.":"Simulated runner execution; no meter connection or RF.");
+  prepControls(reset);selectionChanged();return;
+ }
  $("reference-suite-setup").hidden=!refSuite;$("guided-setup").hidden=!guided;$("fake-setup").hidden=guided||physical;$("fake-tests").hidden=guided||physical;
  if(refSuite){
   $("guided-setup").hidden=true;$("fake-setup").hidden=true;$("fake-tests").hidden=true;$("reference-setup").hidden=!referenceSuiteBench();$("reference-workflow").parentElement.hidden=true;
@@ -42,8 +54,8 @@ function modeChanged(reset=true){
  selectionChanged();
 }
 for(const [key,labelText] of Object.entries(preparation)){const label=node("label",undefined,"test-option"),input=node("input");input.type="checkbox";input.value=key;input.addEventListener("change",selectionChanged);label.append(input,node("span",labelText));$("prepared").append(label);}
-function canStart(){if(referenceSuiteMode())return !model.active_id&&!model.pending_reference&&!busy&&chosen().length>0&&(!referenceSuiteBench()||(Boolean(model.reference)&&Object.values(preparedValues()).every(Boolean)));if(guidedMode())return !model.active_id&&!model.pending_reference&&!busy&&guidedValid()&&($("guided-meter").value!=="physical"||(Boolean(model.guided?.meter)&&Object.values(guidedPrepared()).every(Boolean)));return !model.active_id&&!model.pending_reference&&!busy&&(physicalMode()?Boolean(model.reference)&&Object.values(preparedValues()).every(Boolean):chosen().length>0&&Boolean(selectedProfile));}
-function chosen() {if(referenceSuiteMode())return [...document.querySelectorAll("#reference-suite-tests input:checked")].map(input=>input.value);if(guidedMode())return ["GUIDED"];if(physicalMode())return [$("reference-workflow").value];return [...document.querySelectorAll('#test-options input:checked')].map(input=>input.value);}
+function canStart(){if(preparationMode())return !model.active_id&&!model.pending_reference&&!busy&&prepFactorValid()&&(!preparationBench()||(Boolean(model.preparation)&&Object.values(prepValues()).every(Boolean)));if(referenceSuiteMode())return !model.active_id&&!model.pending_reference&&!busy&&chosen().length>0&&(!referenceSuiteBench()||(Boolean(model.reference)&&Object.values(preparedValues()).every(Boolean)));if(guidedMode())return !model.active_id&&!model.pending_reference&&!busy&&guidedValid()&&($("guided-meter").value!=="physical"||(Boolean(model.guided?.meter)&&Object.values(guidedPrepared()).every(Boolean)));return !model.active_id&&!model.pending_reference&&!busy&&(physicalMode()?Boolean(model.reference)&&Object.values(preparedValues()).every(Boolean):chosen().length>0&&Boolean(selectedProfile));}
+function chosen() {if(preparationMode())return [$("preparation-action").value];if(referenceSuiteMode())return [...document.querySelectorAll("#reference-suite-tests input:checked")].map(input=>input.value);if(guidedMode())return ["GUIDED"];if(physicalMode())return [$("reference-workflow").value];return [...document.querySelectorAll('#test-options input:checked')].map(input=>input.value);}
 function profileChanged() {
   selectedProfile=model.profiles.find(profile=>profile.key===$("profile").value);
   $("test-options").replaceChildren();
@@ -59,10 +71,10 @@ function profileChanged() {
 function selectionChanged() {
   if(referenceSuiteMode())referenceSelectionChanged();
   const count=chosen().length;
-  $("selection-note").hidden=guidedMode();
+  $("selection-note").hidden=guidedMode()||preparationMode();
   $("selection-note").textContent=physicalMode()?"One workflow per run. Confirm the setup again before each start.":count?`${count} ${count===1?"test":"tests"} selected. Runs in the order shown.`:"Select at least one test.";
   $("start").disabled=!canStart();
-  if(!model.active_id)$("start").textContent=referenceSuiteMode()?"Start POWER REF suite":guidedMode()?"Start guided sweep":physicalMode()?"Start POWER REF workflow":"Start suite";
+  if(!model.active_id)$("start").textContent=preparationMode()?`Run ${preparationBench()?"":"simulated "}${$("preparation-action").value}`:referenceSuiteMode()?"Start POWER REF suite":guidedMode()?"Start guided sweep":physicalMode()?"Start POWER REF workflow":"Start suite";
   if(!model.jobs.length)renderRun(null);
 }
 function formatResult(row) {
@@ -76,9 +88,10 @@ function renderRun(job) {
   if(job?.mode==="guided"||(!job&&guidedMode())){renderGuided(job);return;}
   $("guided-controls").hidden=true;$("boundary-text").parentElement.hidden=false;
   $("guided-point").hidden=true;$("guided-results").hidden=true;$("html-report").hidden=true;
+  const preparing=job?.mode==="meter_preparation"||(!job&&preparationMode());
   const assessing=job?.mode==="acceptance_review",recovering=job?.mode==="report_recovery"||assessing;
   const active=Boolean(model.active_id), selected=job?.workflows||chosen();
-  const physical=job?(job.mode==="physical"||(job.mode==="reference_suite"&&job.meter_mode==="physical")):(physicalMode()||referenceSuiteBench());
+  const physical=job?(job.mode==="physical"||(["reference_suite","meter_preparation"].includes(job.mode)&&job.meter_mode==="physical")):(physicalMode()||referenceSuiteBench()||preparationBench());
   const phase=job?.phase||"ready", results=job?.results||[], completed=results.filter(row=>row.execution==="completed").length;
   const stateLabels={ready:"Ready",starting:"Starting",running:"Running",reporting:"Preparing reports",finished:"Finished",failed:"Needs attention"};
   $("run-title").textContent=job&&!active?"Latest suite":"Suite progress";
@@ -102,8 +115,9 @@ function renderRun(job) {
     $("run-title").textContent=assessing?"Saved-run acceptance assessment":"Report regeneration";
     if(assessing){headline=phase==="failed"?"Assessment report failed":phase==="finished"?"Supplied-limit result: "+job.assessment_outcome:"Assessing saved measurements";description=phase==="failed"?job.error:"Separate post-capture assessment. Original capture: "+job.source_job_id+". Criteria source: "+(job.assessment_source||"see decision record")+". No measurement repeated.";}
   }
+  if(preparing){$("run-title").textContent=job&&!active?"Latest preparation":"Preparation progress";const operation=(job?.meter_mode==="synthetic"?"Simulated ":"")+selected[0];headline=job?phase==="finished"?`${operation} complete`:phase==="failed"?`${operation} needs attention`:`${operation} is running`:"Ready for preparation";const a=job?.preparation_summary;description=job?.error||(a?`${a.mode} · ${a.elapsed_s.toFixed(2)} s. Local return: ${a.local_return?.status||"not verified"}. Transport closed: ${a.transport_closed?"yes":"not verified"}.`:(job?`Stage: ${job.stage||"preflight"}. No other operation will start.`:"Choose one adjustment and review its setup before starting."));}
   setText("run-headline",headline);setText("run-description",description);
-  $("progress-label").textContent=job?"Workflow completion":"Selected tests";$("progress-count").textContent=`${completed} / ${selected.length}`;
+  $("progress-label").textContent=preparing?"Preparation completion":job?"Workflow completion":"Selected tests";$("progress-count").textContent=`${completed} / ${selected.length}`;
   $("progress").max=Math.max(selected.length,1);$("progress").value=completed;
   const nextSteps=JSON.stringify({selected,phase,results,current:job?.current,physical});
   if(nextSteps!==stepsSignature){
@@ -112,7 +126,7 @@ function renderRun(job) {
     const row=results.find(item=>item.workflow===kind), current=job?.current===kind&&phase==="running", unfinished=job?.current===kind&&phase==="failed";
     const item=node("li",undefined,"step"+(current?" current":"")+(row?.execution==="failed"?" failed":""));
     let status=current?"Running":unfinished?"Unfinished":row?row.execution==="completed"?"Complete":row.execution==="interrupted"?"Interrupted":"Stopped":job&&["finished","failed","reporting"].includes(phase)?"Not run":"Waiting";
-    const text=node("div");text.append(node("div",titles[kind],"step-name"));if(row)text.append(node("div",job?.mode==="reference_suite"?formatResult(row):physical?row.acceptance:formatResult(row),"step-result"));
+    const text=node("div");text.append(node("div",titles[kind],"step-name"));if(row)text.append(node("div",preparing?`Adjustment ${row.execution}`:job?.mode==="reference_suite"?formatResult(row):physical?row.acceptance:formatResult(row),"step-result"));
     item.append(node("span",kind,"step-code"),text,node("span",status,"step-status"));$("steps").append(item);
   }
   }
@@ -126,12 +140,19 @@ function renderRun(job) {
   else if(pending)boundary="Cancellation requested. The worker will stop at the next test boundary. A test already in progress still finishes its cleanup first.";
   if(physical)boundary=`${pending?"Cancellation requested. ":""}The current capture stage finishes before cancellation is checked. WF-02's plateau can take 30 minutes. Existing healthy source-off cleanup then runs; uncertain I/O requires manual recovery. This is not an immediate RF-off control.`;
   if((job?.mode==="reference_suite"||(!job&&referenceSuiteMode()))&&!physical)boundary="The current virtual workflow finishes before cancellation takes effect. Later workflows do not start; no hardware or RF is involved.";
+  if(preparing)boundary="Cancellation stops at the runner’s next check; an in-flight native call may finish first. Unknown ZERO/CAL completion stops further commands and may require manual recovery. Cancellation is not an immediate POWER REF off control.";
   $("boundary-text").textContent=boundary;
   $("cancel").disabled=!job?.active||!["starting","running"].includes(phase)||job.cancel_requested;
   $("cancel").textContent=pending?"Cancellation requested":"Request cancellation";
   $("pdf").hidden=!job?.pdf_ready;$("package").hidden=!job?.package_ready;
   if(job){$("pdf").href=`/artifacts/${job.job_id}/report.pdf`;$("package").href=`/artifacts/${job.job_id}/package.zip`;}
   $("report-note").textContent=job?.pdf_ready?"Open the one-page answer, or download reports and original evidence together.":"PDF and portable package appear after capture and reporting finish.";
+  setText("report-title",preparing?"Preparation receipt":"Reports");
+  $("preparation-receipt").hidden=!job?.preparation_ready;
+  if(preparing){$("html-report").hidden=!job?.preparation_ready;setText("html-report","Open preparation receipt");if(job){$("html-report").href=`/artifacts/${job.job_id}/preparation/receipt.html`;$("preparation-receipt").href=`/artifacts/${job.job_id}/preparation/receipt.json`;}setText("report-note",job?.preparation_ready?"Original runner receipt and a readable summary. This is not a transmitter test report.":"Receipts appear after the worker closes; partial evidence is retained on failure.");}else setText("html-report","Open full report");
+  setText("front-panel-label",preparing?"Live readings, RMT and POWER REF off, and no ZEROING, CAL, TRIGGER HOLD, or error indication":"Live numeric readings, RMT off, and POWER REF off");
+  for(const el of document.querySelectorAll('#preparation-setup input,#preparation-setup select'))el.disabled=active;
+  $("preparation-source").querySelector('option[value="physical"]').disabled=!model.preparation;
   $("mode").disabled=active;$("reference-workflow").disabled=active;for(const input of document.querySelectorAll("#prepared input"))input.disabled=active;
   $("front-panel").hidden=!physical||job?.active||!["finished","failed"].includes(phase);
   if(confirmationJob!==job?.job_id){confirmationJob=job?.job_id;$("front-panel-check").checked=false;}
@@ -141,7 +162,7 @@ function renderRun(job) {
   $("profile").disabled=active;$("operator").disabled=active;$("import").disabled=active;
   for(const input of document.querySelectorAll('#test-options input,#reference-suite-setup input,#reference-suite-setup select'))input.disabled=active;
   $("save-reference-profile").disabled=active||busy;
-  $("start").textContent=active?"Run in progress…":referenceSuiteMode()?"Start POWER REF suite":physicalMode()?"Start POWER REF workflow":"Start suite";$("start").disabled=!canStart();
+  $("start").textContent=active?"Run in progress…":preparationMode()?`Run ${preparationBench()?"":"simulated "}${$("preparation-action").value}`:referenceSuiteMode()?"Start POWER REF suite":physicalMode()?"Start POWER REF workflow":"Start suite";$("start").disabled=!canStart();
 }
 function renderHistory(){if(!historyLoaded&&!historyBusy)loadHistory();}
 async function refresh(force=false) {
@@ -162,6 +183,8 @@ async function refresh(force=false) {
       profileChanged();initialized=true;
     }
     $("issues-list").replaceChildren(...model.profile_issues.map(issue=>node("li",issue)));$("profile-issues").hidden=!model.profile_issues.length;
+    const activePrep=model.jobs.find(job=>job.job_id===model.active_id&&job.mode==="meter_preparation");
+    if(activePrep&&hydratedPreparation!==activePrep.job_id){hydratedPreparation=activePrep.job_id;$("mode").value="meter_preparation";$("preparation-source").value=activePrep.meter_mode;$("preparation-action").value=activePrep.workflows[0];}
     const activeRefSuite=model.jobs.find(job=>job.job_id===model.active_id&&job.mode==="reference_suite");
     if(activeRefSuite&&hydratedReferenceSuite!==activeRefSuite.job_id){hydratedReferenceSuite=activeRefSuite.job_id;$("mode").value="reference_suite";$("reference-suite-source").value=activeRefSuite.meter_mode;for(const input of document.querySelectorAll('#reference-suite-tests input'))input.checked=activeRefSuite.workflows.includes(input.value);$("operator").value=activeRefSuite.operator||"";}
     const activeGuided=model.jobs.find(job=>job.job_id===model.active_id&&job.mode==="guided");
@@ -171,7 +194,7 @@ async function refresh(force=false) {
   })();inflight=task;try{await task;}finally{if(inflight===task)inflight=null;}
 }
 $("profile").addEventListener("change",profileChanged);
-$("run-form").addEventListener("submit",async event=>{event.preventDefault();if(busy||model.active_id)return;busy=true;generation++;error("");$("start").disabled=true;try{const job=referenceSuiteMode()&&$("reference-profile").value?await api("/api/reference-profile-run",{profile_key:$("reference-profile").value,meter_mode:$("reference-suite-source").value,operator:$("operator").value.trim()||null,prepared:referenceSuiteBench()?preparedValues():{}}):referenceSuiteMode()?await api("/api/reference-suite",{workflows:chosen(),meter_mode:$("reference-suite-source").value,operator:$("operator").value.trim()||null,prepared:referenceSuiteBench()?preparedValues():{}}):guidedMode()?await api("/api/guided",{plan:guidedPlan(),operator:$("operator").value.trim()||null,meter_mode:$("guided-meter").value,prepared:$("guided-meter").value==="physical"?guidedPrepared():{}}):physicalMode()?await api("/api/reference",{workflow:$("reference-workflow").value,operator:$("operator").value.trim()||null,prepared:preparedValues()}):await api("/api/jobs",{profile_key:$("profile").value,workflows:chosen(),operator:$("operator").value.trim()||null});for(const input of document.querySelectorAll("#prepared input,#guided-prepared input"))input.checked=false;model.active_id=job.job_id;model.jobs=[job,...model.jobs.filter(item=>item.job_id!==job.job_id)];renderRun(job);await refresh(true);}catch(exc){error(exc.message);}finally{busy=false;selectionChanged();}});
+$("run-form").addEventListener("submit",async event=>{event.preventDefault();if(busy||model.active_id)return;busy=true;generation++;error("");$("start").disabled=true;try{const job=preparationMode()?await api("/api/preparation",{action:$("preparation-action").value,meter_mode:$("preparation-source").value,operator:$("operator").value.trim()||null,prepared:preparationBench()?prepValues():{},reference_factor:$("preparation-action").value==="CAL"?$("preparation-factor").value.trim():null,factor_source:$("preparation-action").value==="CAL"?$("preparation-factor-source").value.trim():null}):referenceSuiteMode()&&$("reference-profile").value?await api("/api/reference-profile-run",{profile_key:$("reference-profile").value,meter_mode:$("reference-suite-source").value,operator:$("operator").value.trim()||null,prepared:referenceSuiteBench()?preparedValues():{}}):referenceSuiteMode()?await api("/api/reference-suite",{workflows:chosen(),meter_mode:$("reference-suite-source").value,operator:$("operator").value.trim()||null,prepared:referenceSuiteBench()?preparedValues():{}}):guidedMode()?await api("/api/guided",{plan:guidedPlan(),operator:$("operator").value.trim()||null,meter_mode:$("guided-meter").value,prepared:$("guided-meter").value==="physical"?guidedPrepared():{}}):physicalMode()?await api("/api/reference",{workflow:$("reference-workflow").value,operator:$("operator").value.trim()||null,prepared:preparedValues()}):await api("/api/jobs",{profile_key:$("profile").value,workflows:chosen(),operator:$("operator").value.trim()||null});for(const input of document.querySelectorAll("#prepared input,#guided-prepared input,#preparation-checks input"))input.checked=false;model.active_id=job.job_id;model.jobs=[job,...model.jobs.filter(item=>item.job_id!==job.job_id)];renderRun(job);await refresh(true);}catch(exc){error(exc.message);}finally{busy=false;selectionChanged();}});
 $("cancel").addEventListener("click",async()=>{if(!model.active_id)return;generation++;$("cancel").disabled=true;error("");try{await api("/api/cancel",{job_id:model.active_id});await refresh(true);}catch(exc){error(exc.message);await refresh();}});
 $("import").addEventListener("click",()=>$("profile-file").click());
 $("profile-file").addEventListener("change",async()=>{const file=$("profile-file").files[0];if(!file)return;generation++;error("");try{if(file.size>256*1024)throw new Error("Profile exceeds 256 KiB.");const raw=await file.text();const imported=await api("/api/profiles",{profile_json:raw});await refresh(true);$("profile").value=imported.key;profileChanged();}catch(exc){error("Profile was not imported: "+exc.message);}finally{$("profile-file").value="";}});
@@ -210,7 +233,7 @@ function renderGuided(job){
  for(const id of ["mode","profile","operator","import","reference-workflow"])$(id).disabled=active;for(const input of document.querySelectorAll('#prepared input,#test-options input'))input.disabled=active;
  $("front-panel").hidden=true;$("pdf").hidden=!job?.pdf_ready;$("package").hidden=!job?.package_ready;$("html-report").hidden=!job?.pdf_ready;
  if(job){$("pdf").href=`/artifacts/${job.job_id}/report.pdf`;$("html-report").href=`/artifacts/${job.job_id}/report.html`;$("package").href=`/artifacts/${job.job_id}/package.zip`;}
- $("report-note").textContent=job?.pdf_ready?"The full report includes every point and both comparisons. The PDF summarizes the series.":"Reports and original point evidence appear when the series finishes or stops.";$("start").textContent=active?"Sweep in progress…":referenceSuiteMode()?"Start POWER REF suite":guidedMode()?"Start guided sweep":physicalMode()?"Start POWER REF workflow":"Start suite";$("start").disabled=!canStart();
+ $("report-note").textContent=job?.pdf_ready?"The full report includes every point and both comparisons. The PDF summarizes the series.":"Reports and original point evidence appear when the series finishes or stops.";$("start").textContent=active?"Sweep in progress…":preparationMode()?`Run ${preparationBench()?"":"simulated "}${$("preparation-action").value}`:referenceSuiteMode()?"Start POWER REF suite":guidedMode()?"Start guided sweep":physicalMode()?"Start POWER REF workflow":"Start suite";$("start").disabled=!canStart();
 }
 for(const el of document.querySelectorAll('#guided-setup input,#guided-setup select,#guided-setup textarea'))el.addEventListener("input",()=>{if(el.id==="guided-meter")for(const input of document.querySelectorAll('#guided-prepared input'))input.checked=false;guidedPlanChanged();selectionChanged();if(!model.jobs.length)renderRun(null);});
 $("guided-stop").addEventListener("click",()=>$("cancel").click());
@@ -257,10 +280,11 @@ async function loadHistory(){
   const rows=data.entries.map(job=>{
    const tr=node("tr"),select=node("td"),box=node("input");box.type="checkbox";box.checked=historySelection.has(job.job_id);box.disabled=!job.report_recovery_available;box.setAttribute("aria-label",`Select measurement ${job.job_id.slice(0,8)}`);
    box.addEventListener("change",()=>{if(box.checked&&historySelection.size>=4){box.checked=false;setText("history-note","Select at most four measurements; clear a selection first.");return;}box.checked?historySelection.add(job.job_id):historySelection.delete(job.job_id);$("comparison").hidden=true;updateComparisonSelection();});select.append(box);
-   const report=["report_recovery","acceptance_review"].includes(job.mode),assessment=job.mode==="acceptance_review",subject=node("td");subject.append(node("div",job.profile_name),node("small",`${assessment?"Acceptance assessment":report?"Report regeneration":"Measurement"} · ${job.job_id.slice(0,8)}${report?" · source "+job.source_job_id.slice(0,8):" · "+job.workflows.join(" + ")}`));
+   const report=["report_recovery","acceptance_review"].includes(job.mode),assessment=job.mode==="acceptance_review",subject=node("td");subject.append(node("div",job.profile_name),node("small",`${job.mode==="meter_preparation"?"Meter preparation":assessment?"Acceptance assessment":report?"Report regeneration":"Measurement"} · ${job.job_id.slice(0,8)}${report?" · source "+job.source_job_id.slice(0,8):" · "+job.workflows.join(" + ")}`));
    const outcome=job.phase==="failed"?(report?"Report error":"Needs attention"):job.phase!=="finished"?job.phase:report?(assessment?"Assessed: "+job.assessment_outcome:"Reports ready"):job.outcome==="interrupted"?"Cancelled":job.outcome==="failed"?"Stopped":"Complete";
    tr.append(select,subject,node("td",new Date(job.started_utc).toLocaleString()),node("td",outcome));
    const actions=node("td",undefined,"history-links");if(job.pdf_ready)actions.append(reportLink(job,"report.pdf","PDF"));if(job.package_ready)actions.append(reportLink(job,"package.zip","Package"));if(job.assessment_ready){actions.append(reportLink(job,"assessment/report.pdf","Assessed PDF"),reportLink(job,"assessment/package.zip","Assessment package"));}
+   if(job.preparation_ready)actions.append(reportLink(job,"preparation/receipt.html","Preparation receipt"),reportLink(job,"preparation/receipt.json","Raw JSON"));
    if(job.report_recovery_available||report){const button=node("button","View details","text-button");button.type="button";button.setAttribute("aria-label",`View details for ${job.job_id.slice(0,8)}`);button.addEventListener("click",()=>showRunDetails(job.job_id));actions.append(button);}
    if(!actions.childNodes.length)actions.textContent="No report available";tr.append(actions);return tr;
   });$("history-body").replaceChildren(...rows);
@@ -390,3 +414,17 @@ function renderProfileAssessment(job){
 }
 
 $("reference-profile-editor").addEventListener("keydown",event=>{if(event.key==="Enter"&&event.target.tagName==="INPUT")event.preventDefault();});
+
+
+let hydratedPreparation=null, prepSignature="";
+const prepLabels={power_ref_off:"POWER REF is off",live_readings:"Numeric readings are updating",rmt_off:"RMT is off",no_pending_operation:"No ZERO, CAL, or trigger operation is pending",other_control_apps_closed:"Other control applications are closed",operator_available:"I am at the meter with PRESET/LOCAL accessible",warmed_up:"Meter and sensor are warmed up",adjustment_confirmed:"I authorize this one stored adjustment",no_rf_input:"There is no RF input to the sensor",direct_reference_path:"Sensor RF input is directly on POWER REF; its cable is on SENSOR",zero_ready:"Prior ZERO remains applicable to this unchanged setup",factor_confirmed:"The entered REF CAL FACTOR and source match this sensor"};
+function prepControls(reset){
+ const action=$("preparation-action").value,bench=preparationBench(),signature=action+bench;
+ $("preparation-factor-fields").hidden=action!=="CAL";$("preparation-checks").hidden=!bench;
+ const c=model.preparation;setText("preparation-identity",c?`Meter ${c.meter_serial}; sensor ${c.sensor_serial}. ${c.resource}. Known issues: ${c.known_issues.join("; ")||"none reported"}`:"Physical ZERO/CAL must be explicitly enabled at service launch.");
+ setText("preparation-effect",action==="ZERO"?"ZERO changes the stored sensor-zero adjustment. POWER REF must remain off and no RF may reach the sensor. It does not run CAL.":"CAL changes stored calibration gain and reference factor. Prior ZERO must remain applicable. Leave POWER REF off: CAL switches it internally and restores it. It does not repeat ZERO.");
+ if(signature!==prepSignature){prepSignature=signature;$("preparation-checks").replaceChildren(node("legend","Confirm before this adjustment"));for(const key of [...Object.keys(prepLabels).slice(0,8),...(action==="ZERO"?["no_rf_input"]:["direct_reference_path","zero_ready","factor_confirmed"])]){const label=node("label",undefined,"test-option"),input=node("input");input.type="checkbox";input.value=key;input.addEventListener("change",selectionChanged);label.append(input,node("span",prepLabels[key]));$("preparation-checks").append(label);}}
+ if(reset)for(const input of document.querySelectorAll('#preparation-checks input'))input.checked=false;
+}
+for(const id of ["preparation-action","preparation-source"])$(id).addEventListener("change",()=>modeChanged(true));
+for(const id of ["preparation-factor","preparation-factor-source"])$(id).addEventListener("input",()=>{const check=document.querySelector('#preparation-checks input[value="factor_confirmed"]');if(check)check.checked=false;selectionChanged();});

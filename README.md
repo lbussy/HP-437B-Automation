@@ -8,6 +8,8 @@ The [current project scope](docs/PROJECT-SCOPE.md) was clarified by the owner on
 
 The interface/logger and named Mac/Pi interaction cases are implemented. The offline campaign is integrated into `devel` at `6bda91d`: 421 local tests with stress enabled and [CI passing on Python 3.11/3.14](https://github.com/lbussy/HP-437B-Automation/actions/runs/43214328205). Normal logging/runtime remains unchanged. See the [current checklist](docs/RELEASE-CHECKLIST.md).
 
+The local interface also offers [explicit Meter preparation](docs/workflows/METER-PREPARATION.md): operator-started ZERO or CAL using the existing bounded runners, a default simulation source, separately configured local hardware, and saved preparation receipts. These actions do not run automatically before logging or test workflows.
+
 ## Reusable POWER REF suite
 
 [REF-SUITE-01](docs/workflows/POWER-REF-SUITE-V1.md) joins selected WF-01–WF-03 workflows into one operator-started run, with ordered progress, boundary cancellation, signed baseline/results, a concise suite PDF, full child reports, and a verified portable package. Simulated reference mode is available first; the configured physical path retains fresh preparation, original runners/cleanup, and separate final front-panel confirmation. [The combined current-Mac browser exercise](docs/validation/REF-SUITE-20261113.md) completed 3/3 workflows and 2,395 valid readings; report verification, independent audit, and owner final-state confirmation passed. Normal logging is unchanged.

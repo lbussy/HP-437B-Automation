@@ -204,6 +204,20 @@ def server(manager, port=8765):
                         202, r.encoded(manager.confirm_guided(body["job_id"], body["confirmation"]))
                     )
                     return
+                if path == "/api/preparation":
+                    p._keys(
+                        body,
+                        (
+                            "action",
+                            "meter_mode",
+                            "operator",
+                            "prepared",
+                            "reference_factor",
+                            "factor_source",
+                        ),
+                    )
+                    self._send(202, r.encoded(manager.start_preparation(**body)))
+                    return
                 if path == "/api/reference-suite":
                     p._keys(body, ("workflows", "meter_mode", "operator", "prepared"))
                     self._send(
@@ -301,6 +315,11 @@ def main(argv=None):
         type=Path,
         help="Explicit meter/equipment JSON for operator-guided captures",
     )
+    parser.add_argument(
+        "--meter-prep-setup",
+        type=Path,
+        help="Explicit local meter target and established shared lock root for ZERO/CAL",
+    )
     parser.add_argument("--power-ref-setup", type=Path)
     parser.add_argument("--resource")
     parser.add_argument("--bench-python", type=Path)
@@ -328,10 +347,19 @@ def main(argv=None):
 
             p.require(args.sweep_setup.stat().st_size <= 32 * 1024, "Sweep setup exceeds limit")
             sweep_config = configuration(p._json(args.sweep_setup.read_bytes()))
+        preparation_config = None
+        if args.meter_prep_setup:
+            from .operator_preparation import configuration
+
+            p.require(
+                args.meter_prep_setup.stat().st_size <= 32 * 1024, "Preparation setup exceeds limit"
+            )
+            preparation_config = configuration(p._json(args.meter_prep_setup.read_bytes()))
         manager = jobs.Jobs(
             args.runs_dir,
             profiles_dir=args.profiles_dir,
             plots=not args.no_plots,
+            preparation_config=preparation_config,
             reference_config=reference_config,
             sweep_config=sweep_config,
         )

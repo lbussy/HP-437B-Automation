@@ -45,8 +45,30 @@ def read(path):
 
 class Jobs:
     def __init__(
-        self, root, *, profiles_dir=None, plots=True, reference_config=None, sweep_config=None
+        self,
+        root,
+        *,
+        profiles_dir=None,
+        plots=True,
+        reference_config=None,
+        sweep_config=None,
+        preparation_config=None,
     ):
+        from . import operator_preparation as prep
+
+        self.preparation_config = (
+            prep.configuration(preparation_config) if preparation_config is not None else None
+        )
+        if (
+            self.preparation_config
+            and reference_config
+            and self.preparation_config["resource"] == reference_config["resource"]
+        ):
+            p.require(
+                Path(self.preparation_config["workflow_lock_root"]).resolve()
+                == Path(reference_config["root"]).resolve() / "tmp/workflow-locks",
+                "Preparation and POWER REF must share the resource lock root",
+            )
         self.reference_config = reference_config
         self.sweep_config = sweep_config
         self.external = Path(profiles_dir).resolve() if profiles_dir else None
@@ -220,6 +242,10 @@ class Jobs:
                 request = read(path / "request.json")
                 if (
                     request.get("mode") == "physical"
+                    or (
+                        request.get("mode") == "meter_preparation"
+                        and request.get("meter_mode") == "physical"
+                    )
                     or (
                         request.get("mode") == "reference_suite"
                         and request.get("meter_mode") == "physical"
@@ -411,6 +437,93 @@ class Jobs:
                 os.fsync(handle.fileno())
             os.link(temporary, path)
             temporary.unlink()
+            return self.get(job_id)
+
+    def start_preparation(
+        self, action, meter_mode, operator, prepared, reference_factor, factor_source
+    ):
+        from . import operator_preparation as prep
+
+        with self.mutex:
+            self._reap()
+            p.require(self.process is None, "A run is already active")
+            p.require(self.pending_reference() is None, "Confirm the prior physical run first")
+            operator = r.report_context.validate_operator(operator)
+            factor, source = prep.inputs(
+                action, meter_mode, prepared, reference_factor, factor_source
+            )
+            p.require(
+                meter_mode != "physical" or self.preparation_config is not None,
+                "Meter preparation must be explicitly configured at service launch",
+            )
+            config = (
+                prep.configuration(self.preparation_config) if meter_mode == "physical" else None
+            )
+            job_id = uuid.uuid4().hex
+            path = self.root / job_id
+            path.mkdir(mode=0o700)
+            request = dict(
+                schema="hp437b.operator-request.v1",
+                mode="meter_preparation",
+                job_id=job_id,
+                profile=dict(
+                    dut=dict(name="Meter preparation"),
+                    profile_id="meter-preparation",
+                    operator=operator,
+                ),
+                workflows=[action],
+                operator=operator,
+                plots=False,
+                started_utc=datetime.now(UTC).isoformat(),
+                meter_mode=meter_mode,
+                preparation_config=config,
+                prepared=prepared,
+                reference_factor=factor,
+                factor_source=source,
+            )
+            atomic(path / "request.json", request)
+            atomic(
+                path / "state.json",
+                dict(
+                    job_id=job_id,
+                    phase="starting",
+                    current=action,
+                    index=0,
+                    total=1,
+                    results=[],
+                    error=None,
+                    outcome=None,
+                ),
+            )
+            self.log = (path / "worker.log").open("xb")
+            try:
+                self.process = subprocess.Popen(
+                    [
+                        sys.executable,
+                        "-m",
+                        "hp437b.operator_jobs",
+                        "--job",
+                        str(path),
+                        "--lock-fd",
+                        str(self.lockfile.fileno()),
+                    ],
+                    stdin=subprocess.DEVNULL,
+                    stdout=self.log,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,
+                    pass_fds=(self.lockfile.fileno(),),
+                )
+                self.active_id = job_id
+            except BaseException:
+                self.log.close()
+                self.log = None
+                state = read(path / "state.json")
+                state.update(
+                    phase="failed",
+                    error="Unable to start preparation worker; no operation was started",
+                )
+                atomic(path / "state.json", state)
+                raise
             return self.get(job_id)
 
     def start_reference_suite(self, workflows, meter_mode, operator, prepared):
@@ -639,6 +752,7 @@ class Jobs:
             p.require(
                 (
                     job["mode"] == "physical"
+                    or (job["mode"] == "meter_preparation" and job.get("meter_mode") == "physical")
                     or (job["mode"] == "reference_suite" and job.get("meter_mode") == "physical")
                 )
                 and not job["active"]
@@ -657,6 +771,15 @@ class Jobs:
                     raise ValueError(
                         "The capture child still owns the meter; wait for closure before confirming"
                     ) from None
+            if job["mode"] == "meter_preparation":
+                from . import reconciliation as rec
+
+                request = read(path / "request.json")
+                config = request["preparation_config"]
+                key = r.digest(config["resource"].encode())
+                Path(config["workflow_lock_root"]).mkdir(parents=True, exist_ok=True)
+                with rec._lease(Path(config["workflow_lock_root"]) / (key + ".lock")):
+                    pass  # An orphaned native child must release the meter first.
             inventory = path / "capture/artifacts.json"
             value = dict(
                 schema="hp437b.operator-front-panel.v1",
@@ -670,6 +793,17 @@ class Jobs:
                 if inventory.is_file()
                 else None,
             )
+            if job["mode"] == "meter_preparation":
+                value["no_zero_cal_hold_or_error"] = True
+                if (path / "preparation-result.json").exists():
+                    from . import operator_preparation as prep
+
+                    prep.artifact(path, "receipt.json")
+                value["preparation_receipt_sha256"] = (
+                    r.digest((path / "capture/diagnostics.json").read_bytes())
+                    if (path / "capture/diagnostics.json").is_file()
+                    else None
+                )
             target = path / "operator-confirmation.json"
             p.require(not target.exists(), "Front-panel confirmation already recorded")
             with target.open("xb") as handle:
@@ -685,13 +819,21 @@ class Jobs:
             "Operational run identity mismatch",
         )
         physical = request.get("mode") == "physical" or (
-            request.get("mode") == "reference_suite" and request.get("meter_mode") == "physical"
+            request.get("mode") in ("reference_suite", "meter_preparation")
+            and request.get("meter_mode") == "physical"
         )
         stage = None
         checkpoint = path / "capture/workflow.json"
         if request.get("mode") == "reference_suite" and state.get("current"):
             checkpoint = path / "steps" / state["current"] / "capture/workflow.json"
-        if physical and checkpoint.is_file():
+        if request.get("mode") == "meter_preparation":
+            checkpoint = path / "capture/diagnostics.json"
+            if checkpoint.is_file():
+                try:
+                    stage = read(checkpoint).get("stage")
+                except (OSError, ValueError, TypeError):
+                    pass
+        if physical and request.get("mode") != "meter_preparation" and checkpoint.is_file():
             try:
                 current = read(checkpoint)
                 tables = [current.get("stages", {}), current.get("control_stages", {})]
@@ -709,6 +851,13 @@ class Jobs:
         return {
             **state,
             "mode": request.get("mode", "synthetic"),
+            "preparation_ready": request.get("mode") == "meter_preparation"
+            and state["phase"] not in ACTIVE
+            and (path / "preparation-result.json").is_file(),
+            "preparation_summary": read(path / "preparation-result.json")
+            if request.get("mode") == "meter_preparation"
+            and (path / "preparation-result.json").is_file()
+            else None,
             "source_job_id": request.get("source_job_id"),
             "assessment_outcome": state.get("assessment_outcome"),
             "test_profile": request.get("test_profile"),
@@ -795,6 +944,14 @@ class Jobs:
                 active_id=self.active_id,
                 pending_reference=self.pending_reference(),
                 plots=self.plots,
+                preparation=(
+                    {
+                        key: self.preparation_config[key]
+                        for key in ("resource", "meter_serial", "sensor_serial", "known_issues")
+                    }
+                    if self.preparation_config
+                    else None
+                ),
                 guided=dict(
                     default_plan=guided_sweep.example(),
                     meter=self.sweep_config,
@@ -813,7 +970,9 @@ class Jobs:
 
     def history(self, offset=0, category="all"):
         p.require(type(offset) is int and offset >= 0, "Invalid history offset")
-        p.require(category in ("all", "measurements", "reports"), "Invalid history filter")
+        p.require(
+            category in ("all", "measurements", "reports", "preparation"), "Invalid history filter"
+        )
         with self.mutex:
             self._reap()
             entries, issues = [], []
@@ -827,7 +986,9 @@ class Jobs:
                         category == "reports"
                         and not report
                         or category == "measurements"
-                        and report
+                        and (report or job["mode"] == "meter_preparation")
+                        or category == "preparation"
+                        and job["mode"] != "meter_preparation"
                     ):
                         continue
                     entries.append(
@@ -848,6 +1009,7 @@ class Jobs:
                                 "report_recovery_available",
                                 "assessment_outcome",
                                 "assessment_ready",
+                                "preparation_ready",
                             )
                         }
                     )
@@ -950,6 +1112,17 @@ class Jobs:
 
     def artifact(self, job_id, name):
         path = self._path(job_id)
+        if name.startswith("preparation/"):
+            from . import operator_preparation as prep
+
+            job = self.get(job_id)
+            p.require(
+                job["mode"] == "meter_preparation"
+                and not job["active"]
+                and job["phase"] not in ACTIVE,
+                "Wait for preparation to close",
+            )
+            return prep.artifact(path, name[len("preparation/") :])
         if name.startswith("assessment/"):
             name = name[len("assessment/") :]
             if name == "package.zip":
@@ -1026,6 +1199,15 @@ def worker(path, *, lock_fd=None):
         expected += ("mode", "source_job_id", "source_inventory_sha256", "criteria", "assessor")
     if request.get("mode") == "report_recovery":
         expected += ("mode", "source_job_id", "source_inventory_sha256")
+    if request.get("mode") == "meter_preparation":
+        expected += (
+            "mode",
+            "meter_mode",
+            "preparation_config",
+            "prepared",
+            "reference_factor",
+            "factor_source",
+        )
     if request.get("mode") == "guided":
         expected += ("mode", "sweep_plan", "meter_mode", "sweep_config", "prepared")
     if "test_profile" in request:
@@ -1057,6 +1239,13 @@ def worker(path, *, lock_fd=None):
             emit(current=None, results=list(rows), index=event["index"])
 
     try:
+        if request.get("mode") == "meter_preparation":
+            from . import operator_preparation as prep
+
+            with (path / ".capture.lock").open("a+b") as guard:
+                fcntl.flock(guard.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                prep.run(path, request, emit)
+            return
         if request.get("mode") in ("report_recovery", "acceptance_review"):
             from . import report_recovery
 
