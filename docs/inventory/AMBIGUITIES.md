@@ -38,6 +38,8 @@ SP remote description (printed 3-97/PDF 127) refers to a desired function and pa
 
 Status lifecycle and error selection. §3-30 explicitly distinguishes non-clearing *STB? from serial polling. §3-31 describes *ESR? output but does not explicitly establish read-clear behavior in the supplied text. *CLS names all status registers, with enable-mask persistence unspecified. ERR? has a summary/format entry but lacks detailed selection/queue semantics. *ESE is a weighted-byte mask; exact accepted mask domain/framing and reserved-bit handling need qualification. Verify each behavior with controlled errors, repeated reads, and recorded masks. AppendixA-1/PDF 151 adds SM error-latch side effects beyond the simpler status summary.
 
+The [single passive wspr5 latch-read pass](../validation/PI-DIAGNOSTICS-LATCHES-20261113.md) captured ERR? 0, *ESR? 128 (documented Power On bit), and a valid source-off SM frame after the masks/status/display reads. This establishes those ordered reply cases on the recorded setup. No repeated read or controlled error transition was performed, so event read-clear and error queue/selection behavior remain unresolved; A06 is not closed.
+
 ## A07
 
 Display aliases and user text boundaries. Table 3-5 printed 3-41/PDF 71 lists DD/DF and limits DD to firmware1.5+. Detailed Display (3-53–54/PDF 83–84) describes DD but omits DF. Test per-firmware aliases. DU permits up to12 alphanumeric/space characters but leaves exact short-message boundaries and command concatenation unclear. Use bounded standalone messages while qualifying raw transport framing.
