@@ -39,6 +39,10 @@ The focused diagnostics, original reconciliation, and transport suite passed **1
 
 The full local Python 3.14 reporting-environment regression passed **1,615 tests**, with three opt-in stress cases skipped, in 248.60 seconds. Loopback tests ran outside the filesystem/network sandbox while the offline guard continued to block instrument entry points. Lint, formatting, Markdown links/IDs/manual checksums, and `git diff --check` passed. Source and wheel builds passed; packaged diagnostics modules match their final source bytes, and the source distribution includes the standalone tool. The lock-root/help checks were also rerun after exposing the shared-directory option (five passed).
 
+## CI suite budget follow-up
+
+The first pushed runner commit, `e1729c6`, reached the software job's implicit 180-second offline-QA ceiling near the end of the Python 3.11 regression, returning exit 124 (`Offline QA deadline reached`); its paired software job was cancelled by matrix fail-fast. The log reported no failed test before the deadline. [Original run](https://github.com/lbussy/HP-437B-Automation/actions/runs/43540908091). The full local reporting-environment suite already required 248.60 seconds, so the CI software pytest step now explicitly uses the same bounded 600-second suite budget as the existing reporting step. Test assertions, hardware blocking, worker/instrument deadlines, the offline launcher's default, and normal logging are unchanged. This is a CI execution-budget correction, not new device capability or physical evidence.
+
 ## Isolated wspr5 software preparation
 
 The new source/wheel delivery was safely reviewed for regular relative archive members and transferred through the existing outside-sandbox SSH configuration. Delivery SHA-256 is `c197fb21aed6cd0bdaeb0004c0485c502d65a5c086d96cf4258b5c2bc837c314`. Its manifest identifies base commit `5200697` plus the modified working tree and runtime hashes; it does not claim that the new runner is already committed at that base.
