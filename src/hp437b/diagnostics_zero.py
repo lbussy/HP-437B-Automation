@@ -3,6 +3,7 @@
 import time
 
 from . import diagnostics as diag
+from .commands import encode
 from .diagnostics_snapshot import _quiet
 from .errors import OperationTimeout, ProtocolError, StateUncertain
 from .serial_poll_probe import SerialPollProbe
@@ -36,7 +37,10 @@ class PollSession:
             self.receipt = probe.receipt
 
 
-def plan():
+def plan(*, calibration_factor=None):
+    prefix, action = ("cal", "CL") if calibration_factor is not None else ("zero", "ZE")
+    if calibration_factor is not None:
+        encode("CL", calibration_factor)
     return [
         dict(step_id=step, command=code, kind=kind, status="not_attempted")
         for step, code, kind in (
@@ -46,8 +50,8 @@ def plan():
             ("cache.consume", "POLL", "poll"),
             ("baseline.CS", "CS", "command"),
             ("baseline.poll", "POLL", "poll"),
-            ("zero.start", "ZE", "command"),
-            ("zero.wait", "POLL_UNTIL_COMPLETE", "poll_window"),
+            (f"{prefix}.start", action, "command"),
+            (f"{prefix}.wait", "POLL_UNTIL_COMPLETE", "poll_window"),
             ("after.CS", "CS", "command"),
             ("after.poll", "POLL", "poll"),
             ("after.SM", "SM", "query"),
@@ -70,9 +74,36 @@ def assessment(reason="No worker receipt yet"):
     )
 
 
-def collect(instrument, wire, rows, started, *, deadline, before_step, after_step, on_row, stop):
+def collect(
+    instrument,
+    wire,
+    rows,
+    started,
+    *,
+    deadline,
+    before_step,
+    after_step,
+    on_row,
+    stop,
+    _calibration_factor=None,
+    _followup=None,
+):
+    operation = "CAL" if _calibration_factor is not None else "ZERO"
+    prefix = operation.lower()
+    payload = encode("CL", _calibration_factor) if operation == "CAL" else b"ZE"
+    window_s, max_polls = (10.0, 20) if operation == "CAL" else (ZERO_S, MAX_POLLS)
+    reserve_s = 18.0 if operation == "CAL" else RESERVE_S
+    started_key = f"{prefix}_may_have_started"
     result = assessment(None)
-    result["zero_may_have_started"] = False
+    if operation == "CAL":
+        result = {k.replace("zero_", "cal_"): v for k, v in result.items()}
+        result.update(
+            reference_factor=payload[2:-2].decode(),
+            reference_may_be_on=False,
+            reference_restored_off_verified=False,
+            evidence_limit="Supervised current-adapter CAL only; firmware does not expose every bus error",
+        )
+    result[started_key] = False
     baseline = None
     zero_deadline = None
     for row in rows:
@@ -81,19 +112,21 @@ def collect(instrument, wire, rows, started, *, deadline, before_step, after_ste
         step, kind, code = row["step_id"], row["kind"], row["command"]
         try:
             before_step(row["step_id"])
-            if step == "zero.start":
-                if deadline - time.monotonic() < ZERO_S + RESERVE_S:
+            if step == f"{prefix}.start":
+                if deadline - time.monotonic() < window_s + reserve_s:
                     reason = "insufficient_time_no_ZERO_started"
                 else:
-                    zero_deadline = time.monotonic() + ZERO_S
-                    result["zero_may_have_started"] = True
+                    zero_deadline = time.monotonic() + window_s
+                    result[started_key] = True
+                    if operation == "CAL":
+                        result["reference_may_be_on"] = True
             if reason is None:
                 row["io_attempted"] = True
                 if kind == "command":
-                    if code == "ZE":
+                    if code in ("ZE", "CL"):
                         # Do not expose ZE as a general command or lift its existing guard.
                         with instrument._operation() as operation_deadline:
-                            instrument._write(b"ZE", operation_deadline)
+                            instrument._write(payload, operation_deadline)
                     else:
                         instrument.command("CS")
                 elif kind == "poll":
@@ -115,10 +148,12 @@ def collect(instrument, wire, rows, started, *, deadline, before_step, after_ste
                 elif kind == "poll_window":
                     samples = []
                     row["value"] = dict(samples=samples)
-                    for _number in range(MAX_POLLS):
+                    for _number in range(max_polls):
                         after_step()
                         if time.monotonic() >= zero_deadline:
-                            raise OperationTimeout("ZERO completion deadline; no command retry")
+                            raise OperationTimeout(
+                                f"{operation} completion deadline; no command retry"
+                            )
                         try:
                             poll = wire.zero_poll(zero_deadline, cancelled=stop.is_set)
                         finally:
@@ -138,9 +173,13 @@ def collect(instrument, wire, rows, started, *, deadline, before_step, after_ste
                         after_step()
                         byte = poll["adapter_status_byte"]
                         if byte & 8:
-                            raise ProtocolError("ZERO measurement error; no further commands")
+                            raise ProtocolError(
+                                f"{operation} measurement error; no further commands"
+                            )
                         if byte not in (0, 2):
-                            raise ProtocolError("Unexpected ZERO status; no further commands")
+                            raise ProtocolError(
+                                f"Unexpected {operation} status; no further commands"
+                            )
                         if byte == 2:
                             result["completion_indication_observed"] = True
                             break
@@ -151,9 +190,13 @@ def collect(instrument, wire, rows, started, *, deadline, before_step, after_ste
                             after_step()
                             time.sleep(min(0.02, max(0, end - time.monotonic())))
                     else:
-                        raise OperationTimeout("ZERO poll-count limit; no further commands")
+                        raise OperationTimeout(f"{operation} poll-count limit; no further commands")
                 elif kind == "acquisition":
-                    m = instrument.acquire("TR1")
+                    m = (
+                        _followup(instrument, wire, deadline, row)
+                        if _followup is not None
+                        else instrument.acquire("TR1")
+                    )
                     row.update(
                         raw_hex=m.raw.hex(),
                         value=dict(
@@ -188,6 +231,9 @@ def collect(instrument, wire, rows, started, *, deadline, before_step, after_ste
                     elif reply.value != 0:
                         reason = "nonzero_mask_no_ZERO"
                 after_step()
+                if operation == "CAL" and step == "after.SM" and reason is None:
+                    result["reference_may_be_on"] = False
+                    result["reference_restored_off_verified"] = True
         except BaseException as exc:
             row.update(
                 status="failed",
@@ -204,6 +250,6 @@ def collect(instrument, wire, rows, started, *, deadline, before_step, after_ste
         row.update(status="completed", elapsed_s=time.monotonic() - started)
         on_row(row)
         if reason:
-            result["stop_reason"] = reason
+            result["stop_reason"] = reason.replace("ZERO", operation)
             return "observation_stop", result
     return "completed", result

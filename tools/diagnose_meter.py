@@ -50,6 +50,8 @@ def main():
     )
     parser.add_argument("--supervised-zero", action="store_true")
     parser.add_argument("--confirm-zero", action="store_true")
+    parser.add_argument("--supervised-cal", action="store_true")
+    parser.add_argument("--confirm-cal", action="store_true")
     parser.add_argument("--confirm-reference-control", action="store_true")
     parser.add_argument("--confirm-fixed-error-fixtures", action="store_true")
     args = parser.parse_args()
@@ -64,11 +66,16 @@ def main():
                 args.serial_poll_probe,
                 args.serial_poll_entry_error,
                 args.supervised_zero,
+                args.supervised_cal,
             )
         )
         > 1
     ):
         parser.error("Select only one fixed experiment")
+    if args.supervised_cal and (not args.confirm_cal or args.include_latched_reads):
+        parser.error("Supervised CAL requires explicit confirmation and no passive flag")
+    if args.confirm_cal and not args.supervised_cal:
+        parser.error("CAL confirmation requires the CAL profile")
     if args.supervised_zero and (not args.confirm_zero or args.include_latched_reads):
         parser.error("Supervised ZERO requires explicit confirmation and no passive flag")
     if args.confirm_zero and not args.supervised_zero:
@@ -120,10 +127,26 @@ def main():
             serial_poll_entry_error=args.serial_poll_entry_error,
             supervised_zero=args.supervised_zero,
             confirmed_zero=args.confirm_zero,
+            supervised_cal=args.supervised_cal,
+            confirmed_cal=args.confirm_cal,
+            cal_reference_factor=setup.get("cal_reference_factor"),
+            cal_factor_source=setup.get("cal_factor_source"),
             original_resolution=setup.get("original_resolution"),
             confirmed_reference_control=args.confirm_reference_control,
-            work_s=45 if args.supervised_zero else 60 if args.acquisition_settings else 20,
-            total_s=50 if args.supervised_zero else 65 if args.acquisition_settings else 25,
+            work_s=35
+            if args.supervised_cal
+            else 45
+            if args.supervised_zero
+            else 60
+            if args.acquisition_settings
+            else 20,
+            total_s=40
+            if args.supervised_cal
+            else 50
+            if args.supervised_zero
+            else 65
+            if args.acquisition_settings
+            else 25,
             numeric_original_settings=setup.get("numeric_original_settings"),
             confirmed_error_fixtures=args.confirm_fixed_error_fixtures,
             cancelled=stop.is_set,

@@ -13,6 +13,7 @@ from pathlib import Path
 
 from . import diagnostics as diag
 from . import diagnostics_acquisition as settings
+from . import diagnostics_cal as calibration
 from . import diagnostics_err_selection as selection
 from . import diagnostics_lifecycle as life
 from . import diagnostics_poll as polling
@@ -51,15 +52,25 @@ class _DiagnosticBridge(phy._Bridge):
         self._poll_probe = None
         self._zero_polls = None
         self.zero_poll_receipt = None
+        self.cal_read_timeout_s = None
+        self.last_write_complete = False
+        self.read_started = False
 
     def write(self, data, deadline):
         self.captured_raw, self.read_status = b"", None
+        self.last_write_complete, self.read_started = False, False
         super().write(data, deadline)
+        self.last_write_complete = True
 
     def read(self, deadline):
         from pyvisa.constants import StatusCode
 
-        self.handle.timeout = self._ms(deadline)
+        self.read_started = True
+        self.handle.timeout = (
+            max(1, math.ceil(min(self.cal_read_timeout_s, remaining(deadline)) * 1000))
+            if self.cal_read_timeout_s is not None
+            else self._ms(deadline)
+        )
         raw, status = self.handle.visalib.read(self.handle.session, 4097)
         self.captured_raw, self.read_status = bytes(raw[:4097]), int(status)
         if len(raw) > 4096 or status != StatusCode.success:
@@ -111,6 +122,8 @@ def _worker(
     serial_poll_probe=False,
     serial_poll_entry_error=False,
     supervised_zero=False,
+    supervised_cal=False,
+    cal_reference_factor=None,
 ):
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # Parent owns cancellation and disposal.
     wire = None
@@ -120,7 +133,9 @@ def _worker(
         status="preflight_failed",
         stage="ownership",
         transport_closed=None,
-        queries=zero.plan()
+        queries=calibration.plan(cal_reference_factor)
+        if supervised_cal
+        else zero.plan()
         if supervised_zero
         else entry_poll.plan()
         if serial_poll_entry_error
@@ -187,7 +202,20 @@ def _worker(
                     )
                     emit(row=row)
 
-                if supervised_zero:
+                if supervised_cal:
+                    result["status"], result["cal_assessment"] = calibration.collect(
+                        instrument,
+                        wire,
+                        result["queries"],
+                        started,
+                        reference_factor=cal_reference_factor,
+                        deadline=deadline,
+                        before_step=before_query,
+                        after_step=check,
+                        on_row=row_ready,
+                        stop=stop,
+                    )
+                elif supervised_zero:
                     result["status"], result["zero_assessment"] = zero.collect(
                         instrument,
                         wire,
@@ -267,6 +295,19 @@ def _worker(
                         raw_reply=lambda: wire.captured_raw,
                     )
                 collection_status = result["status"]
+                if supervised_cal and collection_status == "query_failed":
+                    shutdown = calibration.failed_read_shutdown(
+                        wire,
+                        result["queries"],
+                        result["cal_assessment"],
+                        deadline=deadline,
+                        stage=stage,
+                    )
+                    if shutdown is not None:
+                        result["cal_failed_read_shutdown"] = shutdown
+                        result["local_return"] = shutdown["local_return"]
+                        if shutdown["status"] != "accepted":
+                            result["status"] = "cleanup_failed"
                 if collection_status in ("completed", "observation_stop"):
                     result["status"] = "cleanup_failed"
                     stage("free_run")
@@ -327,6 +368,10 @@ def run_physical(
     serial_poll_entry_error=False,
     supervised_zero=False,
     confirmed_zero=False,
+    supervised_cal=False,
+    confirmed_cal=False,
+    cal_reference_factor=None,
+    cal_factor_source=None,
     original_resolution=None,
     confirmed_reference_control=False,
     confirmed_error_fixtures=False,
@@ -335,7 +380,7 @@ def run_physical(
     cancelled=lambda: False,
     _factory_override=None,
 ):
-    """Explicit hardware entry point; one attempt, no retries or source changes.
+    """Explicit hardware entry point; one attempt, with only selected profile effects.
 
     Integration-test factories must declare simulation=True and are labeled as
     injected evidence. Front-panel observations are never inferred from replies.
@@ -369,6 +414,8 @@ def run_physical(
             serial_poll_entry_error,
             supervised_zero,
             confirmed_zero,
+            supervised_cal,
+            confirmed_cal,
             confirmed_reference_control,
             confirmed_error_fixtures,
         )
@@ -385,11 +432,27 @@ def run_physical(
                 serial_poll_probe,
                 serial_poll_entry_error,
                 supervised_zero,
+                supervised_cal,
             )
         )
         > 1
     ):
         raise ValueError("Select only one fixed experiment")
+    if supervised_cal:
+        if not confirmed_cal or any(
+            prepared.get(k) is not True
+            for k in ("direct_reference_path", "warmed_up", "zero_ready")
+        ):
+            raise ValueError(
+                "CAL requires confirmed gain adjustment, warmed direct reference path, and prior ZERO"
+            )
+        cal_reference_factor = calibration.factor_text(cal_reference_factor)
+        if not isinstance(cal_factor_source, str) or not 1 <= len(cal_factor_source.strip()) <= 256:
+            raise ValueError("Record the sensor REF CAL FACTOR source")
+        if include_latched_reads or (work_s, total_s) != (calibration.WORK_S, calibration.TOTAL_S):
+            raise ValueError("CAL is a separate bounded 35/40-second profile")
+    elif confirmed_cal or cal_reference_factor is not None or cal_factor_source is not None:
+        raise ValueError("CAL factor/confirmation apply only to supervised CAL")
     if supervised_zero:
         if not confirmed_zero or prepared.get("no_rf_input") is not True:
             raise ValueError("Explicit no-RF path and stored ZERO-adjustment confirmation required")
@@ -505,6 +568,8 @@ def run_physical(
         rows = entry_poll.plan()
     if supervised_zero:
         rows = zero.plan()
+    if supervised_cal:
+        rows = calibration.plan(cal_reference_factor)
     result = dict(
         schema="hp437b.diagnostics.physical.v1",
         mode="physical",
@@ -532,6 +597,12 @@ def run_physical(
         serial_poll_probe_profile=serial_poll_probe,
         serial_poll_entry_error_profile=serial_poll_entry_error,
         supervised_zero_profile=supervised_zero,
+        supervised_cal_profile=supervised_cal,
+        cal_reference_factor=cal_reference_factor,
+        cal_factor_source=cal_factor_source,
+        cal_prepared={k: prepared[k] for k in ("direct_reference_path", "warmed_up", "zero_ready")}
+        if supervised_cal
+        else None,
         zero_prepared=dict(no_rf_input=True, confirmed_zero=True) if supervised_zero else None,
         acquisition_settings_plan_version=settings.PLAN_VERSION if acquisition_settings else None,
         original_resolution=original_resolution,
@@ -548,8 +619,10 @@ def run_physical(
         fixed_error_fixtures_confirmed=confirmed_error_fixtures,
         source_off_basis="Initial operator assertion and SM gate; selected profile controls POWER REF"
         if acquisition_settings
+        else "Initial source-off SM gate; CAL controls internal reference and must restore off"
+        if supervised_cal
         else "Initial operator assertion and SM gate; no reference-control writes"
-        if serial_poll_probe or serial_poll_entry_error or supervised_zero
+        if serial_poll_probe or serial_poll_entry_error or supervised_zero or supervised_cal
         else "Fresh operator assertion; no automatic SM preflight or continuous RF proof",
         host=dict(platform=platform.platform(), python=platform.python_version()),
         budgets=dict(
@@ -557,6 +630,7 @@ def run_physical(
             total_s=total_s,
             native_call_s=phy.NATIVE_S,
             native_finish_grace_s=phy.SHUTDOWN_GRACE_S,
+            cal_followup_read_s=calibration.READ_S if supervised_cal else None,
         ),
         queries=rows,
         worker=None,
@@ -564,6 +638,8 @@ def run_physical(
     )
     if supervised_zero:
         result["zero_assessment"] = zero.assessment()
+    if supervised_cal:
+        result["cal_assessment"] = calibration.assessment()
     if serial_poll_probe or serial_poll_entry_error:
         result["serial_poll_assessment"] = polling.assessment("No worker receipt yet")
     if acquisition_settings:
@@ -603,6 +679,8 @@ def run_physical(
             serial_poll_probe,
             serial_poll_entry_error,
             supervised_zero,
+            supervised_cal,
+            cal_reference_factor,
         ),
     )
     process.daemon = True
@@ -715,6 +793,24 @@ def run_physical(
                 ):
                     if step not in timely:
                         a[field] = False
+            if supervised_cal:
+                a = result["cal_assessment"]
+                a["accepted_full_case"] = result["status"] == "completed"
+                timely = {
+                    r["step_id"]
+                    for r in rows
+                    if r["status"] == "completed" and r.get("accepted_before_deadline")
+                }
+                for field, step in (
+                    ("clear_baseline_observed", "baseline.poll"),
+                    ("completion_indication_observed", "cal.wait"),
+                    ("post_clear_observed", "after.poll"),
+                ):
+                    if step not in timely:
+                        a[field] = False
+                if "after.SM" not in timely:
+                    a["reference_restored_off_verified"] = False
+                    a["reference_may_be_on"] = True
             if "serial_poll_assessment" in result:
                 result["serial_poll_assessment"]["accepted_full_case"] = (
                     result["status"] == "completed"

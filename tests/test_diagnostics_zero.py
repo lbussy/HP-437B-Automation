@@ -20,6 +20,7 @@ from hp437b.simulation import status_fixture
 class Backend:
     trace: object
     scenario: str = "healthy"
+    calibration: bool = False
     simulation = True
 
     def __call__(self, resource):
@@ -29,6 +30,8 @@ class Backend:
         from pyvisa.constants import StatusCode
 
         scenario, trace = self.scenario, self.trace
+        calibration = self.calibration
+        action = "CL99EN" if calibration else "ZE"
         state = dict(polls=0, tag=0, zero=False, done=False, byte=0)
 
         def event(kind, **values):
@@ -74,6 +77,8 @@ class Backend:
                     state["byte"] = byte
                     return bytes([1, value, byte])
                 assert request == 0xA1
+                if calibration and scenario == "followup_local_failed":
+                    raise TimeoutError("synthetic GTL failure")
                 return b"\x01"
 
         class Interrupt:
@@ -95,11 +100,15 @@ class Backend:
                 code = raw.decode()
                 event("write", command=code)
                 self.pending = code
-                assert code in ("*IDN?", "SM", "*ESE?", "*SRE?", "CS", "ZE", "TR1", "TR3")
-                assert not state["zero"] or state["done"] or code == "ZE", (
+                assert code in ("*IDN?", "SM", "*ESE?", "*SRE?", "CS", action, "TR1", "TR3")
+                assert not state["zero"] or state["done"] or code == action, (
                     "ASCII while ZERO pending"
                 )
-                if code == "ZE":
+                if calibration and code == "TR3" and scenario == "followup_free_run_failed":
+                    raise TimeoutError("synthetic TR3 failure")
+                if calibration and code == "TR1" and scenario == "partial_followup":
+                    return 1
+                if code == action:
                     assert not state["zero"]
                     state["zero"] = True
                     if scenario == "partial_zero":
@@ -108,16 +117,40 @@ class Backend:
 
             def read(self, session, size):
                 code = self.pending
+                event("read", command=code, timeout_ms=self.timeout)
                 if code == "*IDN?":
                     raw = TARGET.expected_idn
                 elif code in ("*ESE?", "*SRE?"):
                     raw = b"004\r\n" if scenario == "mask" else b"000\r\n"
                 elif code == "TR1":
+                    if calibration:
+                        event("followup_read", timeout_ms=self.timeout)
+                        if scenario == "cancel_followup":
+                            event("followup_pending")
+                            time.sleep(0.3)
+                        if scenario == "slow_followup":
+                            if self.timeout < 2500:
+                                from pyvisa.errors import VisaIOError
+
+                                raise VisaIOError(StatusCode.error_timeout)
+                            time.sleep(2.1)
+                        if scenario in (
+                            "followup_timeout",
+                            "followup_local_failed",
+                            "followup_free_run_failed",
+                        ):
+                            from pyvisa.errors import VisaIOError
+
+                            raise VisaIOError(StatusCode.error_timeout)
+                        if scenario == "malformed_followup":
+                            return b"bad\r\n", StatusCode.success
                     raw = b"-2.0000E-08\r\n"
                 else:
                     assert code == "SM"
                     raw = bytearray(status_fixture(logarithmic=False))
-                    if scenario == "source_on":
+                    if scenario == "source_on" or (
+                        calibration and state["done"] and scenario == "reference_left_on"
+                    ):
                         raw[16] = ord("1")
                     if state["done"]:
                         raw[18] = (
