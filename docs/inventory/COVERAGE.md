@@ -2,6 +2,8 @@
 
 Reviewed November 11, 2026. This matrix accounts for118 command/syntax variants across50 functional families and20 bus-operation entries (19 supported/relevant and one C0 exclusion). [Counting rules](COMMANDS.md#source-and-counting-convention) define the totals. [Review record](REVIEW.md) records reconciliation against both summary pages and detailed sections.
 
+The [November 13 command/backend review](COMMAND-BACKEND-REVIEW.md) ranks optional next batches and distinguishes existing implementations from missing bench evidence. It adds no physical passing results or release requirements. The per-command host entries below retain their explicitly linked scopes; later named recovery evidence does not qualify additional commands. Earlier replacement-gate wording is historical and is superseded by the [current project scope](../PROJECT-SCOPE.md).
+
 ## Status model
 
 Manual: ✅ means the documented occurrence, available semantics, source citation, and ambiguity flag were checked; it is not hardware verification. Implementation, software tests, Mac, and Pi each use separate ✅/⏳/▧ statuses. “Excl.” marks a documented instrument exclusion. All future tests refer to an authorized setup and retain unit/version identity.
