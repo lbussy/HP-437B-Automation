@@ -25,11 +25,14 @@ def main():
     parser.add_argument(
         "--err-selection", action="store_true", help="QX-only query-order/timing experiment"
     )
+    parser.add_argument(
+        "--numeric-entry", action="store_true", help="Fixed FR-3GZ invalid numeric-entry experiment"
+    )
     parser.add_argument("--confirm-fixed-error-fixtures", action="store_true")
     args = parser.parse_args()
-    if args.lifecycle and args.err_selection:
+    if sum((args.lifecycle, args.err_selection, args.numeric_entry)) > 1:
         parser.error("Select only one fixed experiment")
-    experiment = args.lifecycle or args.err_selection
+    experiment = args.lifecycle or args.err_selection or args.numeric_entry
     if experiment and (not args.confirm_fixed_error_fixtures or args.include_latched_reads):
         parser.error("Fixed experiment requires fixture confirmation and no passive latch flag")
     if args.confirm_fixed_error_fixtures and not experiment:
@@ -57,6 +60,8 @@ def main():
             include_latched_reads=args.include_latched_reads,
             lifecycle=args.lifecycle,
             err_selection=args.err_selection,
+            numeric_entry=args.numeric_entry,
+            numeric_original_settings=setup.get("numeric_original_settings"),
             confirmed_error_fixtures=args.confirm_fixed_error_fixtures,
             cancelled=stop.is_set,
         )

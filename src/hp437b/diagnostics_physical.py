@@ -70,6 +70,7 @@ def _worker(
     include_latched_reads,
     lifecycle=False,
     err_selection=False,
+    numeric_entry=False,
 ):
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # Parent owns cancellation and disposal.
     wire = None
@@ -79,8 +80,8 @@ def _worker(
         status="preflight_failed",
         stage="ownership",
         transport_closed=None,
-        queries=selection.plan()
-        if err_selection
+        queries=selection.plan(numeric_entry=numeric_entry)
+        if err_selection or numeric_entry
         else life.plan()
         if lifecycle
         else [dict(command=c, effect=diag.EFFECTS[c], status="not_attempted") for c in plan],
@@ -133,8 +134,8 @@ def _worker(
                     )
                     emit(row=row)
 
-                if lifecycle or err_selection:
-                    profile = selection if err_selection else life
+                if lifecycle or err_selection or numeric_entry:
+                    profile = selection if err_selection or numeric_entry else life
                     result["status"], result["lifecycle_assessment"] = profile.collect(
                         instrument,
                         result["queries"],
@@ -143,6 +144,7 @@ def _worker(
                         after_step=check,
                         on_row=row_ready,
                         raw_reply=lambda: wire.captured_raw,
+                        **({"numeric_entry": numeric_entry} if profile is selection else {}),
                     )
                 else:
                     result["status"] = diag._collect_queries(
@@ -207,6 +209,8 @@ def run_physical(
     include_latched_reads=False,
     lifecycle=False,
     err_selection=False,
+    numeric_entry=False,
+    numeric_original_settings=None,
     confirmed_error_fixtures=False,
     work_s=20.0,
     total_s=25.0,
@@ -236,18 +240,36 @@ def run_physical(
     if type(include_latched_reads) is not bool:
         raise ValueError("Latch reads require an explicit boolean")
     if any(
-        type(value) is not bool for value in (lifecycle, err_selection, confirmed_error_fixtures)
+        type(value) is not bool
+        for value in (lifecycle, err_selection, numeric_entry, confirmed_error_fixtures)
     ):
         raise ValueError("Experiment/fixture selections must be explicit booleans")
-    if lifecycle and err_selection:
+    if sum((lifecycle, err_selection, numeric_entry)) > 1:
         raise ValueError("Select only one fixed experiment")
-    experiment = lifecycle or err_selection
+    experiment = lifecycle or err_selection or numeric_entry
     if experiment and (not confirmed_error_fixtures or include_latched_reads):
         raise ValueError(
             "Fixed experiment requires separate fixed-error confirmation and no passive flag"
         )
     if confirmed_error_fixtures and not experiment:
         raise ValueError("Fixed-error confirmation applies only to a fixed experiment")
+    if numeric_entry:
+        if (
+            not isinstance(numeric_original_settings, dict)
+            or set(numeric_original_settings) != {"frequency", "cal_factor"}
+            or any(
+                not isinstance(value, str)
+                or not 1 <= len(value.strip()) <= 80
+                or not value.isascii()
+                or not value.isprintable()
+                for value in numeric_original_settings.values()
+            )
+        ):
+            raise ValueError(
+                "Record fresh original FREQ and CAL FAC display values; no automatic restoration"
+            )
+    elif numeric_original_settings is not None:
+        raise ValueError("Original numeric settings apply only to the numeric-entry profile")
     for name, value, low, high in (("work_s", work_s, 0.25, 60), ("total_s", total_s, 5, 90)):
         if (
             isinstance(value, bool)
@@ -269,8 +291,12 @@ def run_physical(
         dict(command=c, effect=diag.EFFECTS[c], status="not_attempted")
         for c in diag.BASIC_QUERIES + (diag.LATCHED_QUERIES if include_latched_reads else ())
     ]
-    if lifecycle or err_selection:
-        rows = selection.plan() if err_selection else life.plan()
+    if lifecycle or err_selection or numeric_entry:
+        rows = (
+            selection.plan(numeric_entry=numeric_entry)
+            if err_selection or numeric_entry
+            else life.plan()
+        )
     result = dict(
         schema="hp437b.diagnostics.physical.v1",
         mode="physical",
@@ -292,6 +318,9 @@ def run_physical(
         include_latched_reads=include_latched_reads,
         lifecycle_profile=lifecycle,
         err_selection_profile=err_selection,
+        numeric_entry_profile=numeric_entry,
+        numeric_settings_verified=False if numeric_entry else None,
+        numeric_original_settings=dict(numeric_original_settings) if numeric_entry else None,
         fixed_error_fixtures_confirmed=confirmed_error_fixtures,
         source_off_basis="Fresh operator assertion; no automatic SM preflight or continuous RF proof",
         host=dict(platform=platform.platform(), python=platform.python_version()),
@@ -324,6 +353,7 @@ def run_physical(
             include_latched_reads,
             lifecycle,
             err_selection,
+            numeric_entry,
         ),
     )
     process.daemon = True

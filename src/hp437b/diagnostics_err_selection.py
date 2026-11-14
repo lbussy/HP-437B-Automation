@@ -1,7 +1,7 @@
-"""Fixed QX query-order/timing experiment, separate from queue qualification.
+"""Fixed query-order/timing experiments, separate from queue qualification.
 
-QX is documented to set ESR bit 5; a numeric ERR reply of 91 is a hypothesis.
-No frequency, source, mask, or measurement-setting writes are permitted here.
+QX sets command-event bit 5; FR-3GZ is the manual execution-error example.
+Only private invalid fixtures are used; no valid setting/source writes occur.
 """
 
 import time
@@ -20,14 +20,16 @@ PHASES = ("baseline", *CASES, "final")
 WAIT_S = 2.0
 
 
-def plan():
+def plan(*, numeric_entry=False):
+    stimulus = "execution_error" if numeric_entry else "command_error"
+    payload = b"FR-3GZ" if numeric_entry else b"QX"
     rows = []
     for phase in PHASES:
         codes = []
         if phase in ("baseline", "final"):
             codes = ["*ESE?", "*SRE?", "*STB?", *(["*ESR?"] * 3), *(["ERR?"] * 3), "SM", "SM"]
         else:
-            codes = ["command_error"]
+            codes = [stimulus]
             if phase.startswith("delayed_"):
                 codes.append("wait")
             if phase.endswith("sm_first"):
@@ -39,7 +41,7 @@ def plan():
         counts = {}
         for code in codes:
             counts[code] = counts.get(code, 0) + 1
-            kind = "stimulus" if code == "command_error" else "wait" if code == "wait" else "query"
+            kind = "stimulus" if code == stimulus else "wait" if code == "wait" else "query"
             row = dict(
                 step_id=f"{phase}.{code}.{counts[code]}",
                 phase=phase,
@@ -48,33 +50,38 @@ def plan():
                 status="not_attempted",
             )
             if kind == "stimulus":
-                row["fixture_hex"] = b"QX".hex()
+                row["fixture_hex"] = payload.hex()
             if kind == "wait":
                 row["requested_wait_s"] = WAIT_S
             rows.append(row)
     return rows
 
 
-def assessment(rows):
+def assessment(rows, *, numeric_entry=False):
     cases = {}
     for phase in CASES:
         selected = [row for row in rows if row["phase"] == phase]
+        errors = life._values(rows, phase, "ERR?")
+        entries = [s["entry_error"] for s in life._values(rows, phase, "SM")]
         cases[phase] = dict(
             complete=all(row["status"] == "completed" for row in selected),
-            err_replies=life._values(rows, phase, "ERR?"),
+            err_replies=errors,
             esr_replies=life._values(rows, phase, "*ESR?"),
-            sm_entry_errors=[s["entry_error"] for s in life._values(rows, phase, "SM")],
+            sm_entry_errors=entries,
+            expected_numeric_code_observed=(82 if numeric_entry else 91) in errors + entries,
             sm_measurement_errors=[s["measurement_error"] for s in life._values(rows, phase, "SM")],
         )
     return dict(
         cases=cases,
+        fixed_fixture="FR-3GZ" if numeric_entry else "QX",
+        expected_event_bit=16 if numeric_entry else 32,
         cause="unresolved; compare ordered observations, not a unique causal diagnosis",
         queue_observation="not_tested; one error stimulus per case",
-        evidence_limit="QX only; two fixed 2-second idle windows are not a general timing bound or proof that ERR excludes entry errors",
+        evidence_limit="One fixed invalid entry per case; two 2-second windows are not a general timing bound or proof that ERR excludes entry errors",
     )
 
 
-def _gate(rows, phase):
+def _gate(rows, phase, *, numeric_entry=False):
     # Reuse existing source/configuration and quiet-baseline guards, not its
     # unsupported numeric-code requirement for isolated QX.
     reason = life._gate(rows, phase)
@@ -82,14 +89,23 @@ def _gate(rows, phase):
         return reason
     if phase in CASES:
         events = life._values(rows, phase, "*ESR?")
-        if not events or not events[0] & 32:
-            return "documented_command_error_event_not_observed"
+        expected = 16 if numeric_entry else 32
+        if not events or not events[0] & expected:
+            return (
+                "documented_execution_error_event_not_observed"
+                if numeric_entry
+                else "documented_command_error_event_not_observed"
+            )
+        if numeric_entry and events != [16, 0]:
+            return "unexpected_or_persistent_error_event_no_further_stimulus"
         if life._values(rows, phase, "ERR?")[-1] != 0:
             return "error_reply_not_quiet_no_further_stimulus"
     return None
 
 
-def collect(instrument, rows, started, *, before_step, after_step, on_row, raw_reply):
+def collect(
+    instrument, rows, started, *, before_step, after_step, on_row, raw_reply, numeric_entry=False
+):
     """One fixed pass; cancellable no-command waits; stop on any failed step."""
     for phase in PHASES:
         for row in (item for item in rows if item["phase"] == phase):
@@ -98,8 +114,8 @@ def collect(instrument, rows, started, *, before_step, after_step, on_row, raw_r
             try:
                 if row["kind"] == "stimulus":
                     with instrument._operation() as deadline:
-                        instrument._write(b"QX", deadline)
-                    row["sent_hex"] = b"QX".hex()
+                        instrument._write(b"FR-3GZ" if numeric_entry else b"QX", deadline)
+                    row["sent_hex"] = (b"FR-3GZ" if numeric_entry else b"QX").hex()
                 elif row["kind"] == "wait":
                     end = time.monotonic() + WAIT_S
                     while time.monotonic() < end:
@@ -120,12 +136,16 @@ def collect(instrument, rows, started, *, before_step, after_step, on_row, raw_r
                 on_row(row)
                 if not isinstance(exc, Exception):
                     raise
-                return "query_failed", dict(stop_reason="step_failed", **assessment(rows))
+                return "query_failed", dict(
+                    stop_reason="step_failed", **assessment(rows, numeric_entry=numeric_entry)
+                )
             row.update(status="completed", elapsed_s=time.monotonic() - started)
             on_row(row)
-        reason = _gate(rows, phase)
+        reason = _gate(rows, phase, numeric_entry=numeric_entry)
         if reason:
             return "observation_stop", dict(
-                stop_reason=reason, stopped_after_phase=phase, **assessment(rows)
+                stop_reason=reason,
+                stopped_after_phase=phase,
+                **assessment(rows, numeric_entry=numeric_entry),
             )
-    return "completed", dict(stop_reason=None, **assessment(rows))
+    return "completed", dict(stop_reason=None, **assessment(rows, numeric_entry=numeric_entry))
