@@ -21,7 +21,13 @@ def main():
     parser.add_argument("--confirm-supervised", action="store_true")
     parser.add_argument("--confirm-prior-worker-stopped", action="store_true")
     parser.add_argument("--include-latched-reads", action="store_true")
+    parser.add_argument("--lifecycle", action="store_true")
+    parser.add_argument("--confirm-fixed-error-fixtures", action="store_true")
     args = parser.parse_args()
+    if args.lifecycle and (not args.confirm_fixed_error_fixtures or args.include_latched_reads):
+        parser.error("Lifecycle requires fixed-error confirmation and no passive latch flag")
+    if args.confirm_fixed_error_fixtures and not args.lifecycle:
+        parser.error("Fixed-error confirmation applies only to lifecycle")
     if not args.confirm_supervised or not args.confirm_prior_worker_stopped:
         parser.error("Fresh supervised setup and prior-worker-stop confirmation required")
     if args.setup.stat().st_size > 16 * 1024:
@@ -43,6 +49,8 @@ def main():
             prior_worker_stopped=args.confirm_prior_worker_stopped,
             workflow_lock_root=args.workflow_lock_root,
             include_latched_reads=args.include_latched_reads,
+            lifecycle=args.lifecycle,
+            confirmed_error_fixtures=args.confirm_fixed_error_fixtures,
             cancelled=stop.is_set,
         )
     finally:

@@ -40,6 +40,8 @@ Status lifecycle and error selection. §3-30 explicitly distinguishes non-cleari
 
 The [single passive wspr5 latch-read pass](../validation/PI-DIAGNOSTICS-LATCHES-20261113.md) captured ERR? 0, *ESR? 128 (documented Power On bit), and a valid source-off SM frame after the masks/status/display reads. This establishes those ordered reply cases on the recorded setup. No repeated read or controlled error transition was performed, so event read-clear and error queue/selection behavior remain unresolved; A06 is not closed.
 
+The owner-selected [bounded lifecycle experiment](../validation/DIAGNOSTICS-LIFECYCLE-FAKES.md) is now implemented and statefully fake-tested, with fixed manual error examples, repeated reads, and both error orders. No actual meter behavior is inferred from those models. The [subsequent supervised Pi case](../validation/PI-DIAGNOSTICS-LIFECYCLE-20261114.md) observed 128→0→0 at baseline and induced command-bit 32→0→0 twice, but ERR stayed zero after QX under both query orders. The planned gate stopped before frequency/pair tests. These are scoped event read-clear observations; ERR selection/queue semantics and the remaining A06 behaviors stay unresolved.
+
 ## A07
 
 Display aliases and user text boundaries. Table 3-5 printed 3-41/PDF 71 lists DD/DF and limits DD to firmware1.5+. Detailed Display (3-53–54/PDF 83–84) describes DD but omits DF. Test per-firmware aliases. DU permits up to12 alphanumeric/space characters but leaves exact short-message boundaries and command concatenation unclear. Use bounded standalone messages while qualifying raw transport framing.

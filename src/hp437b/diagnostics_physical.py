@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from . import diagnostics as diag
+from . import diagnostics_lifecycle as life
 from . import protocol
 from . import reconciliation as rec
 from . import reconciliation_physical as phy
@@ -58,7 +59,9 @@ def _factory(resource):
     return _DiagnosticBridge(resource)
 
 
-def _worker(pipe, stop, target, factory, deadline, lock_path, include_latched_reads):
+def _worker(
+    pipe, stop, target, factory, deadline, lock_path, include_latched_reads, lifecycle=False
+):
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # Parent owns cancellation and disposal.
     wire = None
     started = time.monotonic()
@@ -67,7 +70,9 @@ def _worker(pipe, stop, target, factory, deadline, lock_path, include_latched_re
         status="preflight_failed",
         stage="ownership",
         transport_closed=None,
-        queries=[dict(command=c, effect=diag.EFFECTS[c], status="not_attempted") for c in plan],
+        queries=life.plan()
+        if lifecycle
+        else [dict(command=c, effect=diag.EFFECTS[c], status="not_attempted") for c in plan],
     )
 
     def emit(**message):
@@ -115,16 +120,28 @@ def _worker(pipe, stop, target, factory, deadline, lock_path, include_latched_re
                     row["visa_read_status"] = wire.read_status
                     emit(row=row)
 
-                result["status"] = diag._collect_queries(
-                    instrument,
-                    result["queries"],
-                    started,
-                    before_query=before_query,
-                    after_query=check,
-                    on_row=row_ready,
-                    raw_reply=lambda: wire.captured_raw,
-                )
-                if result["status"] == "completed":
+                if lifecycle:
+                    result["status"], result["lifecycle_assessment"] = life.collect(
+                        instrument,
+                        result["queries"],
+                        started,
+                        before_step=before_query,
+                        after_step=check,
+                        on_row=row_ready,
+                        raw_reply=lambda: wire.captured_raw,
+                    )
+                else:
+                    result["status"] = diag._collect_queries(
+                        instrument,
+                        result["queries"],
+                        started,
+                        before_query=before_query,
+                        after_query=check,
+                        on_row=row_ready,
+                        raw_reply=lambda: wire.captured_raw,
+                    )
+                collection_status = result["status"]
+                if collection_status in ("completed", "observation_stop"):
                     result["status"] = "cleanup_failed"
                     stage("free_run")
                     instrument.timeout = min(phy.NATIVE_S, remaining(deadline))
@@ -135,7 +152,7 @@ def _worker(pipe, stop, target, factory, deadline, lock_path, include_latched_re
                     if not isinstance(local, dict) or local.get("status") != "accepted":
                         raise ProtocolError("Local return was not accepted")
                     check()
-                    result.update(status="completed", local_return=local)
+                    result.update(status=collection_status, local_return=local)
             except Exception as exc:
                 if isinstance(exc, InterruptedError):
                     result["status"] = "cancelled"
@@ -159,7 +176,7 @@ def _worker(pipe, stop, target, factory, deadline, lock_path, include_latched_re
     except Exception as exc:
         result.update(status="worker_failed", error=f"{type(exc).__name__}: {exc}"[:1000])
     try:
-        emit(result=result)
+        emit(result={k: v for k, v in result.items() if k != "queries"})
     finally:
         pipe.close()
 
@@ -174,6 +191,8 @@ def run_physical(
     prior_worker_stopped,
     workflow_lock_root,
     include_latched_reads=False,
+    lifecycle=False,
+    confirmed_error_fixtures=False,
     work_s=20.0,
     total_s=25.0,
     cancelled=lambda: False,
@@ -201,6 +220,14 @@ def run_physical(
         raise ValueError("Record bounded meter/sensor label identities")
     if type(include_latched_reads) is not bool:
         raise ValueError("Latch reads require an explicit boolean")
+    if type(lifecycle) is not bool or type(confirmed_error_fixtures) is not bool:
+        raise ValueError("Lifecycle/fixture selections must be explicit booleans")
+    if lifecycle and (not confirmed_error_fixtures or include_latched_reads):
+        raise ValueError(
+            "Lifecycle profile requires separate fixed-error confirmation and no passive flag"
+        )
+    if confirmed_error_fixtures and not lifecycle:
+        raise ValueError("Fixed-error confirmation applies only to the lifecycle profile")
     for name, value, low, high in (("work_s", work_s, 0.25, 60), ("total_s", total_s, 5, 90)):
         if (
             isinstance(value, bool)
@@ -222,6 +249,8 @@ def run_physical(
         dict(command=c, effect=diag.EFFECTS[c], status="not_attempted")
         for c in diag.BASIC_QUERIES + (diag.LATCHED_QUERIES if include_latched_reads else ())
     ]
+    if lifecycle:
+        rows = life.plan()
     result = dict(
         schema="hp437b.diagnostics.physical.v1",
         mode="physical",
@@ -241,6 +270,8 @@ def run_physical(
         front_panel_confirmation="not_provided",
         health_verdict="Not evaluated; diagnostic replies only",
         include_latched_reads=include_latched_reads,
+        lifecycle_profile=lifecycle,
+        fixed_error_fixtures_confirmed=confirmed_error_fixtures,
         source_off_basis="Fresh operator assertion; no automatic SM preflight or continuous RF proof",
         host=dict(platform=platform.platform(), python=platform.python_version()),
         budgets=dict(
@@ -270,6 +301,7 @@ def run_physical(
             deadline,
             str(root / (key + ".lock")),
             include_latched_reads,
+            lifecycle,
         ),
     )
     process.daemon = True
@@ -283,11 +315,12 @@ def run_physical(
         if "row" in message:
             row = message["row"]
             row["accepted_before_deadline"] = terminal is None and time.monotonic() < deadline
-            rows[[r["command"] for r in rows].index(row["command"])] = row
+            key = row.get("step_id", row["command"])
+            rows[[r.get("step_id", r["command"]) for r in rows].index(key)] = row
         elif "stage" in message:
             result["stage"] = message["stage"]
             for row in rows:
-                if row["command"] == message["stage"]:
+                if row.get("step_id", row["command"]) == message["stage"]:
                     row["status"] = "running"
         else:
             worker_result = message["result"]
@@ -366,6 +399,10 @@ def run_physical(
                 )
             ):
                 result["status"] = "worker_failed"
+            if "lifecycle_assessment" in result:
+                result["lifecycle_assessment"]["accepted_full_case"] = (
+                    result["status"] == "completed"
+                )
             result.update(
                 finished_utc=datetime.now(UTC).isoformat(), elapsed_s=time.monotonic() - started
             )
