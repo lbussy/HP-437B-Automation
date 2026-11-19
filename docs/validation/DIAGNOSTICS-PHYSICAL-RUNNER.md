@@ -1,6 +1,6 @@
 # Supervised diagnostics: physical runner preparation
 
-November 13, 2026. The owner selected a physical diagnostics runner, with fakes first, after the [fake-first batch](DIAGNOSTICS-FAKES.md) was delivered to `devel` at `5200697` with [all four CI jobs passing](https://github.com/lbussy/HP-437B-Automation/actions/runs/43535323965). Physical runner implementation and offline verification are recorded here; no meter or USB session was opened during preparation. The subsequent [single basic wspr5 case](PI-DIAGNOSTICS-BASIC-20261113.md) is complete with protocol/closure evidence and separate owner final confirmation; the subsequent [single passive latch-read case](PI-DIAGNOSTICS-LATCHES-20261113.md) is also complete with separate owner final confirmation, while A06 clearing/queue semantics remain unqualified. The preparation and first-test procedure below retain their original scope.
+This document describes the implemented software path and its current operating limits. Hardware behavior on meter SN 3125U22346 remains unverified; use fresh setup and explicit supervision for selected physical work. Normal logging does not start these diagnostic operations automatically.
 
 ## Delivered scope
 
@@ -23,58 +23,3 @@ The default diagnostic sequence is `*ESE?`, `*SRE?`, `*STB?`, then `OD`. The exp
 - Rows received after cancellation/deadline are retained with `accepted_before_deadline: false`; uncompleted work stays incomplete. Success requires all selected rows accepted before the deadline, successful local return/close, and normal worker exit. Completion is collection success, **not** a meter-health or calibration verdict.
 
 Injected integration factories must explicitly declare simulation and are labeled `evidence_origin: injected_fake`; the physical default is labeled `physical_bridge`. Label serials are supplied provenance, not hardware-verified USB identities. `physical_identity_verified` remains false, and `front_panel_confirmation` remains `not_provided`. Keep the later owner's actual observation separate from the original receipt.
-
-## Offline software evidence
-
-Forty new [physical-runner tests](../../tests/test_diagnostics_physical.py) use real spawned workers and the actual descriptor/VISA/USB488 bridge with injected USB devices, managers, handles, and transfers. They cover:
-
-- Basic query order without an implicit SM read, explicit latch-read ordering, raw/parsed data, fixed backend pins, two-second native timeout values, and ordinary TR3/GTL/close.
-- Absent/duplicate/changed adapter, changed descriptors/interface/opened identity, access denial, changed pins, unsupported local return, and changed meter identification, all without diagnostics or fallback/retry.
-- Malformed, partial, oversized, incomplete-EOM, and failed query transfers; preserved raw bytes; no subsequent query or ASCII cleanup.
-- Rejected GTL and failed close; preservation of successful query results without a successful batch claim.
-- Cooperative cancellation with simulated native abort or late success, late deadline replies, a hung read with bounded disposal, and direct child SIGINT ownership.
-- Existing resource/diagnostics leases, lease retention through raw close, prior-worker/setup/argument guards, pre-start cancellation, new-output reservation, and hardware-free help/missing-confirmation subprocesses.
-
-The focused diagnostics, original reconciliation, and transport suite passed **154 tests** under `tools/offline_qa.py`. This includes the 32 original fake-only diagnostics tests, which still pass after extracting their collector for reuse. No fake result promotes a Mac/Pi command matrix cell or establishes physical abort/recovery behavior.
-
-The full local Python 3.14 reporting-environment regression passed **1,615 tests**, with three opt-in stress cases skipped, in 248.60 seconds. Loopback tests ran outside the filesystem/network sandbox while the offline guard continued to block instrument entry points. Lint, formatting, Markdown links/IDs/manual checksums, and `git diff --check` passed. Source and wheel builds passed; packaged diagnostics modules match their final source bytes, and the source distribution includes the standalone tool. The lock-root/help checks were also rerun after exposing the shared-directory option (five passed).
-
-## CI suite budget follow-up
-
-The first pushed runner commit, `e1729c6`, reached the software job's implicit 180-second offline-QA ceiling near the end of the Python 3.11 regression, returning exit 124 (`Offline QA deadline reached`); its paired software job was cancelled by matrix fail-fast. The log reported no failed test before the deadline. [Original run](https://github.com/lbussy/HP-437B-Automation/actions/runs/43540908091). The full local reporting-environment suite already required 248.60 seconds, so the CI software pytest step now explicitly uses the same bounded 600-second suite budget as the existing reporting step. Test assertions, hardware blocking, worker/instrument deadlines, the offline launcher's default, and normal logging are unchanged. This is a CI execution-budget correction, not new device capability or physical evidence.
-
-## Isolated wspr5 software preparation
-
-The new source/wheel delivery was safely reviewed for regular relative archive members and transferred through the existing outside-sandbox SSH configuration. Delivery SHA-256 is `c197fb21aed6cd0bdaeb0004c0485c502d65a5c086d96cf4258b5c2bc837c314`. Its manifest identifies base commit `5200697` plus the modified working tree and runtime hashes; it does not claim that the new runner is already committed at that base.
-
-A new non-editable installation is ready at `/home/pi/hp437b-qualification/diagnostics-20261114T005719Z/.venv`. Source and tools are under the same workspace's `source/hp437b_automation-0.1.0`. The Pi reports Python 3.13.5 on Linux 6.18.60+rpt-rpi-2712/aarch64. **214 selected tests passed in 48.24 seconds** through the hardware-blocking launcher, covering diagnostics, physical diagnostics, original reconciliation, transport, instrument, and logger behavior. Lint, formatting, and normal logger help checks also passed. All installed runtime module hashes match the delivered manifest; the retrieved report and full fake-test log were independently checked locally.
-
-The original logger at `/home/pi/hp437b-qualification/20261111/.venv` has unchanged runtime bytes, origin, and pinned dependencies. Its shared modules also match the new installation. The existing udev rule is unchanged at SHA-256 `9a103e41be902ef27cc1068b768c68bb6781a5d3f35f70d9657a86c5e64af6be`. No system packages, access grants, service, or other radio program was changed. Dependencies were installed only in the new virtual environment. The preparation did not load the native USB backend, discover/open the adapter, or issue meter commands; injected fakes remain software evidence rather than Pi hardware acceptance.
-
-Local delivery/preflight artifacts remain ignored under `tmp/diagnostics-physical/`; remote preparation logs remain in the new isolated workspace. For the later test, use the existing reconciliation installation's shared lock root, `/home/pi/hp437b-qualification/reconciliation-20261113T233143Z/source/hp437b_automation-0.1.0/tmp/workflow-locks`, through `--workflow-lock-root`, rather than silently creating a second independent lock domain in the new source tree. Fresh prior-worker and other-app checks are still needed immediately before an authorized meter invocation.
-
-## First supervised wspr5 test
-
-The adapter can remain on wspr5 with the existing meter/sensor and unchanged connections. No radio, new hardware, warm-up wait, or zero/CAL is needed for these diagnostic reads. This checks software interaction and reply framing, not instrument calibration or a fresh RF power measurement. Keep the current meter's known provenance/limitations attached to any retained result.
-
-Before the bench run, prepare an isolated source/wheel installation on wspr5 and run its selected offline tests without modifying the normal logger environment or udev rule. Use existing SSH configuration outside the sandbox; do not request a password or alter host access as part of this runner. Check the configured exact resource, expected identification, ordinary-user permissions, and absence of an active prior control worker. USB preflight/open belongs to the freshly confirmed physical invocation, not unattended preparation.
-
-Then request fresh owner confirmation:
-
-- Adapter USB is on wspr5; the same meter `3125U33223`, sensor `MY41094127`, and GPIB/sensor/RF connections are unchanged. Report any change rather than assuming the labels still apply.
-- POWER REF is off, the meter shows live numeric readings, and RMT is off. No trigger/zero/calibration is pending; other control applications are closed.
-- The owner is at the meter for about five minutes and can use PRESET/LOCAL if needed.
-
-Populate ignored setup JSON with `expected_idn` (`HEWLETT-PACKARD,437B,,1.8` for the recorded current meter), `meter_serial`, `sensor_serial`, and a `prepared` dictionary whose true booleans are `power_ref_off`, `live_readings`, `rmt_off`, `no_pending_operation`, `other_control_apps_closed`, and `operator_available`. Retain the observed USB serial `HEWLETT-PACKARD_437B_1.8` and existing address 13 as baseline facts; do not scan or set the address automatically. Use the exact resource and shared workflow-lock directory already configured for the Pi so its lease agrees with other runners, including when the new source is in an isolated directory.
-
-The first case is one default/basic pass. Run the standalone tool from the prepared source tree with `--resource`, `--setup`, `--output`, `--workflow-lock-root`, `--confirm-supervised`, and `--confirm-prior-worker-stopped`. **Omit `--include-latched-reads`** for that first case. Capture raw mask/status/display framing, close, and stop on the first failure. No forced timeout or cable action is part of this test.
-
-After Python closes, request an owner observation without pressing keys: live readings updating, RMT off, and POWER REF off. Record a needed recovery key separately rather than claiming automatic restoration. Only a separately selected later pass should include error/event/status reads; successful basic framing does not prove their clearing semantics. Normal logging remains unchanged throughout.
-
-## Selected wspr5 latch-read pass
-
-After the basic case was completed and committed, the owner selected the error/event latch-read pass. The existing tested `--include-latched-reads` path is prepared in the isolated Pi environment; no new runtime or normal logging change is needed. Software-only readiness checked that installed runtime hashes/pins, the original logger snapshot, and the udev rule still match, and found no active control worker. This preparation did not discover USB devices, open the meter, or read any register. The control-worker check will be repeated immediately before the authorized invocation.
-
-The selected case is one passive seven-query sequence: `*ESE?`, `*SRE?`, `*STB?`, `OD`, `ERR?`, `*ESR?`, then `SM`. Preserve every raw reply in order; `SM` remains last because it can clear resolved error latches. A successful quiet-state pass establishes query framing and the observed values on this setup, not error-queue selection, event read-clear semantics, or behavior under deliberately generated errors. A06 remains open for those untested behaviors. No repeated reads, mask setters, deliberate errors, status clear, reset, zero/CAL, source switch, forced timeout, or retry is part of this selected case.
-
-Use the same exact resource, shared lock root, source-off/idle preparation, one-attempt 20/25-second budgets, and healthy TR3/GTL/raw-close sequence as the basic pass. Stop on the first failure. Before opening, obtain fresh confirmation of the same wspr5 equipment/connections, live readings, RMT and POWER REF off, no pending operation, closed other control apps, and five-minute operator availability with PRESET/LOCAL accessible. After close, obtain a separate no-key final-state observation. The subsequent [selected pass](PI-DIAGNOSTICS-LATCHES-20261113.md) completed seven queries in 0.431 seconds with ERR? 0, ESR 128 (Power On bit), valid SM, accepted cleanup/closure, and separate owner final confirmation. The preparation above retains its original scope; this result does not establish clearing/queue semantics.

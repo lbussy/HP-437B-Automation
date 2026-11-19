@@ -1,7 +1,5 @@
 # ACCEPT-01: Supplied acceptance limits for saved POWER REF captures
 
-Status: implemented locally after RUN-HISTORY-01 delivery at `26969af`; [Python 3.11/3.14 software/reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43492179916). This separate local change evaluates saved evidence without acquisition. Normal logger, CLI, instrument/transport behavior, physical runner source, measurement timing, and dependency pins are unchanged.
-
 ## Operator use and scope
 
 In the local interface, use **Assess saved POWER REF limits**. Select a sealed individual WF-01–WF-03 capture or combined POWER REF suite in the configured run directory. Enter the criteria source/person or specification reference, an optional assessor, the applicable performance limits, and coverage requirements. Press **Create assessment PDF & package**. Results and history identify a separate acceptance assessment rather than a new measurement or rewritten original report.
@@ -31,17 +29,3 @@ The one-page **RF Output Power Test** presents the original measurement time, as
 The existing owning reader validates each source; an exclusive operational capture lock and expected source inventory hash prevent reuse of an active or changed capture. The portable report validator recomputes assessment decisions from the original evidence and stored criteria before publication. Hashes bind bytes, not author/device authenticity. Assessment/report failures retain the source and partial output; there is no automatic retry, resume, measurement repetition, or blind meter reopen. Original pending front-panel confirmation remains pending and continues to block new acquisition; it does not block this report-only action.
 
 The same-origin authenticated `POST /api/acceptance-review` accepts exactly `source_job_id`, `criteria`, and `assessor`. Filesystem paths, resource names, drivers, and hardware commands are not accepted. The optional reporting/PDF dependencies are unchanged. Historical report recovery still regenerates the original report; acceptance is a separate explicit action. Assessment history entries trace the source and cannot be selected as new measurements for run comparison.
-
-## Verification
-
-The guarded full regression passed **1,405 tests**, with three opt-in stress cases skipped. Acceptance cases cover all three injected native readers, completed/incomplete/missing data, unset criteria, inclusive/adjacent decimal boundaries, signed drift, cycle spread, malformed inputs, attribution, coverage gaps and late receipts, source preservation, report lineage, physical/synthetic packages, recalculation after decision tampering, HTTP origin/body limits, and acquisition-free child execution. The initial receipt-window-v1 evaluator withheld a verdict for a normal final read in the legacy WF-03 fixture; the correction below admits that bounded completion while preserving the original report’s validation. Earlier mathematical boundary cases use a separately healthy in-memory test condition rather than weakening that gate.
-
-Hardware-blocked browser checks used saved current-Mac evidence and clearly labelled **illustrative software-check criteria, not DUT specifications**. They produced Not evaluated with no limits, Pass and Fail with different example limits on the same WF-01 capture, and full three-workflow Pass examples. Missing criteria source was refused without starting an attempt. The enhanced one-page suite PDF was rendered and visually inspected; observations and limits appear together. No instrument was opened and no RF setting or measurement was changed. Local generated evidence remains ignored under `output/reports/report-recovery-demo/` and `tmp/acceptance-review/`.
-
-The final 36-case focused acceptance regression passed after the numeric-input safeguard. Source/wheel builds, source-preservation and package audits, Python lint/format, JavaScript syntax, documentation checks, and desktop/mobile/PDF review passed.
-
-## Acquisition-window correction
-
-The first physical profile exercise exposed an assessment bug: the evaluator imposed a receipt deadline even though the logger’s duration limits acquisition starts. A normal read completed 0.123 s after the boundary and incorrectly caused Not evaluated. `acquisition-start-v2` corrects only the post-capture evaluator for WF-01–WF-03, retains the recorded timeout/count/gap/failure checks, and reports the specific coverage reason. The [same sealed capture was reassessed as Pass](../validation/PROFILE-WF01-20261113.md#saved-data-timing-correction) with unchanged criteria, source hashes, and native measurements; all original reports remain intact. No logger, transport, physical runner, sampling, timeout, or RF behavior changed.
-
-Correction verification: **1,450 full-regression tests passed**, with three opt-in stress cases skipped; all 80 focused assessment/profile cases passed. Source/wheel builds, isolated wheel reporting, original-file preservation, legacy/new portable verification, corrected PDF/browser checks, lint/format, documentation checks, and `git diff --check` passed. No new acquisition occurred.

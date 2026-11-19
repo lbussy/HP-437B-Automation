@@ -1,6 +1,6 @@
 # WF-CATALOG-01: Transmitter test catalogue
 
-Definition v1, November 12, 2026. **Catalogue and priorities defined.** [WF-02 now has a synthetic implementation](SUSTAINED-STABILITY-V1.md); its [physical POWER REF integration](WF-02-PHYSICAL.md) is implemented/offline-tested, and the selected Mac run passed capture/audit and owner final-state confirmation. [WF-03](TRANSMISSION-CYCLES-V1.md) now supports synthetic runs and a [completed current-Mac POWER REF case](WF-03-PHYSICAL.md), including owner final-state confirmation. Other new implementations remain open. This document defines the recommended next work, its reports, and useful synthetic/POWER REF development paths. It changes no logger behavior and starts no hardware operation.
+The catalogue defines WF-02–WF-06 measurement objectives, synthetic models, and physical-use boundaries. Synthetic/shared-control implementations are available. Current-meter interaction checks and actual transmitter experiments remain separately scoped.
 
 ## Recommended order
 
@@ -36,7 +36,7 @@ Before capture, resolve and retain:
 
 - Workflow ID/version, mode, unique run ID, operator, DUT model/name/serial, test purpose, UTC time, and software identity. Unknown identity remains unknown; synthetic identities are fictional and conspicuously labeled.
 - Ordered condition IDs and their requested frequency, power setting, signal/modulation mode, source state, dwell, acquisition window, and finite budgets. Record requested, acknowledged, and independently observed conditions separately. An acknowledgement is not independent measurement.
-- Sensor/meter/adapter identity and settings, calibration/zero preparation, warm-up history, sensor factors, measurement point, fixture drawing/description, attenuation or coupling loss versus frequency, applicable ratings, and known issues. Preserve the current meter's supply discrepancy in provenance.
+- Sensor/meter/adapter identity and settings, calibration/zero preparation, warm-up history, sensor factors, measurement point, fixture drawing/description, attenuation or coupling loss versus frequency, applicable ratings, and known issues. Record applicable current equipment limitations in provenance.
 - External source control mode: `manual` with explicit operator acknowledgements, or a future named/validated driver. No arbitrary shell commands or unvalidated radio-control strings in a run definition. Reused POWER REF control remains restricted to its prepared direct-reference mode.
 - Supplied criteria and decision rule, with units, source/revision, comparison point, coverage requirements, and any uncertainty/guard-band policy. Defaults below are proposed development profiles, not transmitter specifications. No limits means **Acceptance: NOT EVALUATED**.
 
@@ -146,20 +146,6 @@ WF-04–WF-06 now also provide an explicit [shared-control fake integration](CON
 
 ## Implementation milestones and completion boundary
 
-| Work item | Deliverable / acceptance boundary | Current status |
-| --- | --- | --- |
-| WF-CATALOG-01 | Prioritized definitions, report contracts, synthetic worked inputs, realistic POWER REF scope, and tracked implementation work | ✅ Definition complete |
-| WF-02 | [Synthetic drift runner, analysis/report, and independent checks implemented](SUSTAINED-STABILITY-V1.md); [physical integration](WF-02-PHYSICAL.md) is implemented/offline-tested and selected bench capture/audit and owner final-state confirmation passed | ✅ Complete (synthetic + current-Mac POWER REF) |
-| WF-03 | [Synthetic five-cycle runner/report and partial/failure checks implemented](TRANSMISSION-CYCLES-V1.md); [physical integration](WF-03-PHYSICAL.md) is offline-tested and selected Mac execution passed five cycles/150 plateau rows, independent audit, and owner final-state confirmation | ✅ Complete (synthetic + current-Mac POWER REF) |
-| DUT-CTRL-01 | [Fake-control foundation and external single-point workflow](EXTERNAL-TRANSMITTER-V1.md) implemented: guarded transmitter/supply/observer contracts, existing logger/fake meter, receipt replay, provenance, and reports. Physical drivers/manual flows and hardware shutdown evidence remain open | ✅ Fake foundation; ▧ Physical open |
-| WF-04 | [Synthetic point-table power-setting workflow](POWER-SETTING-V1.md), targets/decision rules, reports, and fake-control cases implemented; physical evidence requires a prepared source and DUT-CTRL-01 | ✅ Synthetic; ▧ Physical open |
-| WF-05 | [Synthetic exact-point frequency workflow](FREQUENCY-SWEEP-V1.md), factor/loss placement/readback policy, spread/coverage/target reports, and fake-control cases implemented; physical integration requires a prepared source and DUT-CTRL-01 | ✅ Synthetic; ▧ Physical open |
-| WF-06 | [Synthetic observed-voltage workflow](SUPPLY-SENSITIVITY-V1.md), declared supply envelope, nominal/endpoint comparisons, restoration verification, provenance, reports, and failure cases implemented; physical integration requires DUT-CTRL-01 | ✅ Synthetic; ▧ Physical open |
-
 DUT-CTRL-01 should reuse the single-point acquisition/report concepts of WF-01, while providing a separate external-DUT identity and source boundary. It must never toggle POWER REF for a transmitter experiment or reuse a reference-only capture as transmitter evidence. The fake-control foundation is now implemented and exercised; real transmitter/fixture ratings and control details are required only for the corresponding physical test.
 
 Harmonics/spurious emissions, occupied bandwidth/modulation quality, frequency accuracy, PEP/fast keying transients, and return loss/VSWR remain outside this meter-only catalogue. They require appropriate selective, time-resolved, frequency, or directional measurement hardware and separate workflows. Sequential amplifier gain/insertion-loss comparison is another possible later test, but one channel requires a justified stable-source/reconnection procedure or additional measurement paths; it is not a simultaneous two-channel measurement.
-
-## Definition verification
-
-All five committed fictional examples were checked with independent arithmetic for linear means, endpoint drift, actual-time slope, equal-cycle statistics, fixture-plane conversion, target errors, band spread, and voltage comparison. Markdown links/anchors/tables and the five original PDF checksums passed, as did `git diff --check`. A consistency review checked incomplete coverage, missing/negative values, correction application, external-source shutdown, sampling limitations, and the distinction between definitions, simulations, and physical evidence. No application code, logger behavior, dependency, capture, or hardware state changed. The existing software suite was not rerun for these documentation/fixture-only changes.

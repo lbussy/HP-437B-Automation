@@ -1,43 +1,30 @@
-# HP 437B and HP 8482A references
+# Current equipment and references
 
-Updated: 2026-11-11. The user identified an HP 437B power meter and an HP 8482A sensor and requested their manuals be saved locally. The three official PDFs are present, and their sizes and SHA-256 hashes matched the download manifest during the October 31 verification.
+Updated: November 19, 2026.
 
 ## Manual library
 
-| Manual | Part number | Pages | Local original |
-| --- | --- | --- | --- |
-| HP 437B Operating Manual | 00437-90047 | 157 | [Operating manual](../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf) |
-| HP 437B Service Manual | 00437-90076 | 58 | [Service manual](../output/pdf/hp-437b-8482a/HP-437B-Service-Manual-00437-90076.pdf) |
-| 8480 Series Operating and Service Manual covering 8482A | 08481-90173 | 87 | [Sensor family manual](../output/pdf/hp-437b-8482a/HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf) |
+| Manual | Part number | Local reference |
+| --- | --- | --- |
+| HP 437B Operating Manual | 00437-90047 | [Operating manual](../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf) |
+| HP 437B Service Manual | 00437-90076 | [Service manual](../output/pdf/hp-437b-8482a/HP-437B-Service-Manual-00437-90076.pdf) |
+| 8480 Series Operating and Service Manual, covering 8482A | 08481-90173 | [Sensor manual](../output/pdf/hp-437b-8482a/HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf) |
 
-Edition and publisher URL details are in the [download manifest](../output/pdf/hp-437b-8482a/download-manifest.json). The sensor manual is edition 9, August 29, 2025. It is a family manual, not the individual sensor's calibration certificate.
+Publisher editions, source URLs, sizes, and hashes are in the [manual manifest](../output/pdf/hp-437b-8482a/download-manifest.json) and [checksum list](../output/pdf/hp-437b-8482a/SHA256SUMS.txt). These originals are unmodified. Use the operating manual for commands and procedures, the service manual for service/performance work, and the actual sensor label/certificate for correction data and limits. Do not assume modern SCPI syntax.
 
 ## Individual calibration records
 
-The owner supplied these complete, unmodified laboratory records on November 11, 2026. Both certificates report “Passed” and “In Tolerance” as left. These are laboratory-reported results, separate from this project's future bench and automation validation.
-
-| Equipment | Serial number | Certificate | Calibration date | Next due, as listed | Original record |
+| Equipment | Serial number | Certificate | Calibrated | Next due, as listed | Record |
 | --- | --- | --- | --- | --- | --- |
-| HP 437B power meter | 3125U33223 | DXC-2026-3339-001 | 2026-10-15 | 2028-10-15 | [Meter calibration, 4 pages](../output/pdf/hp-437b-8482a/calibration/HP-437B-SN-3125U33223-Calibration-2026-10-15.pdf) |
-| Agilent 8482A power sensor | MY41094127 | DXC-2026-3339-002 | 2026-10-15 | 2027-10-15 | [Sensor calibration, 2 pages](../output/pdf/hp-437b-8482a/calibration/HP-8482A-SN-MY41094127-Calibration-2026-10-15.pdf) |
+| HP 437B meter | 3125U22346 | DXC-2026-3340-001 | 2026-11-11 | 2028-11-11 | [Meter, 4 retained pages](../output/pdf/hp-437b-8482a/calibration/replacement-2026-11-19/HP-437B-SN-3125U22346-Calibration-2026-11-11.pdf) |
+| Agilent 8482A sensor | MY41094127 | DXC-2026-3339-002 | 2026-10-15 | 2027-10-15 | [Sensor, 2 pages](../output/pdf/hp-437b-8482a/calibration/HP-8482A-SN-MY41094127-Calibration-2026-10-15.pdf) |
 
-DXCONNECTION / Valley Precision Instrument Calibration Services issued both records. Original source filenames, sizes, and SHA-256 hashes are retained in the separate [calibration import manifest](../output/pdf/hp-437b-8482a/calibration/import-manifest.json) and [checksum list](../output/pdf/hp-437b-8482a/calibration/SHA256SUMS.txt). The November 11 source filenames identify the supplied files; the certificates themselves are dated October 15.
+DXCONNECTION / Valley Precision Instrument Calibration Services issued these records. The meter certificate reports Passed/In Tolerance as left, with **5.014 VDC** for its +5 V rail, within 4.75–5.25 V. The [current review](validation/REPLACEMENT-CALIBRATION-20261119.md) records numeric results and remaining printed-limit, reference-frequency, DVM-identification, and uncertainty limitations. The repository copy retains source pages 1–4 after owner-directed removal of duplicate pages 5–6; it is not an unmodified complete original.
 
-Use these records alongside the manuals whenever calibration criteria or correction data are needed. In the meter PDF, page 1 is the certificate, pages 2–3 contain adjustment and calibration checks, and page 4 contains the performance test record with limits and results. In the sensor PDF, page 2 contains the serial-specific frequency/calibration-factor table, the stated 99% reference C.F., and typical calibration-factor measurement uncertainties. Verify values directly against the scanned page before using them; text extraction can misread numbers or table alignment. Record the selected frequency, factor, uncertainty, and source page in any future bench procedure.
+## Setup and identification
 
-The meter PDF, page 2, lists **4.498 VDC** for the **+5.0 VDC bus (+/-0.25 V)**, outside the printed tolerance, while the certificate reports a pass. On November 11, 2026, the user reported that the seller/calibrator confirmed the discrepancy was unacceptable. The user plans to exchange the meter after a few development steps with the current unit. This is an owner-reported disposition; no replacement receipt, revised certificate, or project bench verification is recorded. Preserve the report as issued, and do not treat this supply entry as a passing result.
+The meter's laboratory sheets list software **2.0** and HPIB address **13**. Actual firmware/resource discovery, front-panel address, sensor connection, source state, and correction settings require confirmation before a selected hardware run. Project interaction checks for this meter remain pending.
 
-Keep any development observations from the current meter associated with SN 3125U33223 and its known supply discrepancy. Record the replacement's identity and calibration documentation when it arrives, and check relevant setup/compatibility assumptions before relying on its measurements. Record limitations in DUT test results; this equipment follow-up does not block software workflow or reporting development. See the [current project scope](PROJECT-SCOPE.md). Do not assume the current meter's certificate applies to the replacement or that the sensor will also be exchanged.
+The adapter is XyphroLabs **USBGpib V2**, vendor/product **03eb:2065**, with recorded adapter firmware **V2.4**, an Anker USB-C cable, and no established exact PCB revision. Adapter firmware is separate from instrument software. Discover the actual USB descriptor/resource; do not assume it is a stable meter identifier. See [adapter details](validation/ADAPTER-IDENTIFICATION.md).
 
-## Using these references
-
-Use the operating manual for front-panel operation, zeroing, meter calibration, frequency correction, and measurements. Use the service manual for troubleshooting and performance verification. Consult the sensor manual and the individual sensor label or certificate for the applicable limits and calibration data.
-
-The original conversation, retained privately in Generic Radio Stuff as `HP-437B-Documentation--6ae604c9-e5d0-83e8-a89f-0f103663e32b.txt`, turns 1–2, contains an assistant quick-start sequence followed by the user's sensor identification. That sequence has not been promoted to a bench procedure. The chat's closing statement that saving was unconfirmed is historical; the local files and verified manifests now establish that the manuals are saved.
-
-The operating and service manuals are scanned. Use the PDFs, with rendering or OCR as needed. Earlier incomplete extractions remain in Generic Radio Stuff and were not copied here.
-
-
-## Automation work
-
-The [plan](PLAN.md) and [open work](OPEN-WORK.md) are maintained in this project. Sensor-specific calibration factors must come from the individual sensor label or certificate. Serial numbers and individual laboratory calibration records are indexed above. The adapter is present: XyphroLabs USBGpib V2 (owner-reported `V2` marking), USB `03eb:2065`, USB serial string `HEWLETT-PACKARD_437B_1.8`. Initial Mac Python identification returned HP 437B firmware 1.8; see the [run record](validation/MAC-20261111.md). A subsequent [adapter-internal USB query](validation/ADAPTER-IDENTIFICATION.md) returned firmware `V2.4`; the owner reports an Anker USB-C cable, meter GPIB address 13 read from the front panel, and no hardware-revision marking. Exact PCB revision is retained as an accepted metadata limitation, not a qualification blocker. The USB `bcdDevice` value `0x0001` is not a verified hardware revision. The first identification batch used no sensor. The owner subsequently confirmed original meter SN 3125U33223 and sensor SN MY41094127, connected to POWER REF with output off; the [baseline run](validation/MAC-20261111-BASELINE.md) returned one reading/status sequence. Calibrated power and replacement qualification remain pending.
+For internal-reference use, prepare the sensor cable to SENSOR and sensor RF input directly to POWER REF, initially off, with no external source or attenuation. Confirm the actual connector option, warm-up, factors, units, range/filter, duty/offset/REL state, and operator recovery access. A radio measurement needs its own documented load/attenuation path, applicable limits, factors, and uncertainty information. See the [measurement policy](validation/MEASUREMENT-POLICY.md) and [setup checks](validation/REPLACEMENT-ACCEPTANCE.md).

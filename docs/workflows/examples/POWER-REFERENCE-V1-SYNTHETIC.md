@@ -1,7 +1,5 @@
 # POWER REF measurement report: synthetic worked example
 
-**SYNTHETIC DESIGN EXAMPLE — no instrument, radio, reference output, or workflow runner was operated.** This report illustrates [workflow definition v1](../POWER-REFERENCE-V1.md), using a [fictional machine-readable fixture](power-reference-v1-synthetic.json). Its S40 stage is shortened to six count-bounded samples; this is not a five-minute acquisition. The arithmetic is calculated from the fixture, while control/state outcomes are declared examples. This remains a hand-worked design example; the later [synthetic prototype exercise](../WF-01-EXERCISE.md) produces executed bundles separately. The physical runner and full report product remain to be implemented.
-
 ## Identity and outcomes
 
 | Field | Value |

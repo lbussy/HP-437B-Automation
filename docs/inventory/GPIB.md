@@ -9,7 +9,7 @@ The instrument declares SH1, AH1, T5, TE0, L3, LE0, SR1, RL1, PP1, DC1, DT1, C0 
 Sources inspected November 11, 2026:
 
 - A: [USBGpib V2 manual, revision June 9, 2026](https://github.com/xyphro/UsbGpib/blob/88a13830eea3e2d8bf9f6e33123cc1523f42c70a/Tutorials/UsbGpibV2_manual.md), “Technical specifications,” “Using the adapter,” and VISA FAQ. Claims normal USBTMC support for read/write, device clear, trigger, status byte, and service requests, dedicated controller role, and limitations in PyVISA-py. [Pinned project README](https://github.com/xyphro/UsbGpib/blob/88a13830eea3e2d8bf9f6e33123cc1523f42c70a/README.md), “Read termination method,” documents EOI default and configurable CR/LF handling.
-- B: [PyVISA-py 0.8.1 release](https://github.com/pyvisa/pyvisa-py/releases/tag/0.8.1), published September 4, 2025, latest published release reported by GitHub at inspection. [usb.py](https://github.com/pyvisa/pyvisa-py/blob/0.8.1/pyvisa_py/usb.py): USBSession.read/write and USBInstrSession enumeration. [protocols/usbtmc.py](https://github.com/pyvisa/pyvisa-py/blob/0.8.1/pyvisa_py/protocols/usbtmc.py): USBTMC initialization, EOM bulk transfer, automatic REN enable, timeout abort. [sessions.py](https://github.com/pyvisa/pyvisa-py/blob/0.8.1/pyvisa_py/sessions.py): default unsupported clear/read_stb/gpib_control_ren/gpib_command/IFC; assert_trigger raises NotImplementedError. USBSession/USBInstrSession in this release do not override those methods.
+- B: [PyVISA-py 0.8.1 release](https://github.com/pyvisa/pyvisa-py/releases/tag/0.8.1), published September 4, 2025, the version pinned by this project. [usb.py](https://github.com/pyvisa/pyvisa-py/blob/0.8.1/pyvisa_py/usb.py): USBSession.read/write and USBInstrSession enumeration. [protocols/usbtmc.py](https://github.com/pyvisa/pyvisa-py/blob/0.8.1/pyvisa_py/protocols/usbtmc.py): USBTMC initialization, EOM bulk transfer, automatic REN enable, timeout abort. [sessions.py](https://github.com/pyvisa/pyvisa-py/blob/0.8.1/pyvisa_py/sessions.py): default unsupported clear/read_stb/gpib_control_ren/gpib_command/IFC; assert_trigger raises NotImplementedError. USBSession/USBInstrSession in this release do not override those methods.
 - D: [development changelog](https://github.com/pyvisa/pyvisa-py/blob/main/CHANGES) lists added USBTMC read_stb/assert_trigger/gpib_control_ren under0.9.0 unreleased at inspection. Recheck release status during Phase 2. Development functionality is a research lead, not accepted released support.
 
 | Profile | Adapter evidence | Backend0.8.1 evidence | Phase 2 implication |
@@ -111,13 +111,6 @@ Remote enable — `REN asserted then meter listen address; RL1 interface capabil
 
 Go to local — `GTL addressed to meter`.
 
-- Roles, prerequisites, response, and effects: Returns front-panel control without clearing remembered lockout; RMT off, configuration preserved. Triggered operation returns to normal free-run according to Triggering.
-- Implemented API: `Instrument.bus("G008")` and automatic healthy `Instrument.close()`, through negotiated profile `xyphro-usb488-gtl-v1`; see [evidence and physical cases](../validation/AUTOMATIC-LOCAL.md). Native VISA control_ren remains unavailable.
-- Transport evidence: T10 (project-local negotiated extension), with native T5 limitations (profiles above).
-- Qualification: [Mac ID and logger normal-close cases](../validation/AUTOMATIC-LOCAL.md) passed, including owner-observed local controls without PRESET/LOCAL. Lockout behavior, other hosts, and replacement acceptance remain untested.
-- Source: [00437-90047, §3-25; Triggering3-103/PDF 133, printed 3-35/PDF 65](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
-- Open issue: A09.
-
 ### G009
 
 Local lockout — `LLO`.
@@ -194,12 +187,6 @@ Serial poll enable / status byte — `SPE then meter talk address`.
 - Future qualification: Compare one-byte poll to *STB? and verify latch/buffer behavior.
 - Source: [00437-90047, §3-30, printed 3-38/PDF 68](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=68).
 - Open issue: A06.
-
-The subsequent [serial-poll investigation](../validation/SERIAL-POLL-INVESTIGATION.md) provides a fake-tested one-shot USB488 prototype only. Native normal-backend support remains absent; firmware can hide an internal GPIB timeout and merge cached SRQ bits, so a valid adapter reply is not independent proof of a fresh successful poll.
-
-The [single quiet-state wspr5 USB488 diagnostic](../validation/PI-DIAGNOSTICS-SERIAL-POLL-20261114.md) completed matching status-zero control/interrupt frames and following ordinary communication, with separate owner final confirmation. This is scoped USB exchange/followup evidence, not independent proof of fresh successful GPIB polling or status lifecycle; G015 normal support remains guarded.
-
-The subsequent [controlled entry-error experiment](../validation/SERIAL-POLL-NONZERO-FAKES.md) is implemented and fake/installed-package tested, with one fixed FR-3GZ condition and one native poll. Its [selected Pi pass](../validation/PI-DIAGNOSTICS-POLL-ENTRY-20261114.md) subsequently observed native status 4 correlated with ASCII 4/4 before and after polling, then SM 82→0/ESR 16→0 and quiet cleanup. Owner final state/settings were confirmed. This scoped correlation does not promote general G015 or fresh zero/CAL completion support.
 
 ### G016
 

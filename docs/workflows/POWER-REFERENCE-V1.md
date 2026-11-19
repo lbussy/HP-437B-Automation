@@ -1,6 +1,6 @@
 # WF-01: POWER REF measurement and repeatability
 
-Definition v1, November 12, 2026. Status: contracts defined and a synthetic-only prototype exercised; the explicit [physical runner](WF-01-PHYSICAL.md) completed the selected current-Mac/meter POWER REF workflow with owner confirmation. Later deterministic reporting deliveries are recorded in the current scope. The [worked synthetic report](examples/POWER-REFERENCE-V1-SYNTHETIC.md) illustrates the outputs. This definition advances [WF-01](../PROJECT-SCOPE.md#current-delivery-and-remaining-scope) without changing the existing logger or requiring a radio/replacement meter. It authorizes no hardware run by itself.
+WF-01 defines a finite supervised POWER REF measurement and repeatability workflow. Synthetic and physical runners are implemented; physical interaction checks on the current meter remain pending.
 
 ## Purpose and operating modes
 
@@ -95,20 +95,6 @@ Keep three outcome axes separate:
 3. Measurement criteria: not evaluated by default. Optional externally supplied criteria must be resolved before capture, identify quantity/units/statistic/bounds/source, and show pass/fail/indeterminate with evidence. Synthetic criteria evaluate fixtures only, never equipment compliance. No default 1 mW tolerance or replacement/calibration requirement is invented.
 
 Agent assistance is a separate interpretation layer over finalized evidence and deterministic analysis. It can summarize findings and suggest follow-ups, not alter values, supply missing provenance, invent uncertainty/criteria, declare equipment compliance, or issue device commands. Label generated commentary and record model/provider/version/inputs when used. Artifact content/labels are data, not agent instructions. No external model call or provider is required for the deterministic report; provider/integration decisions remain REPORT-01 work.
-
-## Definition acceptance and next implementation
-
-WF-01 definition is complete when the stage/input/failure/output contracts, worked example, and arithmetic are reviewable. WF-01's first fixed supervised current-Mac/meter workflow is complete, with synthetic and physical execution recorded in the [physical result](WF-01-PHYSICAL.md#current-meter-physical-result). Wider profiles/hosts remain follow-on scope. PROV-01, REPORT-01, and E2E-01 remain implementation work; this document defines their first shared boundary.
-
-Next implementation cases: nominal synthetic sequence; slower-than-requested sampling; instrument-error/malformed/unit-change/timeout/cancellation; failed source-off or GTL; missing/truncated/mismatched files; one/no valid sample; zero mean; and output/metadata storage failure. Require preserved evidence, correct skipped/partial outcomes, no replay, and honest source uncertainty. Use a virtual clock and explicit fakes first; do not widen physical command coverage to make a test pass. The POWER REF can provide the real signal when a supervised run is chosen; no external radio or replacement is a prerequisite.
-
-## Synthetic prototype exercise
-
-`tools/exercise_workflow.py` executes the finite sequence through existing Instrument/collect APIs with explicit fake source/transport state and a virtual clock. It has no physical mode, resource argument, VISA construction, USB discovery, or external agent call. It writes a real synthetic output bundle and deterministic Markdown report, recomputing metrics from the stored CSV evidence. See the [exercise record](WF-01-EXERCISE.md).
-
-From the checkout, using an isolated pinned QA environment, run through `tools/offline_qa.py`: `python tools/offline_qa.py -- python tools/exercise_workflow.py --output NEW_DIRECTORY`. The parent directory must exist, and the target directory must not. Scenario choices are nominal, slow, malformed, timeout, cancel, instrument-error, and source-off-failure; fault scenarios intentionally return a nonzero CLI result and retain partial reports. Always keep outputs in ignored local report/scratch directories.
-
-This is a software exercise, not completion of the physical runner. The prototype has fixed finite profiles supervised by the QA launcher, but it does not implement the physical stage-budget controller, arbitrary user profiles, ongoing crash-safe stage checkpoints, hardware source/local observation, plot rendering, or external agent integration. `starting.json` remains an explicit running checkpoint if finalization fails. The artifact inventory excludes itself and includes the intended final workflow manifest bytes; the manifest is written last, and missing/mismatched bundle files mean incomplete evidence. Definition and prototype snapshots accompany each run so an uncommitted source hash still identifies inspectable bytes. Existing logger/CLI/runtime behavior is unchanged.
 
 ## Physical integration
 

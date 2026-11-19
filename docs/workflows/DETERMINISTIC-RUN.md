@@ -1,6 +1,6 @@
 # Human-started workflows with deterministic reports
 
-Implemented November 12, 2026. The owner selected **human-started tests and deterministic reports only for now**. AI/provider integration is deferred. This feature joins the existing WF-01 capture, PROV-01 import, and REPORT-01 calculations/plots without requiring an analysis-file handoff. No model, API key, external provider, or automatic test scheduling is involved.
+Implemented. The owner selected **human-started tests and deterministic reports only for now**. AI/provider integration is deferred. This feature joins the existing WF-01 capture, PROV-01 import, and REPORT-01 calculations/plots without requiring an analysis-file handoff. No model, API key, external provider, or automatic test scheduling is involved.
 
 ## One-command synthetic test
 
@@ -66,14 +66,6 @@ The richer-report directory contains:
 The existing REPORT-01 fact packet/prompt artifacts remain for format compatibility, but no agent response is supplied or generated. Report inventory `agent_analysis` is `not_supplied`; job `analysis` is `deterministic_only`. All values are computed from evidence. AI narration, model credentials, provider processes, and network clients are absent from the publisher.
 
 The root inventory is the job completion boundary. A partial directory or `job.json` without a valid root inventory is not a completed job. Outputs are never overwritten. Preserve failed output for diagnosis, and choose a new report path when reporting a sealed capture again. A report failure does not require repeating a physical measurement. Original captures, reports, sidecars, calibration references, and operator supplements stay untouched.
-
-## Verification and examples
-
-The ignored local exercise in `output/reports/deterministic-run-20261112/` contains seven fresh, one-command synthetic runs and deterministic reports from all nine retained WF-01 bundles. All 16 produced richer reports/plots with no AI calls or hardware I/O. Expected failed/interrupted executions stayed failed/interrupted; all 165 retained source files and the original provenance records stayed unchanged.
-
-The physical sample report is at `retained-physical-completed/report/report.html` beneath that exercise directory. It contains the saved 299-row sustained/308-row total physical capture, plots, provenance, and limitations. The nominal synthetic sample is `fresh-nominal/report/report.html`; the partial timeout example is `fresh-timeout/report/report.html`. They are locally generated artifacts, not committed measurements or new physical tests.
-
-Automated checks cover all seven scenarios; root/child inventories and source preservation; absent AI processes/responses; path/conflict/dependency preflight; unsealed capture refusal; CLI status behavior; plot formats; and fake physical closure-before-reporting/failure-without-reacquisition. **Local verification:** 581 tests passed with stress enabled on Python 3.14. A clean, non-editable wheel installation passed all 38 deterministic-publication and fake-physical tests. Ruff, formatting, source/wheel builds, package-content checks, Markdown links, publisher PDF hashes, and `git diff --check` passed. The 16 job inventories were reverified, with no generated agent responses. CI reporting checks include the new deterministic suite and the physical fake tests; implementation commit `786d7a5` is pushed to `devel`, with [software/reporting CI passing](https://github.com/lbussy/HP-437B-Automation/actions/runs/43249946227) on Python 3.11 and 3.14.
 
 ## One-page RF result sheet
 

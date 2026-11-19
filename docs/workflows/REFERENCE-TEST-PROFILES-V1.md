@@ -47,11 +47,3 @@ All actions retain the existing loopback Host, session-token, cookie, same-origi
 | `POST /api/reference-profile-assessment` | `source_job_id`, `profile_key`, `assessor` |
 
 `GET /api/state` lists valid saved reference profiles and loading issues separately from existing fake DUT profiles. Run snapshots expose the selected profile, assessment outcome/error, and readiness. Automatic assessment artifacts are available through the existing authenticated route under `assessment/report.pdf`, `assessment/results.json`, and `assessment/package.zip`. The original `report.pdf` and `package.zip` continue to refer to original measurements.
-
-## Verification boundary
-
-Tests exercise immutable revisions, schema/limit/source validation, explicit source/preparation gates, snapshot tampering, single/combined fake captures, automatic one-page assessment/package verification, no-criteria outcomes, operator precedence, boundary cancellation, HTTP refusal, and assessment-publication failure followed by report-only retry. Existing saved physical-format captures exercise each native reader without reopening equipment. Current results and browser evidence are recorded in [VALIDATION](../VALIDATION.md).
-
-Final local verification: **1,433 full-regression tests passed**, with three opt-in stress cases skipped; all 27 focused profile tests passed. Source/wheel builds, isolated wheel report generation, browser/PDF review, four assessment package audits, source preservation, lint/format, JavaScript syntax, documentation checks, and `git diff --check` passed. [Current-Mac WF-01 profile-started bench execution](../validation/PROFILE-WF01-20261113.md) now completed with automatic report delivery and owner final-state confirmation; a mistaken receipt-window assessment was corrected to Pass using the same data and criteria; other physical profile paths remain separate.
-
-Delivered to `devel` at `3ce97b3`; [all four Python 3.11/3.14 CI jobs passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43498456070). The initial receipt-window verdict is retained historically, alongside the corrected acquisition-start-v2 assessment. Normal logging is unchanged.

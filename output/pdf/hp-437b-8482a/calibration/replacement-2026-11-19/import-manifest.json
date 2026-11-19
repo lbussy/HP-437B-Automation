@@ -1,0 +1,36 @@
+{
+  "imported_on": "2026-11-19",
+  "source": "Owner-supplied calibration PDF for current HP 437B SN 3125U22346.",
+  "issuer": "DXCONNECTION / Valley Precision Instrument Calibration Services",
+  "preservation": "Owner-directed page selection: the repository PDF retains source pages 1\u20134 and omits duplicate pages 5\u20136. Retained page content is unchanged. Source and stored-file hashes, sizes, and page counts are recorded separately. The supplied source outside the repository is untouched.",
+  "files": [
+    {
+      "file": "HP-437B-SN-3125U22346-Calibration-2026-11-11.pdf",
+      "source_filename": "20261119 HP-Agilent 437B Calibration.pdf",
+      "model": "437B",
+      "serial_number": "3125U22346",
+      "certificate_number": "DXC-2026-3340-001",
+      "pages": 4,
+      "calibration_date": "2026-11-11",
+      "next_calibration_due": "2028-11-11",
+      "bytes": 1273794,
+      "sha256": "da20df01ea2c6f7d0bf74cd271964c19848b54703bff01cd34409c53001429c7",
+      "retained_source_pages": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "removed_source_pages": [
+        5,
+        6
+      ]
+    }
+  ],
+  "source_file": {
+    "filename": "20261119 HP-Agilent 437B Calibration.pdf",
+    "pages": 6,
+    "bytes": 1787814,
+    "sha256": "ebb7a54c826efb90ddc6501d97db9ea530a2daa28daf91f06bff6c49cbd072b0"
+  }
+}

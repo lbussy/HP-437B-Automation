@@ -1,6 +1,6 @@
 # Operator-guided radio sweeps
 
-Status: delivered to `devel` at `d64617f`, November 13, 2026; [Python 3.11/3.14 software/reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43433860223). [Current-Mac fixed POWER REF browser execution passed](../validation/GUIDED-POWER-REF-20261113.md), with thirty valid readings and owner-confirmed final state; external-radio frequency/drive acceptance remains separate. The guided runner uses the production meter logger, with a fresh operator confirmation before every point. The earlier WF-04/WF-05 synthetic workflows retain their existing five-point contracts.
+The software path is implemented. Physical interaction checks on the current meter, SN 3125U22346, remain pending. Configure the actual setup and obtain fresh operator confirmations before selected hardware use; simulation remains separate from physical evidence.
 
 ## Test series
 

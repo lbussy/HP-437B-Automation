@@ -1,7 +1,5 @@
 # RUN-HISTORY-01: Saved runs and POWER REF comparison
 
-Status: implemented locally. REPORT-RECOVERY-01 was first committed/pushed at `60e7d33`; [all four Python 3.11/3.14 software/reporting CI jobs passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43489321863). This subsequent history implementation is a separate local change. Normal logging, physical capture runners, instrument/transport behavior, and dependency pins are unchanged.
-
 ## Browse and inspect
 
 **Saved run history** replaces the recent-five list in the local operator interface. It lists all recognized jobs in the configured run directory, twenty per page, with filters for measurements, report regenerations, or both. Each entry retains its start time, original operational outcome, job ID, workflow selection, and available PDF/package links. Report attempts show their source job ID and cannot be selected as new measurements. Refresh history after a job finishes; browsing never starts or retries work.
@@ -25,11 +23,3 @@ Mean changes are withheld when any selected capture is incomplete, physical/synt
 History/details/comparison perform local reads only, apart from obtaining the existing operational capture lock. They spawn no capture/report worker, contact no meter/backend/provider, and never alter sealed captures, report packages, or operator attestations. The loopback service's existing Host, session-cookie/token, same-origin, bounded JSON, job-ID validation, and artifact checks apply. The browser cannot supply filesystem paths or hardware endpoints.
 
 The authenticated JSON actions are `POST /api/run-history` with `offset` and `category`, `POST /api/run-details` with `job_id`, and `POST /api/run-comparison` with `job_ids` and `workflow`. There is no automatic monitoring, reacquisition, export, report regeneration, or criteria editing in these read actions. Table regions are keyboard-focusable and scroll horizontally at narrow widths; numeric values remain on one line.
-
-## Local verification
-
-Guarded tests cover all three injected physical workflow readers, raw-CSV mean/zero/count oracles and source preservation, report-attempt lineage, filters/pagination, invalid/missing/changed evidence, closed-source locks, attestation binding, same-acquisition refusal, exact Decimal changes, partial/mixed-mode/unknown/different-context exclusions, missing workflows, and HTTP session/body boundaries.
-
-Browser checks use the existing hardware-blocked report-only demo and three saved physical-format bench captures. Completed WF-01 readings compare descriptively; the cancelled WF-01 retains its values but withholds mean changes; WF-02 selection is refused when the cancelled run never captured it. Saved regenerated PDFs/packages remain accessible through history, while their attempts cannot be selected as measurements. These are saved-evidence/software checks and add no new physical measurements. Raw UI/audit artifacts remain ignored under `tmp/run-history/` and `output/reports/report-recovery-demo/`.
-
-The full hardware-blocked regression passed **1,367 tests**, with three opt-in stress tests skipped. Three additional native capture-lock/attestation cases passed separately after collection of that full run. Lint, formatting, JavaScript syntax, documentation checks, and source/wheel builds passed. The saved-data audit preserved all **651 original job files** and **248 copied capture files**, and independently recomputed the completed WF-01 mean difference from CSV with 50-digit Decimal arithmetic (agreement within 1e-28 W). Final desktop/mobile review disposition: **ship**, no material fixes.

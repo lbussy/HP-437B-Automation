@@ -1,10 +1,10 @@
 # Python interface and logging
 
-Phase 2 software milestone, November 11, 2026. The package provides validated command encoding, typed response parsing, serialized acquisition, a pinned open-source VISA transport, and finite CSV sessions. Hardware qualification follows [Phase 3](VALIDATION.md).
+The package provides typed command encoding, response parsing, serialized acquisition, bounded worker shutdown, and finite CSV sessions. See [current validation](VALIDATION.md) for equipment-specific checks.
 
 ## Installation and checks
 
-Python 3.11+ is the project baseline. Local software checks used Python 3.14.10 on macOS ARM64. The CI workflow targets Linux Python 3.11 and 3.14; consult its actual run before claiming CI success. Current-unit Mac measurement/logging and named recovery cases are recorded below. Current-unit Pi physical cases are recorded separately; actual replacement acceptance on both hosts remains pending.
+Python 3.11+ is the project baseline. The CI workflow targets Linux Python 3.11 and 3.14; inspect its actual result before claiming CI success. Physical interaction checks on the current meter remain pending on both selected hosts.
 
 From a checkout:
 
@@ -18,7 +18,7 @@ python3 -m venv .venv
 .venv/bin/python tools/offline_qa.py -- .venv/bin/python -m build --no-isolation
 ```
 
-The offline QA launcher blocks inspected VISA/USB/serial entry points before Python application imports, inherits protection in ordinary exec/spawn children, disables automatic pytest plugins, and supervises the owned process group. It is an accident guard, not containment of arbitrary native code. The suite requires this launcher. Set `HP437B_STRESS=1` to opt into bounded synthetic campaigns. `HP437B_QA_DEADLINE` can impose a shared Unix-time task deadline; campaigns stop before a thirty-minute reserve, and `--final` permits final verification within that reserve. The default command ceiling is 180 seconds. See the [offline qualification record](validation/OFFLINE-QUALIFICATION-RESULTS.md).
+The offline QA launcher blocks inspected VISA/USB/serial entry points before application imports and supervises spawned processes. It is an accident guard, not containment of arbitrary native code. Use it for software tests. Set `HP437B_STRESS=1` for opt-in bounded synthetic campaigns.
 
 Runtime pins are PyVISA 1.16.2, PyVISA-py 0.8.1, and PyUSB 1.3.1. `requirements-dev.lock` also pins transitive and development packages for the software-check environment. The project uses the `@py` backend exclusively. A working libusb installation and appropriate device permissions are prerequisites for USB access. On a Mac, prepare libusb for the Python architecture in use; on Raspberry Pi OS, prepare libusb and appropriate USB device permissions. Those are Phase 3 host setup tasks. Keep any Linux kernel USBTMC driver contention distinct from device permissions and record the actual solution.
 
@@ -49,7 +49,7 @@ The resource above is a placeholder. Obtain the actual identifier during explici
 
 Choose `--count` or `--duration` (seconds). The default is ten samples, one-second start-to-start spacing, dBm, and a ten-second operation timeout. `--interval 0` requests the next sample immediately after the preceding one. Duration limits the start of acquisitions; the last operation can extend beyond that duration by its timeout. An overrun starts the next acquisition without accumulating a catch-up backlog, then rebases its next target on the actual start time.
 
-A session reserves a new CSV and `<name>.csv.session.json` before opening the transport. Existing files are protected. Choose an existing writable parent directory. The session explicitly identifies the instrument, sends RL0 and LG/LN, consumes a setup TR2/read, captures SM after that measurement has updated status, then performs serialized TR2/read pairs for CSV rows. The setup acquisition is retained in metadata and excluded from the requested row count. It preserves existing calibration, sensor factors, offset, duty, averaging, and range settings. Consequently CSV values are the meter's configured display-equivalent readings. Record the intended signal path, correction values, frequency, factors, and averaging in the bench record; the initial SM records flags/range/filter, rather than a complete numerical configuration. Full measurement policy remains DEC-02.
+A session reserves a new CSV and `<name>.csv.session.json` before opening the transport. Existing files are protected. Choose an existing writable parent directory. The session explicitly identifies the instrument, sends RL0 and LG/LN, consumes a setup TR2/read, captures SM after that measurement has updated status, then performs serialized TR2/read pairs for CSV rows. The setup acquisition is retained in metadata and excluded from the requested row count. It preserves existing calibration, sensor factors, offset, duty, averaging, and range settings. Consequently CSV values are the meter's configured display-equivalent readings. Record the intended signal path, correction values, frequency, factors, and averaging in the bench record; the initial SM records flags/range/filter, rather than a complete numerical configuration. See the [measurement policy](validation/MEASUREMENT-POLICY.md).
 
 ## CSV and provenance
 
@@ -104,8 +104,6 @@ The driver serializes complete query/acquisition/binary transactions. It awaits 
 
 VISA runs in a spawned worker process. Each RPC has a monotonic deadline. If a dispatched read exceeds that deadline, the parent allows up to one additional second for the existing backend read/abort handling to finish before disposing the worker. This separate failure-shutdown allowance does not extend the deadline for accepting a measurement: a late successful reply is discarded, the timeout still fails the acquisition, and the Instrument remains uncertain. Successful reads, native read budgets, logging defaults, and non-read timeout behavior are unchanged. An error, timeout, or cancellation still disposes the worker, with existing bounded process cleanup (up to approximately one further second). Terminating the worker cannot retract an accepted instrument command or prove that the meter is idle. No new parent recovery command, automatic retry, reset, zero, reference restoration, or status query is sent during shutdown; the backend may complete its existing USB abort sequence.
 
-`VisaTransport.read_deadline_cleanup` records the extra wait's budget, elapsed time, and whether a worker error, discarded late result, disconnection, or still-busy worker was observed; it is `None` when this path was not used and resets on open. A worker error alone does not prove USB abort completion or permit reusing the uncertain Instrument. The failed CSV/session behavior is unchanged. Physical evidence and the distinction between completing abort during failed-read shutdown and repairing an already wedged adapter are tracked in the [Pi investigation](validation/PI-ONLY-RECOVERY.md#production-integration-release).
-
 The instrument enters uncertain state after an interrupted/failed transaction and rejects further transactions. Reconcile the device and message stream explicitly using a Phase 3-approved procedure; reopen the transport if needed. `acknowledge_external_recovery(confirmed=True)` then clears the software uncertainty and requires units/firmware to be re-established. A closed Instrument requires a new instance. Output preflight failures retain caller ownership of an already-connected library transport; after successful file reservation, collection owns cleanup. Keep separate driver instances away from the same physical device during acquisition.
 
 ## Coverage and qualification
@@ -114,33 +112,9 @@ Software coverage is 78 implemented/tested command or syntax variants and 40 exp
 
 Deferred commands cover CT/ET/SN table operations, identification aliases, bare LP, legacy RV/@1/@2 framing/restore, reset/self-test/menu operations, and DF. Each guard cites the relevant [A01–A09 source issue](inventory/AMBIGUITIES.md). RF table reference writes use the detailed documented syntax and require explicit confirmation; structured table traversal/restore remains deferred. The public library uses source-backed candidate grammar pending actual firmware/transport validation.
 
-The initial Mac batch established resource access, identification, and operator-confirmed local restoration. Subsequent records establish units/status framing, TR2/read, reference logging, and one named timeout/manual-recovery case; retain their version/host/setup limits. Record the actual meter and sensor identities; qualify the replacement meter separately from current-unit observations with the known supply discrepancy.
-
-## Phase 3 host-access observation
-
-The November 11 [Mac identification batch](validation/MAC-20261111.md) found that the restricted execution process could see macOS USB registry information while PyUSB enumerated no adapter. Read-only discovery outside that restriction found the adapter, and the pinned production transport then returned HP 437B firmware 1.8. Keep process access separate from libusb installation, device permissions, and backend compatibility; do not change host security settings or dependency pins to work around this observation. Subsequent Mac qualification records cover reference logging and one manual recovery path; Pi/replacement acceptance remains pending.
-
-## Qualified short reference session and local return
-
-The [November 11 Mac short session](validation/MAC-20261111-SHORT-LOG.md) produced three valid reference readings, complete CSV/metadata, and a passing existing-file protection check. This is current-meter evidence, not sustained logging, real-radio input, or replacement/Pi acceptance. The logger uses one connection for the whole run. The new [automatic-local extension](validation/AUTOMATIC-LOCAL.md) negotiates Go To Local for XyphroLabs `03eb:2065` and requests it before closing a healthy Instrument session. Identification and a production reference-off logger session passed on the current Mac/unit, including owner confirmation of local control without PRESET/LOCAL. Keep the operator available for failure recovery. Unknown adapters/capabilities still require manual restoration. Failed or uncertain instrument transactions skip automatic local return. Automatic failed-transfer recovery remains unqualified; the [manual USB-reconnect recovery case](validation/FAILURE-RECOVERY.md) is separately verified. Merely closing USB does not prove local restoration.
-
-The extension is project-local code over the exact pinned backend session and its existing PyUSB handle; PyVISA-py itself is unchanged. It validates adapter identity, interface, capability/status framing, and GO_TO_LOCAL acceptance under the worker deadline. Logger sidecars include `local_return` with accepted/failed request evidence; a cleanup failure marks the session failed. USB acceptance is distinguished from front-panel verification. Cleanup can consume an additional operation timeout before bounded worker disposal. No reference-source switching or failed-transfer recovery is part of Go To Local.
-
-Normal cleanup explicitly sends `TR3` before USB488 GTL: the initial GTL-only path cleared RMT but could leave TRIGGER HOLD displayed. The [corrected physical cases](validation/AUTOMATIC-LOCAL.md#p3-r10-corrected-results-and-final-reassessment) verify standby false and numeric display after close, followed by owner confirmation. Sidecars add `instrument_cleanup` to distinguish the free-run command from the separate local request. Failed TR3 suppresses GTL and fails cleanup; uncertain transactions send neither. `bus("G008")` remains a pure GTL operation and does not imply TR3.
-
-## Qualified remote reference control
-
-The [Mac unit/reference batch](validation/MAC-20261111-CONTROL.md) verified LG/LN restoration and `command("OC0")` / `command("OC1", confirmed=True)` on the prepared internal reference/sensor path, ending source off and live local. No manual source switching is required for a procedure that explicitly uses this route and verifies its final state. The generic logger preserves source state; its TR3/GTL cleanup does not turn POWER REF off. Keep source control explicit and separate from uncertain-state recovery.
-
-## Qualified interruption and manual failure recovery
-
-The [November 11 failure cases](validation/FAILURE-RECOVERY.md) verified a single SIGINT sent to the CLI between completed reads: exit 130, one retained valid row, interrupted final metadata, healthy TR3/GTL cleanup, and fresh-session acquisition. An induced 0.5-second deadline during a real TR2/read failed after 0.504 seconds, saved a blank-value failed row and failed sidecar, disposed the worker, blocked reuse before extra I/O, and skipped normal cleanup commands. The configured setup timeout and harness override were recorded explicitly; the induced deadline is not evidence of a spontaneous meter fault.
-
-For that tested timeout, operator-assisted recovery used only adapter USB disconnect/reconnect with meter power retained and POWER REF off, followed by fresh identity, status, complete acquisition, corrected free-run/local cleanup, independent free-run/display verification, and owner confirmation. This is a qualified named manual procedure on the recorded setup, not unattended recovery or device-clear support. Do not replace the physical/protocol reconciliation with reopening or `acknowledge_external_recovery` alone, and do not silently retry.
-
 ## Raspberry Pi USB permissions
 
-The [Pi qualification record](validation/PI-QUALIFICATION.md) found the XyphroLabs `03eb:2065` USB device root-owned without user write access on Debian 13.7. PyUSB/libusb needs read/write access to its `/dev/bus/usb` node; access to `/dev/usbtmc0` alone does not supply that. The owner authorized a permanent vendor/product-scoped rule, provided in [70-hp437b-usbgpib.rules](../config/udev/70-hp437b-usbgpib.rules), granting the existing `plugdev` group mode 0660. This grants members access to matching adapters, rather than granting all users access or running the logger as root.
+PyUSB/libusb needs ordinary-user read/write access to the adapter’s `/dev/bus/usb` node. The supplied [vendor/product-scoped udev rule](../config/udev/70-hp437b-usbgpib.rules) grants the `plugdev` group mode 0660 access to matching `03eb:2065` adapters. Review actual host group membership and permissions before use; `/dev/usbtmc0` access alone is insufficient.
 
 On a Linux host with that group, review the rule, confirm the logging account is already a member (`id`), and install it with administrator authorization:
 
@@ -149,37 +123,9 @@ sudo install -m 0644 config/udev/70-hp437b-usbgpib.rules /etc/udev/rules.d/70-hp
 sudo udevadm control --reload-rules
 ```
 
-Reconnect only the adapter USB cable while no control session is open, or trigger a change event for the specifically identified USB sysfs device. Inspect the current device node after enumeration and verify ordinary-user read/write access before opening it. USB bus/device numbers change across reconnects. Any group-membership change is a separate host administration step and may require a fresh login; no such change was needed on the tested Pi. Removing the installed rule, reloading rules, and reconnecting reverses this configuration. Do not overwrite an existing rule without review.
+Reconnect only the adapter USB cable while no control session is open, or trigger a change event for the specifically identified USB sysfs device. Inspect the current device node after enumeration and verify ordinary-user read/write access before opening it. USB bus/device numbers change across reconnects. Any group-membership change is a separate host administration step and may require a fresh login.  Removing the installed rule, reloading rules, and reconnecting reverses this configuration. Do not overwrite an existing rule without review.
 
-On this Pi the kernel `usbtmc` driver was initially bound. The pinned PyVISA-py USB path detaches interface 0 when opening, then disposes resources on close without explicitly reattaching the kernel driver. The identification run succeeded with ordinary-user permissions after rule activation; no module blacklist, service change, or manual unbind was required. Record binding/reconnect behavior separately from instrument TR3/Go To Local cleanup. This identification result does not qualify the remaining Pi logging/recovery cases.
-
-## Pi-only recovery candidate status
-
-The [USB port-reset experiment](validation/PI-ONLY-RECOVERY.md) is not a qualified recovery procedure: healthy reset verification passed, but the post-timeout run was followed by loss of Pi reachability and an owner restart before protocol verification. Cause remains unproven. No reset command or implicit retry has been added to this package; retain uncertainty and the documented manual routes. USBTMC/device clear remains separately guarded while its source-backed procedure is prepared.
-
-The later explicit USBTMC-clear candidate is implemented only as experimental `hp437b.usbtmc_clear.clear_interface`, requiring exclusive caller ownership and an outer bounded worker. Eighteen targeted tests passed in that 255-test source/installed candidate baseline, and a healthy clear/fresh protocol check passed, but post-timeout recovery failed its USB handshake. It is not exposed by the normal bus API or CLI and is not a recommended automatic recovery handler. The [current manual isolation investigation](validation/PI-ONLY-RECOVERY.md#r3-failed-session-clear-result-and-next-manual-route) retains its separate physical gate.
-
-## Qualified manual Pi-only recovery
-
-The [P3-PI-R4 case](validation/PI-ONLY-RECOVERY.md#p3-pi-r4-accepted-manual-pi-only-recovery) passed once on the current meter/sensor/Pi setup without moving USB to Mac or rebooting Pi. This is a physical operator procedure, not an automatic logger recovery feature:
-
-1. Let the failed logger exit and its worker/resources close. Keep the meter powered and POWER REF off; retain failed CSV/sidecar files.
-2. Disconnect both adapter USB and its rear GPIB connection for 30 seconds, leaving sensor/RF wiring unchanged.
-3. Reconnect GPIB securely, then USB directly to Pi, and allow enumeration (the test procedure allowed 15 seconds).
-4. Require the correct discovered USB identity/access, fresh 437B identification/status, a complete source-off acquisition, corrected TR3/GTL cleanup, and live local display/RMT off/reference off before resuming. The linked case records the exact API sequence and independent SM/OD check.
-5. Use a new Instrument and a new output filename for subsequent logging; do not clear uncertainty on the failed object or blindly retry its acquisition.
-
-The observed route worked, but the long operator-response gap prevents a necessity, minimum-step, latency, or repeatability claim. USB-only reconnect and software-only clear did not pass their failure cases. The experiment does not establish that both disconnections are essential or diagnose why they helped. Final replacement and unattended recovery remain unqualified.
-
-## Integrated failed-read shutdown on Pi
-
-The [installed integration case](validation/PI-ONLY-RECOVERY.md#integrated-failed-read-shutdown-result) passed 261 local and installed-Pi software tests, ordinary three-row logging, one original 0.5-second forced deadline, actual backend USB abort completion, fresh-session acquisition, independent free-run, and owner live/RMT-off/reference-off confirmation. During that failed read, shutdown waited about 52 milliseconds within the one-second allowance; total failed acquisition time was about 0.554 seconds. The failed row remained failed and the uncertain connection was not reused. No cable action, clear, reset, or sample retry was needed. Normal CLI/defaults/CSV are unchanged. This named current-Pi result does not establish repair of an already wedged adapter, a universal abort-time guarantee, replacement acceptance, or unattended continuation.
-
-The matching [Mac physical verification](validation/MAC-FAILED-READ-SHUTDOWN.md) also passed using committed runtime `d399dcf` through the Mac project venv: ordinary three-row logging, one original forced deadline, complete actual USB abort, fresh acquisition/free-run, and owner live/RMT-off/reference-off confirmation. Failed-read shutdown used about 102 milliseconds of its one-second allowance; total failed acquisition time was about 0.606 seconds. No post-timeout cable action or reset was needed. This closes the current-unit Mac repetition, with the same already-wedged, broader-fault, timing, replacement, and unattended limits.
-
-## Adopted initial run profile
-
-[DEC-02](validation/MEASUREMENT-POLICY.md) records the owner-selected initial supervised profile: explicit W, automatic range/filter, requested interval one second, three-row preflight and finite 300-second sustained runs, ten-second normal operation timeout, existing CSV/sidecar, and actual achieved timing. This uses explicit options and does not change CLI defaults. Range/filter/correction/source state are prepared and verified per case; the generic logger preserves source state. [Pre-arrival review](validation/PRE-ARRIVAL-REVIEW.md) and the [replacement procedure](validation/REPLACEMENT-ACCEPTANCE.md) distinguish completed software/current-unit evidence from required new-unit acceptance. No new hardware run or software change is implied by adopting/documenting the profile.
+The pinned USB backend may detach a kernel USBTMC driver during open. Record actual binding/permissions behavior on the selected host; do not infer instrument local/source state from USB ownership.
 
 ## Reusable provenance
 

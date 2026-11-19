@@ -1,6 +1,6 @@
 # Explicit diagnostics: fake-first batch
 
-Implemented November 13, 2026, after the owner requested the first batch from the [command/backend review](../inventory/COMMAND-BACKEND-REVIEW.md). That review and its checklist updates were pushed to `devel` at `c98e187`; all four [software/reporting CI jobs](https://github.com/lbussy/HP-437B-Automation/actions/runs/43533490440) passed on Python 3.11 and 3.14. The diagnostics changes described here are subsequent local work, not covered by that remote CI result.
+This document describes the implemented software path and its current operating limits. Hardware behavior on meter SN 3125U22346 remains unverified; use fresh setup and explicit supervision for selected physical work. Normal logging does not start these diagnostic operations automatically.
 
 ## Delivered scope
 
@@ -16,7 +16,7 @@ The default sequence is `*ESE?`, `*SRE?`, `*STB?`, then `OD`. Setting `include_l
 | Optional `ERR?` / `*ESR?` | Separately selected because error selection and event-read clearing semantics still need physical evidence |
 | Optional `SM` | Last because reading status can clear resolved error latches; status updates after measurement, and this batch triggers no new measurement |
 
-These effects follow the [review's manual references](../inventory/COMMAND-BACKEND-REVIEW.md#command-semantics-that-affect-the-proposed-tests) and [A06](../inventory/AMBIGUITIES.md#a06). Fixed fixtures do not model an actual meter's error queue, event clearing, or status timing. Optional reads do not resolve A06.
+These effects follow the [review's manual references](../inventory/COMMAND-BACKEND-REVIEW.md) and [A06](../inventory/AMBIGUITIES.md#a06). Fixed fixtures do not model an actual meter's error queue, event clearing, or status timing. Optional reads do not resolve A06.
 
 ## Receipt and failure behavior
 
@@ -49,17 +49,3 @@ Run it with:
 ```
 
 Available fixed scenarios are `healthy`, `instrument_errors`, `source_on` (requires the optional status read), `malformed_reply`, `read_error`, `late_reply`, and `cleanup_error`. The three read-failure scenarios optionally select a `fault_at` query included in the chosen plan; the default fault is at `*SRE?`. This is fixture selection, not a production recovery policy.
-
-## Software evidence
-
-[Thirty-two focused tests](../../tests/test_diagnostics.py) passed through `tools/offline_qa.py`. They exercise default/optional order, raw and parsed receipts, error indications without a health verdict, malformed replies at all seven positions, late replies, transport/write failures, no post-fault queries, cleanup failure, cancellation by interruption, invalid arguments, output preservation, and unchanged closed/uncertain-session guards.
-
-The final focused diagnostics/instrument/transport check passed **83 tests**, including interruption during query collection and during cleanup. The full suite in the existing Python 3.14 reporting environment passed **1,575 tests**, with three opt-in stress cases skipped. An initial run in the minimal sandbox environment had six loopback-bind permission failures and skipped optional reporting cases; the corrected run used the existing reporting dependencies and allowed local HTTP binds while retaining the hardware-blocking offline guard. Lint, formatting, documentation links/IDs/manual checksums, `git diff --check`, and the wheel/source-package build passed. The wheel contains the diagnostics module.
-
-Eight fresh ignored local bundles were also exercised: default and optional healthy collections, error indications, source-on status observation, malformed reply, read failure, late reply, and failed local return. Each produced the expected collection outcome and closed its fake transport. No measurements or raw local artifacts are committed.
-
-## Remaining selected opportunity
-
-The fake batch is complete. The subsequent [physical diagnostics runner](DIAGNOSTICS-PHYSICAL-RUNNER.md) is implemented and tested with injected backends; the subsequent [basic current-meter wspr5 pass](PI-DIAGNOSTICS-BASIC-20261113.md) is complete with separate owner final confirmation. The subsequent [single passive wspr5 latch-read pass](PI-DIAGNOSTICS-LATCHES-20261113.md) is complete; clearing/queue semantics remain unqualified. The public `run_simulated` entry point remains fake-only. The basic pass covers mask reads, `*STB?`, and numeric display text on the recorded Pi setup. Additional reads with latch effects remain separately selectable, with POWER REF off and no pending trigger/calibration. It must preserve raw framing, establish session ownership and cleanup, and record host-specific results. There is no authorization here to clear registers, inject physical errors, change settings/source state, run zero/CAL, or add automatic diagnostics to normal logging.
-
-`LP2`, reversible settings, and true serial polling remain the review's other optional opportunities. Their status and physical matrix cells are unchanged by this simulated work.

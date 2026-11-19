@@ -1,6 +1,6 @@
 # OPERATOR-REF-01: POWER REF in the local interface
 
-Status: implemented locally and tested offline; [current-Mac WF-01 browser execution passed](../validation/OPERATOR-WF01-20261113.md), including owner final-state confirmation. [Current-Mac WF-03 browser execution also passed](../validation/OPERATOR-WF03-20261113.md), including owner final-state confirmation. [WF-02 browser bench passed](../validation/OPERATOR-WF02-20261113.md): 1,794 valid plateau readings across all six bins, PDF/ZIP/audit, and owner final-state confirmation. Interface implementation delivered to `devel` at `80f625d`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43427245573). The [local operator interface](OPERATOR-UI-V1.md) now offers the existing supervised current-Mac [WF-01](WF-01-PHYSICAL.md), [WF-02](WF-02-PHYSICAL.md), and [WF-03](WF-03-PHYSICAL.md) runners, alongside the unchanged fake transmitter suites. Normal logging, main CLI, physical runner source, transport, and base dependency pins are unchanged.
+The software path is implemented. Physical interaction checks on the current meter, SN 3125U22346, remain pending. Configure the actual setup and obtain fresh operator confirmations before selected hardware use; simulation remains separate from physical evidence.
 
 ## Enable the selected bench path
 
@@ -56,9 +56,3 @@ python -m hp437b.reference_report --workflow WF-01 \
 ```
 
 This creates the PDF and sibling ZIP. Verify packages with the existing `python -m hp437b.report_delivery verify --package FILE.zip`. Unsealed captures require inspection and source/local reconciliation, not blind re-report or restart.
-
-## Validation boundary
-
-Injected transports exercised all three actual physical runners, signed baseline/results, closure, stage-boundary cancellation, immutable evidence, native readers, one-page PDF text, physical-mode package verification, tamper refusal, bridge publication after closure, HTTP confirmation, and root/capture ownership gates. Browser checks used an explicitly injected preview and never clicked physical Start. See [validation results](../VALIDATION.md#power-ref-operator-integration--november-13-2026).
-
-The current-Mac WF-01, WF-02, and WF-03 browser routes now have completed captures, verified reports/packages, independent audits, and separate owner front-panel attestations. Existing command-line bench evidence remains valid within its recorded scope; WF-02 browser evidence is recorded in the [November 13 bench summary](../validation/OPERATOR-WF02-20261113.md). Pi execution, external DUT controls, remote access, and unattended hardware recovery remain outside this integration.

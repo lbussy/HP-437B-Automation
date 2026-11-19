@@ -1,86 +1,40 @@
 # HP 437B Automation
 
-Automated measurement/test orchestration using an HP/Agilent 437B power meter and HP 8482A sensor, with agent-assisted analysis and reports. The Mac/Pi control and logging foundation uses a XyphroLabs USBGpib V2 adapter.
+Control, finite CSV logging, supervised test workflows, and traceable reports for an HP 437B power meter and 8482A sensor, using a XyphroLabs USBGpib V2 adapter.
 
-## Status
+## Current equipment
 
-The [current project scope](docs/PROJECT-SCOPE.md) was clarified by the owner on November 12, 2026: build automated test processes and agent-assisted reports using the meter/sensor, with traceable equipment and measurement provenance. The replacement meter is an equipment follow-up, not a software-development gate. The first WF-01 workflow, PROV-01 records, REPORT-01 reports, and [end-to-end acceptance profile](docs/validation/PIPELINE-ACCEPTANCE.md) are implemented and exercised. [Human-started deterministic publication](docs/workflows/DETERMINISTIC-RUN.md) now joins capture, provenance, and richer reports without manual analysis-file handoffs. The [transmitter test catalogue](docs/workflows/TRANSMITTER-TEST-CATALOG.md) now defines and prioritizes five additional workflows; [WF-02 sustained output stability](docs/workflows/SUSTAINED-STABILITY-V1.md) now supports synthetic capture-to-report runs, with [physical POWER REF integration](docs/workflows/WF-02-PHYSICAL.md) now implemented/offline-tested and selected bench execution tracked separately. [WF-03 transmission-cycle repeatability](docs/workflows/TRANSMISSION-CYCLES-V1.md) now supports synthetic five-cycle capture-to-report runs, with [physical POWER REF integration](docs/workflows/WF-03-PHYSICAL.md) exercised on the current Mac with owner-confirmed final state. [WF-04 output power versus setting](docs/workflows/POWER-SETTING-V1.md) now supports bounded synthetic point sweeps, fixture-corrected comparisons, provenance, and deterministic reports. [WF-05 output power versus frequency](docs/workflows/FREQUENCY-SWEEP-V1.md) now supports synthetic exact-point sweeps, frequency-dependent sensor/fixture corrections, coverage/spread analysis, and deterministic reports. [WF-06 supply-voltage sensitivity](docs/workflows/SUPPLY-SENSITIVITY-V1.md) now supports synthetic observed-voltage sweeps, nominal/endpoint comparisons, verified-restoration outcomes, provenance, and deterministic reports. [DUT-CTRL-01 fake controls](docs/workflows/EXTERNAL-TRANSMITTER-V1.md) now provide reusable transmitter/supply/observer boundaries and a single-point external-transmitter capture-to-report path through the existing logger with a fake meter. [WF-04–WF-06 shared-control fake sweeps](docs/workflows/CONTROLLED-SWEEPS-V1.md) now reuse these controls and the production logger per point, with native evidence, state continuity, and failure-stop checks. [Reusable DUT test profiles](docs/workflows/DUT-TEST-PROFILES-V1.md) now save DUT/operator identity and WF-04–WF-06 plans/criteria for individual fake runs, with immutable profile snapshots and provenance. [Human-started fake suites](docs/workflows/TEST-SUITES-V1.md) now run selected profile workflows with shared state, stop/cancel handling, individual reports, and a compact summary. [Optional PDF/portable report export](docs/workflows/PDF-EXPORT-V1.md) now produces one-page suite/individual PDFs and a hashed ZIP containing reports, provenance, and original evidence. [The local operator interface](docs/workflows/OPERATOR-UI-V1.md) now provides profile/workflow selection, human-started fake suites, progress, boundary cancellation, and PDF/ZIP access. [The POWER REF interface extension](docs/workflows/OPERATOR-POWER-REF-V1.md) now integrates existing WF-01–WF-03 runners with fresh setup and final front-panel confirmations; offline checks and the current-Mac WF-01–WF-03 browser exercises passed, including owner final-state confirmations; [WF-02 browser bench passed](docs/validation/OPERATOR-WF02-20261113.md): 1,794 valid plateau readings across all six bins, PDF/ZIP/audit, and owner final-state confirmation. [Operator-guided fixed POWER REF repeats](docs/validation/GUIDED-POWER-REF-20261113.md) now have current-Mac browser evidence: three points/thirty valid readings and verified reports/final state. External DUT drivers and hardware integration remain open. AI/provider automation is deferred by the owner.
+Meter **SN 3125U22346**, certificate **DXC-2026-3340-001**, calibrated November 11, 2026, next due November 11, 2028. The laboratory reports Passed/In Tolerance; its +5 V result is **5.014 V**, within the printed tolerance. The repository stores the owner-selected four-page [calibration PDF](output/pdf/hp-437b-8482a/calibration/replacement-2026-11-19/HP-437B-SN-3125U22346-Calibration-2026-11-11.pdf). The lab lists software **2.0** and HPIB address **13**; these need confirmation on the actual setup.
 
-The interface/logger and named Mac/Pi interaction cases are implemented. The offline campaign is integrated into `devel` at `6bda91d`: 421 local tests with stress enabled and [CI passing on Python 3.11/3.14](https://github.com/lbussy/HP-437B-Automation/actions/runs/43214328205). Normal logging/runtime remains unchanged. See the [current checklist](docs/RELEASE-CHECKLIST.md).
+Sensor **SN MY41094127** has a recorded **99% reference calibration factor**. The meter sheet's 100% setting does not supersede that sensor factor. See [equipment and manuals](docs/EQUIPMENT.md) and [current calibration review](docs/validation/REPLACEMENT-CALIBRATION-20261119.md) for limits and remaining documentation ambiguities. Project hardware interaction checks on this meter are pending; laboratory certification does not establish Mac/Pi/backend compatibility.
 
-The local interface also offers [explicit Meter preparation](docs/workflows/METER-PREPARATION.md): operator-started ZERO or CAL using the existing bounded runners, a default simulation source, separately configured local hardware, and saved preparation receipts. These actions do not run automatically before logging or test workflows.
+## Software
 
-## Reusable POWER REF suite
+The Python package implements typed commands, serialized acquisition, bounded worker shutdown, finite CSV/sidecar logging, and an explicit synthetic demo. It uses pinned PyVISA/PyVISA-py/PyUSB dependencies. The local operator interface supports supervised POWER REF workflows, guided radio sweeps, explicit ZERO/CAL, reports, saved-run browsing, and optional supplied-limit assessments. WF-04–WF-06 provide synthetic/shared-fake setting, frequency, and supply-voltage workflows; automatic physical DUT drivers are optional.
 
-[REF-SUITE-01](docs/workflows/POWER-REF-SUITE-V1.md) joins selected WF-01–WF-03 workflows into one operator-started run, with ordered progress, boundary cancellation, signed baseline/results, a concise suite PDF, full child reports, and a verified portable package. Simulated reference mode is available first; the configured physical path retains fresh preparation, original runners/cleanup, and separate final front-panel confirmation. [The combined current-Mac browser exercise](docs/validation/REF-SUITE-20261113.md) completed 3/3 workflows and 2,395 valid readings; report verification, independent audit, and owner final-state confirmation passed. Normal logging is unchanged.
-
-[Saved POWER REF report regeneration](docs/workflows/REPORT-RECOVERY-V1.md) now lets an operator select sealed individual or combined captures and publish new PDF/ZIP reports through the interface without repeating measurements. Original captures, reports, outcomes, and final confirmations remain unchanged. [Saved run history](docs/workflows/RUN-HISTORY-V1.md) now adds paginated browsing, separate report attempts, verified POWER REF details, and comparisons that flag differing or incomplete recorded conditions. [Supplied-limit assessments](docs/workflows/ACCEPTANCE-V1.md) now add optional, explicit post-capture criteria and coverage-gated Pass/Fail/Not evaluated results in separate PDF/packages; original results remain unchanged. [Reusable POWER REF profiles](docs/workflows/REFERENCE-TEST-PROFILES-V1.md) now save reference selections, operator, and optional limits, automatically creating a separate assessed PDF/package after a profile-started capture; saved captures can reuse the same profile without remeasurement. [The current-Mac WF-01 profile bench exercise](docs/validation/PROFILE-WF01-20261113.md) completed with automatic reports/packages and owner final-state confirmation; an erroneous receipt-window assessment was corrected to Pass from the same saved data and unchanged criteria, without another measurement.
-
-## Operator-guided radio sweeps
-
-[Operator-guided sweeps](docs/workflows/OPERATOR-GUIDED-SWEEPS.md) now support frequency, drive-setting, and combined series through the local interface: all 17 requested bands, up to 32 frequency labels and 16 drive labels, either point order, and a fresh label confirmation before every capture. An explicitly configured bench meter uses the production logger; simulated capture remains available. Full tables, optional comparison plots, a PDF summary, and portable evidence packages retain partial results. A local Python/HTTP client exposes start, status, confirm-one-point, and stop actions for future orchestration. New physical bench acceptance remains pending.
-
-## Recorded bench evidence
-
-The following November 11 results concern software interactions with the identified equipment. Earlier replacement-gate wording is superseded by the current scope; the evidence and measurement limits remain valid within their recorded scopes.
-
-Phase 2 software milestone completed November 11, 2026. The Python package provides typed command encoding, serialized control, a finite CSV logger, and an explicit synthetic demo. Software coverage includes 78 command/syntax variants; 40 source-ambiguous variants have explicit guards. [Phase 3 acceptance](docs/validation/PIPELINE-ACCEPTANCE.md) is complete for the first WF-01 v1 profile; the following scoped bench records remain its hardware-interaction foundation. This Mac detects the adapter, and an initial Python identification returned HP 437B firmware 1.8; raw-frame capture and local restoration are tracked in the [run record](docs/validation/MAC-20261111.md). The sensor is now connected with POWER REF off; one [baseline TR2/read and status sequence](docs/validation/MAC-20261111-BASELINE.md) succeeded. Owner-assisted zero/CAL preparation was followed by a [reference-on Python/display comparison](docs/validation/MAC-20261111-REFERENCE.md): both read 0.988 mW, and the owner confirmed RMT/reference off afterward. A [three-row reference CSV session](docs/validation/MAC-20261111-SHORT-LOG.md) also passed with approximately one-second sample spacing. [Automatic return to local](docs/validation/AUTOMATIC-LOCAL.md) now sends explicit TR3 free-run followed by GTL after healthy sessions with the identified adapter on this Mac; identification and logger cleanup were verified without PRESET/LOCAL. [Five-minute reference logging](docs/validation/MAC-20261111-SUSTAINED.md) produced 299 valid rows with passing data/timing checks; the owner confirmed live readings and RMT/reference off without PRESET/LOCAL. [Reversible W/dBm control and remote reference switching](docs/validation/MAC-20261111-CONTROL.md) also passed, ending reference off and live local. [Between-read interruption and one induced timeout/manual USB-reconnect recovery](docs/validation/FAILURE-RECOVERY.md) passed. [Pi qualification](docs/validation/PI-QUALIFICATION.md) now records 237 software tests, ordinary-user USB identification/control, three-row and five-minute reference logs (300 valid sustained rows), and matching retrieved CSV/sidecar hashes. The owner-authorized permanent USB access rule and setup instructions are included. Pi display comparison, interruption/timeout handling, and an expanded manual LOCAL/Mac-host-assisted recovery passed. Post-timeout USB-only reconnect failed on Pi; the manual and software-only shutdown routes below have separate acceptance records. Root cause, unattended recovery, and replacement qualification remain unresolved.
-
-The [Pi-only recovery investigation](docs/validation/PI-ONLY-RECOVERY.md) is in progress. USB port reset remains unqualified, and USBTMC clear passed healthy checks but failed after a timeout. The experimental clear helper has 18 targeted tests; its bus/CLI recovery path remains guarded. A [manual full-adapter USB+GPIB isolation/reconnect](docs/validation/PI-ONLY-RECOVERY.md#p3-pi-r4-accepted-manual-pi-only-recovery) now passed on Pi, followed by fresh protocol and owner live/local checks, without Mac or Pi reboot. Repair of an already wedged adapter and the cause remain unresolved. The subsequent [integrated failed-read shutdown fix](docs/validation/PI-ONLY-RECOVERY.md#integrated-failed-read-shutdown-result) passed 261 local/Pi software tests, ordinary installed CLI logging, one real forced timeout with complete backend abort, and fresh communication without cable recovery. Only failed-read shutdown gains up to one second; successful logging, defaults, CLI, and CSV stay unchanged. The owner confirmed final live readings, RMT off, and reference off. The matching [Mac verification](docs/validation/MAC-FAILED-READ-SHUTDOWN.md) subsequently passed ordinary logging, the original forced timeout with complete abort, fresh acquisition/free-run, and owner final-state confirmation. This named shutdown route is verified on both hosts with the current unit; replacement acceptance and unattended recovery remain open.
-
-Equipment update, November 11: the user reports that the seller/calibrator confirmed the current meter's [+5 V supply discrepancy](docs/EQUIPMENT.md#individual-calibration-records) was unacceptable. An exchange is planned after a few development steps with this unit. Replacement receipt and qualification remain pending.
-
-The [adapter-internal USB query](docs/validation/ADAPTER-IDENTIFICATION.md) now confirms adapter-reported firmware **V2.4**. The USB serial string's 1.8 is the meter firmware; the owner reports an Anker USB-C cable, meter GPIB address 13 read from the front panel, and no hardware-revision marking. Exact PCB revision is retained as an accepted metadata limitation, not a Phase 3 blocker.
-
-Available [Phase 3 pre-arrival preparation](docs/validation/PRE-ARRIVAL-REVIEW.md) is complete: adapter readiness, the owner-selected [initial logging policy](docs/validation/MEASUREMENT-POLICY.md), evidence/matrix reconciliation, and a [replacement acceptance procedure](docs/validation/REPLACEMENT-ACCEPTANCE.md). Replacement identity/setup checks remain equipment onboarding work; development and acceptance of the workflow/reporting software can continue now.
-
-The first application design is [WF-01 POWER REF measurement and repeatability](docs/workflows/POWER-REFERENCE-V1.md), with a [worked synthetic report](docs/workflows/examples/POWER-REFERENCE-V1-SYNTHETIC.md). Its [synthetic prototype exercise](docs/workflows/WF-01-EXERCISE.md) produced seven scenario bundles/reports; the [first physical POWER REF workflow](docs/workflows/WF-01-PHYSICAL.md#current-meter-physical-result) also completed on the current Mac/meter with generated report and owner final-state confirmation. The [REPORT-01 v1 reporting layer](docs/REPORTING.md) adds verified saved-run statistics, plots, richer reports, and file-based agent-assisted analysis. [End-to-end acceptance](docs/validation/PIPELINE-ACCEPTANCE.md) now covers this first profile; future application capabilities keep separate scopes.
-
-[PROV-01 v1](docs/RUN-PROVENANCE.md) provides reusable run, DUT, and equipment records, evidence validation, equipment history, and detached WF-01 exports. New workflow runs add provenance sidecars while ordinary logging stays unchanged.
-
-[REPORT-01 v1](docs/REPORTING.md) produces PNG/SVG plots and HTML/Markdown/JSON reports from existing WF-01/PROV-01 evidence, with attributed draft agent findings and source preservation. It performs no device I/O and leaves ordinary logging unchanged.
+Human-started tests and deterministic reports are the selected mode. AI/provider automation is deferred. Software implementation and synthetic tests do not establish physical performance or absolute RF accuracy.
 
 ## Start here
 
 | Document | Purpose |
 | --- | --- |
-| [Project scope and direction](docs/PROJECT-SCOPE.md) | Product goal, evidence boundaries, and workflow/provenance/reporting work |
-| [Plan and decision register](docs/PLAN.md) | Requirements, adapter recommendation, software candidate, unresolved decisions, and steps to resume |
-| [Open work](docs/OPEN-WORK.md) | Task status and next results |
-| [Initial measurement policy](docs/validation/MEASUREMENT-POLICY.md) | Adopted W/automatic-range/filter/one-second-request/five-minute profile and limits |
-| [Replacement procedure](docs/validation/REPLACEMENT-ACCEPTANCE.md) | Prepared equipment onboarding cases and limits; no blanket software release gate |
-| [Release checklist](docs/RELEASE-CHECKLIST.md) | Three-phase readiness and prepared execution prompts |
-| [Software usage](docs/SOFTWARE.md) | Installation, API/CLI, output schema, guards, and recovery |
-| [Phase 2 review](docs/PHASE-2-REVIEW.md) | Implementation evidence, adversarial corrections, and deferred coverage |
-| [Capability inventory](docs/inventory/README.md) | Command and bus references, coverage matrix, source ambiguities, and review results |
-| [Equipment and manuals](docs/EQUIPMENT.md) | Official manuals, serial-specific calibration records, and operating references |
-| [Sensor compatibility by family](docs/SENSOR-COMPATIBILITY.md) | Documented 437B-compatible sensor families, applications, frequency coverage, and measurement ranges |
-| [Hardware validation](docs/VALIDATION.md) | Evidence required before claiming control or unattended logging support |
-| [Project provenance](docs/PROVENANCE.md) | Migration from Generic Radio Stuff and manual verification |
-| [Contributing](CONTRIBUTING.md) | Repository conventions and review checks |
-
-## Proposed operation
-
-Python logger → PyVISA → PyVISA-py → PyUSB/libusb → USBGpib V2 → HP 437B
-
-The Pi could remain beside the meter and write timestamped CSV files, with the Mac used for network access and retrieval. Direct USB operation on the Mac is another option. Both hosts are selected, and the initial measurement sequence/settings are adopted in DEC-02; equipment onboarding will record the actual replacement when used. The workflow-to-report pipeline can be developed independently.
-
-The adapter transports the meter's original HP commands. Validate read/write support and the required triggering, status checks, and recovery on each host.
+| [Software](docs/SOFTWARE.md) | Install, test, simulate, and configure logging |
+| [Operator interface](docs/workflows/OPERATOR-UI-V1.md) | Launch and use the local interface |
+| [Meter preparation](docs/workflows/METER-PREPARATION.md) | Explicit ZERO/CAL and setup configuration |
+| [Plan](docs/PLAN.md) / [open work](docs/OPEN-WORK.md) | Current decisions and remaining work |
+| [Validation](docs/VALIDATION.md) | Current equipment checks and evidence boundaries |
+| [Command inventory](docs/inventory/README.md) | Syntax, software coverage, and guards |
+| [Reporting](docs/REPORTING.md) / [run provenance](docs/RUN-PROVENANCE.md) | Evidence-backed results and artifacts |
+| [Release checklist](docs/RELEASE-CHECKLIST.md) | Current readiness |
+| [Reference provenance](docs/PROVENANCE.md) | Current reference files and hashes |
+| [Contributing](CONTRIBUTING.md) | Repository conventions |
 
 ## Repository layout
 
-- `docs/`: maintained requirements, decisions, references, backlog, and validation plan.
-- `output/pdf/hp-437b-8482a/`: unmodified publisher manuals and their original download manifest/checksums; `calibration/` holds complete individual calibration records and separate import checksums.
-- `.github/`: issue and pull request templates.
-- `tmp/` or `temp/`: ignored scratch files and previews.
-- `data/`, `output/logs/`, and `output/reports/`: ignored local measurement/generated output locations when needed.
+- `src/hp437b/`, `tests/`, and `tools/`: package, software tests, and workflow/check tools.
+- `docs/`: current requirements, operation, references, and validation specifications.
+- `output/pdf/hp-437b-8482a/`: publisher manuals, current equipment calibration records, and manifests/checksums.
+- `tmp/` or `temp/`: ignored scratch files.
+- `data/`, `output/logs/`, and `output/reports/`: ignored local evidence and generated artifacts.
 
-The installable package lives under `src/hp437b/`, software tests under `tests/`, and the pinned development environment in `requirements-dev.lock`. See [software usage](docs/SOFTWARE.md) for checks and the hardware-free demo.
-
-## Licensing
-
-Original work owned by lbussy is [MIT-licensed](LICENSE). Publisher manuals and third-party calibration records retain their original rights and are excluded from that grant; see [third-party notices](THIRD_PARTY_NOTICES.md).
-
-## End-to-end acceptance
-
-The [WF-01 v1 pipeline acceptance](docs/validation/PIPELINE-ACCEPTANCE.md) covers seven fresh synthetic workflows and nine retained physical/synthetic bundles through provenance, analysis import, plots, and reports. The declared profile completes E2E-01/VAL-01 and Phase 3 within its scope. Original evidence and ordinary logging remain unchanged.
+Original project work is [MIT-licensed](LICENSE). Publisher manuals and laboratory records retain their own rights; see [third-party notices](THIRD_PARTY_NOTICES.md).

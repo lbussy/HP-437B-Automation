@@ -1,33 +1,11 @@
-# Project scope and development direction
+# Current project scope
 
-Owner clarification, November 12, 2026. This is the current project direction and supersedes earlier statements that made replacement-meter qualification a prerequisite for software progress or overall Phase 3 completion. Historical procedures and results retain their original dates and evidence limits.
+Build automated measurement/test workflows using the HP 437B and its sensor, with traceable equipment provenance, deterministic reports, and agent-assisted analysis of the equipment under test.
 
-## Product goal
+Human-started operation is the selected mode. The implemented interface covers POWER REF workflows, guided transmitter captures, explicit meter preparation, saved-run reports/history, portable packages, and optional supplied-limit assessments. WF-04–WF-06 also have synthetic/shared-fake implementations. AI/provider automation is deferred; automatic radio/supply drivers are optional.
 
-Orchestrate and automate measurement/test processes using the HP/Agilent 437B and its sensor, with agent-assisted analysis and reports about the equipment being tested. The meter/sensor is the measurement system used by those processes. Maintaining its identity, settings, calibration records, and known limitations provides provenance for those results.
+Software implementation, host/device interaction, and measurement accuracy are separate questions. Use software tests for workflow correctness, named current-equipment checks for hardware compatibility, and applicable calibration/fixture evidence for measurement claims. Synthetic results remain explicitly synthetic.
 
-Control and CSV logging are implemented foundations. A successful reference readback or five-minute log validates a software interaction; it is not the complete automation/reporting product. The initial supervised reference-bench profile was an incremental test profile, not the boundary of the project's goal.
+Current meter identity/calibration are in [equipment](EQUIPMENT.md). Project interaction checks on that meter remain pending. Equipment onboarding does not require blanket repetition of every software test or block software development. Only perform hardware work selected for actual use, with recorded setup, finite budgets, and operator supervision.
 
-## Three distinct evidence questions
-
-| Question | Evidence and treatment |
-| --- | --- |
-| Does the software implement the intended workflow correctly? | Source-backed command sequences, automated tests, failure handling, reproducible analysis, and end-to-end workflow/report checks |
-| Can the software perform a particular operation through this adapter/backend on a named host? | Existing scoped Mac/Pi bench records, with additional hardware checks when a new operation actually requires them; retain capability guards until supported |
-| What measurement claims does a result support? | Actual meter/sensor identity, applicable calibration information and factors, signal path/settings, units/timing, and known issues; state limits and unknowns instead of inventing accuracy or pass/fail criteria |
-
-The current meter's documented supply discrepancy remains an equipment fact. It must accompany affected measurements and their interpretation. It does not invalidate established software behavior or block workflow, provenance, analysis, reporting, or simulated end-to-end development. Synthetic results must remain explicitly synthetic and cannot establish DUT performance.
-
-Replacing the meter requires recording the new identity and applicable records and checking the software/setup assumptions relevant to its use. That is an equipment onboarding task, not a new instrument-certification project or a blanket requirement to repeat every software/host case. The prepared [replacement procedure](validation/REPLACEMENT-ACCEPTANCE.md) remains available; its previous blanket release-gate status is superseded.
-
-## Current delivery and remaining scope
-
-Updated November 13, 2026: human-started deterministic reporting is the owner's selected mode. WF-01–WF-03 POWER REF workflows, individual/combined local-interface runs, provenance, readable PDF/portable reports, cancellation and fresh restart, saved-data report regeneration/history/comparison, and optional attributed assessments are implemented. WF-04–WF-06 and shared transmitter/supply controls have synthetic/fake implementations. The [open-work register](OPEN-WORK.md) retains the scoped evidence; these workstreams are no longer proposals awaiting implementation.
-
-No further mandatory POWER REF feature is identified. Actual remaining physical use is the existing guided path with a transmitter and suitable RF path, plus physical setting/frequency/voltage experiments when selected. A supply is needed only for the voltage experiment. Equipment changes require relevant provenance/setup updates, not blanket software requalification. Automatic DUT drivers are optional because human-guided operation exists.
-
-The owner also requested investigation of unattended recovery and broader command support. The [first fake recovery investigation](validation/UNATTENDED-RECOVERY-FAKES.md) is delivered, and the [bounded fake-only supervisor](validation/BOUNDED-RECONCILIATION-FAKES.md) is implemented with explicit fakes. A separately gated [physical bridge](validation/RECONCILIATION-PHYSICAL-BRIDGE.md) is now prepared with 30 injected-backend cases passing; the [first healthy current-Mac case](validation/RECONCILIATION-HEALTHY-20261113.md) subsequently passed protocol/closure checks and separate owner confirmation of live readings, RMT off, and POWER REF off. The healthy case is complete. Subsequent [Mac post-timeout](validation/RECONCILIATION-POST-TIMEOUT-20261113.md) and [wspr5 healthy/post-timeout](validation/PI-RECONCILIATION-20261113.md) cases passed with actual abort/closure evidence and separate owner confirmations. Normal-path integration, other fault scopes, and command expansion remain separate; these results do not establish unattended operation. These are optional extensions to the delivered supervised profile, not new release gates. The [plan](PLAN.md#requested-investigation-boundaries) bounds useful offline work and possible later current-meter trials. It does not authorize fault injection, automatic resumption, guarded commands, or changes to normal logging. AI/provider automation remains deferred. Additional features and extra POWER REF test combinations are not requirements unless selected by the owner.
-
-## Existing foundation and change boundary
-
-The interface/logger, named Mac/Pi interaction cases, and [offline tests](validation/OFFLINE-QUALIFICATION-RESULTS.md) remain useful accepted evidence within their recorded scopes. Qualification work is integrated into `devel` at `6bda91d`, with [Python 3.11/3.14 CI passing](https://github.com/lbussy/HP-437B-Automation/actions/runs/43214328205). This direction correction changes documentation and backlog only. It does not change runtime, authorize a hardware operation, enable guarded commands, or establish unattended hardware support.
+The [plan](PLAN.md), [open work](OPEN-WORK.md), and [validation guide](VALIDATION.md) define the current boundaries. No extra POWER REF feature or automatic-driver requirement is implied by the remaining physical-use opportunities.

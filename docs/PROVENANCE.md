@@ -1,19 +1,9 @@
-# Project provenance
+# Current reference provenance
 
-Created November 9, 2026 after the user moved the chat into HP 437B Automation and requested repository setup, copied manuals, and redirects from Generic Radio Stuff.
+The unmodified publisher manuals are indexed in [equipment](EQUIPMENT.md). Their [download manifest](../output/pdf/hp-437b-8482a/download-manifest.json) and [SHA-256 list](../output/pdf/hp-437b-8482a/SHA256SUMS.txt) identify editions, sources, and original bytes.
 
-## Imported references and planning
+The current sensor record is the complete owner-supplied certificate for 8482A SN MY41094127. Its [manifest](../output/pdf/hp-437b-8482a/calibration/import-manifest.json) and [checksum list](../output/pdf/hp-437b-8482a/calibration/SHA256SUMS.txt) identify the retained file.
 
-The three publisher PDFs, original `download-manifest.json`, and `SHA256SUMS.txt` were copied byte for byte from the sibling Generic Radio Stuff checkout. The PDFs were compared against source bytes and checked against the publisher-download SHA-256 list. The old copies remain intact. The original download manifest retains its historical project/storage fields; it has not been rewritten to describe this migration.
+The current meter record is the owner-selected [four-page PDF](../output/pdf/hp-437b-8482a/calibration/replacement-2026-11-19/HP-437B-SN-3125U22346-Calibration-2026-11-11.pdf) for SN 3125U22346. It retains source pages 1–4; duplicate source pages 5–6 were removed at the owner's request. Its [manifest](../output/pdf/hp-437b-8482a/calibration/replacement-2026-11-19/import-manifest.json) distinguishes source and stored-file hashes, sizes, and page counts. The [checksum list](../output/pdf/hp-437b-8482a/calibration/replacement-2026-11-19/SHA256SUMS.txt) verifies the stored derivative. This is an owner-directed page selection, not an issuer-supplied revised certificate.
 
-The separate [import manifest](import-manifest.json) records source paths, sizes, and checksums for all five copied files and a hash of the planning source before migration. The active plan and decision register were transferred into [PLAN.md](PLAN.md); manual context is maintained in [EQUIPMENT.md](EQUIPMENT.md). No exported chats, account-export material, or OCR artifacts were imported.
-
-The HP topic note in the private Generic Radio Stuff checkout, `docs/topics/hp-437b-8482a.md`, directs automation work here. The public project is [lbussy/HP-437B-Automation](https://github.com/lbussy/HP-437B-Automation), with `devel` as its initial default branch.
-
-## Owner-supplied calibration records
-
-On November 11, 2026, the owner supplied complete calibration PDFs for 437B SN 3125U33223 and 8482A SN MY41094127 and explicitly requested storage, commit, and push. They were copied byte for byte into `output/pdf/hp-437b-8482a/calibration/`, visually inspected, and compared with the supplied originals. The separate [calibration import manifest](../output/pdf/hp-437b-8482a/calibration/import-manifest.json) records original filenames, sizes, SHA-256 hashes, and certificate identifiers. The original manual manifests remain unchanged. See [equipment references](EQUIPMENT.md#individual-calibration-records) for certificate dates, page references, and evidence limits.
-
-## Evidence limits
-
-Reference copying and repository checks establish file integrity, not equipment performance. Phase 2 software evidence is recorded in [its review](PHASE-2-REVIEW.md); physical qualification remains governed by the device-specific validation plan. Pricing, availability, and software claims preserved in the plan are dated discussion findings and must be rechecked before consequential use.
+File integrity does not establish equipment performance. Current record limitations are in the [calibration review](validation/REPLACEMENT-CALIBRATION-20261119.md); measurement-run evidence is governed by [run provenance](RUN-PROVENANCE.md) and [validation](VALIDATION.md).

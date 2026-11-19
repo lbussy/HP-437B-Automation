@@ -1,6 +1,6 @@
 # PROV-01: reusable run, DUT, and equipment provenance
 
-Implemented November 12, 2026, as the hardware-free `hp437b.provenance` module. This separates reusable provenance from the unchanged ordinary logger/CLI/CSV schema. It reads existing [WF-01 bundles](workflows/WF-01-PHYSICAL.md), preserves their bytes, and emits a detached export. It performs no equipment discovery, source switching, certificate retrieval, or bundle-code execution.
+Implemented as the hardware-free `hp437b.provenance` module. This separates reusable provenance from the unchanged ordinary logger/CLI/CSV schema. It reads existing [WF-01 bundles](workflows/WF-01-PHYSICAL.md), preserves their bytes, and emits a detached export. It performs no equipment discovery, source switching, certificate retrieval, or bundle-code execution.
 
 ## Versioned record contract
 
@@ -31,7 +31,7 @@ The WF-01 adapter derives local meter/sensor IDs from namespace, declared mode, 
 
 ```bash
 QA_PYTHON -m hp437b.provenance \
-  --bundle output/reports/wf01-physical-20261112/run-002 \
+  --bundle output/reports/example-run \
   --output output/reports/wf01-run-002-provenance
 ```
 
@@ -75,13 +75,3 @@ assert verify(value, source_bundle)
 ```
 
 Generic records can be written with exclusive-create semantics and loaded/validated without hardware. The regression suite includes an independent external-amplifier example, so reuse is not just a WF-01 serialization wrapper.
-
-## Execution evidence and remaining limits
-
-The reviewed import exercise processed nine existing bundles: the physical completed and failed-open runs, plus seven synthetic cases. It emitted 36 equipment assertions grouped under 22 IDs, verified all source bindings, and confirmed all 165 original files were byte-identical before/after. The physical record retains its completed status, blank reported serial, supplied label identities, historical factors, run-level known issue/certificate references, original pending protocol final state, and later supplied operator confirmation. Failed/interrupted runs retain those outcomes; no new physical observation is implied.
-
-Actual exports and the combined history remain ignored under local `output/reports/prov01-20261112/final/`. They contain local run/equipment provenance and are not committed. Source exports are data: no copied Python is executed, no linked certificate is opened, and no imported text becomes an agent instruction.
-
-PROV-01 v1 covers the reusable models, evidence verification, finalized WF-01 import/export, history, and prospective WF-01 sidecar emission. Other workflow importers, explicit asset-registry policy, unsealed checkpoint reconciliation, authenticated signing, independent calibration applicability/uncertainty decisions, and report visualization/agent integration remain separately scoped work. None requires waiting for a replacement meter to develop the software.
-
-Final local checks: 492 tests with opt-in stress enabled, lint/format, documentation links/reference checks, build/package inspection, and a clean-wheel provenance API/CLI check. Implementation commit `b8b6f6b` was pushed to `devel`; [CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43229676050) on Python 3.11 and 3.14. The existing migration-history document remains [Project provenance](PROVENANCE.md); this guide owns measurement-run provenance.

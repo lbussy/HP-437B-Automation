@@ -1,7 +1,5 @@
 # REPORT-EXPORT-01: PDF reports and portable packages, v1
 
-Status: delivered. Delivered to `devel` at `40714e7`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43358371391). Covers WF-04–WF-06, their [profile commands](DUT-TEST-PROFILES-V1.md), and [fake suites](TEST-SUITES-V1.md). Existing report defaults and normal logging are unchanged. No hardware, backend, source, or provider access is added. WF-01–WF-03 PDF integration is outside this version's scope.
-
 Use `--pdf` to generate a one-page PDF automatically during report publication. Use `--package` to generate PDFs and a portable ZIP containing reports, provenance, and original sealed evidence. The commands print the PDF/ZIP paths. Open **report.pdf**, rather than an HTML source file, for the human-readable answer.
 
 ## Install the optional renderer
@@ -91,9 +89,3 @@ PDF metadata records renderer/version, Letter size, one-page count, and invarian
 The existing semantic-tag/development-commit Report Harness policy remains in force. Full commit/source hashes are retained in producer metadata. Invariant PDF file dates/IDs support reproducibility; the actual test time is the recorded UTC value printed in the body and saved in evidence. A portable package contains the captured identities/operator as supplied/recorded; use local profile copies for private information.
 
 Reports seal before their sibling ZIP is created. A PDF/rendering error leaves an unsealed report and preserves the capture. A ZIP error leaves the already sealed PDF/HTML reports usable; retry only `package` to a new ZIP path. Temporary archives are removed on failure. No report/storage failure causes acquisition, control cleanup, or software recovery to be retried.
-
-## Validation scope
-
-[Validation results](../VALIDATION.md) distinguish PROFILE-01/SUITE-01 CI from PDF-export tests. Coverage includes real PDF parsing/page counts/metadata/embedded fonts, relative links, Unicode/text escaping, absent optional dependencies before capture, complete/failed/empty runs, immutable sources, legacy fixtures, relocated archives and provenance, byte reproducibility, corruption/path/type/duplicate checks, concurrent-change refusal, storage failures, and installed-wheel operation with and without the PDF extra. `requirements-pdf-test.lock` pins the test-only parser; it is not a runtime dependency.
-
-This accepts offline PDF/delivery software behavior. It does not add physical workflow or backend support, change normal logging, or enable AI/provider automation.

@@ -1,6 +1,6 @@
 # HP 437B capability inventory
 
-Phase 1 inventory, November 11, 2026. The manual-backed reference covers118 command/syntax variants in50 functional families, plus20 GPIB operation entries. The bus count includes one documented controller-role exclusion.
+Current inventory. The manual-backed reference covers118 command/syntax variants in50 functional families, plus20 GPIB operation entries. The bus count includes one documented controller-role exclusion.
 
 | Document | Purpose |
 | --- | --- |

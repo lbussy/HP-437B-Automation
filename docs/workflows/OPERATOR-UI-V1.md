@@ -1,7 +1,5 @@
 # OPERATOR-UI-01: Local operator interface, v1
 
-Status: delivered (fake-only). Delivered to `devel` in `72b6f12` with Linux test correction `970f7b6`; [Python 3.11/3.14 software and reporting CI passed](https://github.com/lbussy/HP-437B-Automation/actions/runs/43421149047). This single-user browser interface uses the existing [profiles](DUT-TEST-PROFILES-V1.md), [suite runner](TEST-SUITES-V1.md), and [PDF/portable delivery](PDF-EXPORT-V1.md). The owner confirmed a loopback-only Python service, the existing reports' clean style, and **fakes only** for its first version. [Explicit POWER REF integration](OPERATOR-POWER-REF-V1.md) now extends it at the owner’s request. Normal logging, physical runners, the main CLI, and base dependency pins remain unchanged.
-
 ## Launch
 
 Use Python 3.11 or newer on a Unix host, with the existing optional reporting dependencies:
@@ -55,4 +53,4 @@ Use `--no-plots` if appropriate. This command does not recapture or change the o
 
 The service binds only IPv4 `127.0.0.1`, requires the exact printed Host, uses a local session cookie and API token, and rejects cross-origin writes. Static code is packaged with Python; user-supplied text is rendered as text. These controls serve a local single-user tool, not a remote authentication or multiuser authorization system. Do not expose the port through a proxy or tunnel. Run/profile storage is operator-owned; hashes detect changed evidence, not authorship.
 
-[Validation](../VALIDATION.md#local-operator-interface--november-12-2026) records guarded regression, native fake workers, cancellation, access controls, artifact verification, installed-wheel behavior, and desktop/mobile browser checks. This establishes local software behavior, not physical DUT control, timing qualification, or broader host/backend support. External DUT controls, remote access, profile editing, and AI automation remain separate future work. Existing internal-reference controls are available through the explicitly configured POWER REF extension.
+[Validation](../VALIDATION.md) records guarded regression, native fake workers, cancellation, access controls, artifact verification, installed-wheel behavior, and desktop/mobile browser checks. This establishes local software behavior, not physical DUT control, timing qualification, or broader host/backend support. External DUT controls, remote access, profile editing, and AI automation remain separate future work. Existing internal-reference controls are available through the explicitly configured POWER REF extension.

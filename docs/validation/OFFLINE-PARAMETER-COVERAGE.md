@@ -1,8 +1,6 @@
 # Offline command and parameter coverage
 
-Software-only audit at baseline `9d84059cb7778cbd87f505159df52521003dca8a`; runtime source remains identical to `d399dcfe5366dce9bce327c42e922d692ecd92c4`. The registry reconciles **118 C IDs: 78 encodable, 40 guarded**. Encodable includes eleven contextual helpers and two polling-dependent procedures; it does not mean 78 independently executable operations. The twenty G IDs comprise three byte paths, one conditional GTL path, fifteen normal-API deferrals (including experimental clear), and one C0 exclusion.
-
-Each source link below gives the exact publisher-manual page, prerequisites, state/completion rules, syntax, and future physical case. Those fields are incorporated by reference rather than reinterpreted. See the [physical matrix](../inventory/COVERAGE.md), whose host columns are unchanged. No synthetic case promotes hardware acceptance.
+The registry reconciles 118 command/syntax IDs: 78 encodable and 40 guarded. Encodable includes contextual helpers and polling-dependent procedures. The twenty bus IDs distinguish byte paths, conditional GTL, normal-API deferrals, and the instrument exclusion. These are software coverage descriptions, not current-meter physical passes.
 
 ## Test and API key
 
@@ -20,7 +18,7 @@ DD needs identified firmware 1.5+, tested at the driver gate. PR/RC/ST/OC1/RFn r
 
 ## Commands
 
-All numeric rows refer to supported exact-grid software domains; ambiguous rounding/legacy aliases remain in the [ambiguity register](../inventory/AMBIGUITIES.md). For each row, future physical behavior and cross-setting interactions remain unqualified except the separately recorded named physical cases.
+All numeric rows refer to supported exact-grid software domains; ambiguous rounding/legacy aliases remain in the [ambiguity register](../inventory/AMBIGUITIES.md). For each row, future physical behavior and cross-setting interactions remain unqualified on the current meter.
 
 | ID / code / source | Parameters and framing from inventory | Layer and tests | Additional limitation |
 | --- | --- | --- | --- |
