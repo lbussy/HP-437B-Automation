@@ -14,6 +14,7 @@ from hp437b import guided_sweep as g
 from hp437b import operator_jobs as jobs
 from hp437b import report_delivery as delivery
 from hp437b import reporting as r
+from hp437b import sweep_matrix
 from hp437b.simulation import DemoTransport
 from hp437b.workflow_report import _seal
 
@@ -81,6 +82,147 @@ def test_17_bands_five_labels_and_both_orders():
     assert b[0]["drive"] == b[16]["drive"] == "2 mA"
     assert b[17]["drive"] == "4 mA"
     assert {(x["frequency"], x["drive"]) for x in a} == {(x["frequency"], x["drive"]) for x in b}
+
+
+@pytest.mark.parametrize(
+    "profile,drive_ma",
+    [
+        ("pico-gpio", (2, 4, 8, 12)),
+        ("si5351", (2, 4, 6, 8)),
+        ("pi-bcm283x", (2, 4, 6, 8, 10, 12, 14, 16)),
+        ("pi-bcm2711", (1, 2, 3, 4, 5, 6, 7, 8)),
+        ("pi-rp1", (2, 4, 8, 12)),
+    ],
+)
+def test_automatic_matrix(profile, drive_ma):
+    points = g.points(sweep_matrix.simulation_plan(g.example(), profile))
+    expected = [
+        (136000, 137500),
+        (474200, 475700),
+        (1836600, 1838100),
+        (3568600, 3570100),
+        (5364700, 5366200),
+        (7038600, 7040100),
+        (10138700, 10140200),
+        (14095600, 14097100),
+        (18104600, 18106100),
+        (21094600, 21096100),
+        (24924600, 24926100),
+        (28124600, 28126100),
+        (50293000, 50294500),
+    ]
+    assert [(point["drive_ma"], point["dial_hz"], point["carrier_hz"]) for point in points] == [
+        (ma, dial, carrier) for ma in drive_ma for dial, carrier in expected
+    ]
+
+
+def test_automatic_rejects_physical_before_job_allocation(tmp_path):
+    manager = jobs.Jobs(tmp_path / "jobs", plots=False, sweep_config=config())
+    try:
+        with pytest.raises(ValueError, match="verified device bridge"):
+            manager.start_guided(
+                sweep_matrix.simulation_plan(g.example(), "pico-gpio"),
+                None,
+                "physical",
+                dict.fromkeys(g.PREPARED, True),
+                include_pdf=False,
+            )
+        assert manager.state()["jobs"] == []
+    finally:
+        manager.close()
+
+
+@pytest.mark.parametrize(
+    "profile,total,partial",
+    [
+        ("pico-gpio", 52, False),
+        ("pi-bcm2711", 104, False),
+        ("pico-gpio", 52, True),
+    ],
+)
+def test_automatic_combined_pdf_and_partial_evidence(
+    tmp_path, profile, total, partial, monkeypatch
+):
+    pytest.importorskip("reportlab")
+    pypdf = pytest.importorskip("pypdf")
+
+    class NoConfirmation(Gate):
+        def confirm(self, *args):
+            raise AssertionError("Simulation may not fabricate manual confirmation")
+
+    plan = {**sweep_matrix.simulation_plan(quick_plan(), profile), "samples": 1}
+    attempts = []
+
+    def capture(*args, **kwargs):
+        attempts.append(args[2]["point_id"])
+        if partial and len(attempts) == 3:
+            raise TimeoutError("Injected point timeout")
+        return g.capture_point(*args, **kwargs)
+
+    source, result = run(tmp_path, plan=plan, gate=NoConfirmation(), capture=capture)
+    assert not list(source.glob("*/confirmation.json"))
+    assert result["requested_points"] == total
+    assert result["completed_points"] == (2 if partial else total)
+    assert result["not_reached_points"] == (total - 3 if partial else 0)
+    assert result["attempted_points"] == (3 if partial else total)
+    pdf_output = tmp_path / "with-pdf"
+    reports.publish(source, pdf_output, plot=False, include_pdf=True)
+    pages = pypdf.PdfReader(pdf_output / "report.pdf").pages
+    assert len(pages) > 1
+    body = "\n".join(page.extract_text() for page in pages)
+    assert "5366200" in body and f"P{total:03}" in body
+    assert "SIMULATED" in body and ("skipped" in body) == partial
+    delivery.verify(pdf_output.with_suffix(".zip"))
+    with pytest.raises(ValueError, match="page count"):
+        reports.check_complete_pdf((pdf_output / "report.pdf").read_bytes(), len(pages) + 1)
+
+    def unavailable():
+        raise AssertionError("PDF dependency checked when opted out")
+
+    monkeypatch.setattr(reports.pdf, "preflight", unavailable)
+    offline_output = tmp_path / "without-pdf"
+    reports.publish(source, offline_output, plot=False, include_pdf=False)
+    assert not (offline_output / "report.pdf").exists()
+    assert not (offline_output.with_suffix(".zip")).exists()
+    assert "report.pdf" not in (offline_output / "report.html").read_text()
+    assert json.loads((offline_output / "results.json").read_text()) == result
+    assert "carrier_hz" in (offline_output / "points.csv").read_text().splitlines()[0]
+
+
+def test_automatic_client_and_saved_export(tmp_path, local_http_server):
+    from hp437b.guided_client import Client
+
+    pytest.importorskip("reportlab")
+    manager = jobs.Jobs(tmp_path / "jobs", plots=False)
+    try:
+        server, *_ = local_http_server(manager)
+        client = Client(f"http://127.0.0.1:{server.server_port}")
+        plan = {**sweep_matrix.simulation_plan(quick_plan(), "pico-gpio"), "samples": 1}
+        job = client.start(plan, include_pdf=False)
+
+        def finished(job_id):
+            deadline = time.monotonic() + 18
+            while time.monotonic() < deadline:
+                current = next(item for item in client.state()["jobs"] if item["job_id"] == job_id)
+                assert current.get("prompt") is None
+                if not current["active"]:
+                    assert current["phase"] == "finished", current.get("error")
+                    return current
+                time.sleep(0.05)
+            pytest.fail("Worker did not finish")
+
+        capture = finished(job["job_id"])
+        assert capture["report_ready"] and not capture["pdf_ready"]
+        assert capture["include_pdf"] is False
+        inv = manager.root / job["job_id"] / "capture/artifacts.json"
+        saved = inv.read_bytes()
+        export = client.export(job["job_id"], include_pdf=True)
+        published = finished(export["job_id"])
+        assert published["report_ready"] and published["pdf_ready"] and published["package_ready"]
+        assert inv.read_bytes() == saved
+        assert manager.history(0, "all")["entries"][0]["include_pdf"] is True
+    finally:
+        manager.close()
 
 
 @pytest.mark.parametrize(

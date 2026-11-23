@@ -1,4 +1,4 @@
-"""Report-only publication from sealed operator POWER REF captures; no acquisition."""
+"""Report-only publication from sealed operator captures; no acquisition."""
 
 import fcntl
 from pathlib import Path
@@ -19,6 +19,16 @@ def inspect(path, request):
         record, _, _ = reference_suite.load(source)
         p.require(record["mode"] == request["meter_mode"], "Saved suite mode mismatch")
         p.require(record["workflows"] == request["workflows"], "Saved selection mismatch")
+    elif mode == "guided":
+        from . import guided_sweep
+
+        record, _, _ = guided_sweep.load(source)
+        p.require(
+            record["mode"] == request["meter_mode"]
+            and record["plan"] == request["sweep_plan"]
+            and record["plan"]["series"] == "combined",
+            "Saved guided sweep does not match the combined capture",
+        )
     else:
         p.require(mode == "physical", "Select an individual or combined POWER REF capture")
         p.require(len(request["workflows"]) == 1, "Invalid individual workflow selection")
@@ -26,7 +36,7 @@ def inspect(path, request):
     return r.digest((source / "artifacts.json").read_bytes())
 
 
-def publish(source_job, output, source_request, expected_hash, *, plots):
+def publish(source_job, output, source_request, expected_hash, *, plots, include_pdf=None):
     """Hold the source capture guard and publish into a new, non-overwriting destination."""
     source_job, output = Path(source_job), Path(output)
     lock = source_job / ".capture.lock"
@@ -40,6 +50,10 @@ def publish(source_job, output, source_request, expected_hash, *, plots):
         source = source_job / "capture"
         if source_request["mode"] == "reference_suite":
             result = reference_suite.publish(source, output, plots=plots)
+        elif source_request["mode"] == "guided":
+            from . import guided_report
+
+            result = guided_report.publish(source, output, plot=plots, include_pdf=include_pdf)
         else:
             result = reference_report.publish(
                 source, output, source_request["workflows"][0], plots=plots

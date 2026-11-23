@@ -1,6 +1,6 @@
 # Current equipment and references
 
-Updated: November 19, 2026.
+Updated: November 23, 2026.
 
 ## Manual library
 
@@ -23,7 +23,7 @@ DXCONNECTION / Valley Precision Instrument Calibration Services issued these rec
 
 ## Setup and identification
 
-The meter's laboratory sheets list software **2.0** and HPIB address **13**. Actual firmware/resource discovery, front-panel address, sensor connection, source state, and correction settings require confirmation before a selected hardware run. Project interaction checks for this meter remain pending.
+The meter's laboratory sheets list software **2.0** and HPIB address **13**. The [November 23 Mac bench run](validation/30M-POWER-20261123.md) observed firmware 2.0 and descriptor/resource serial `HEWLETT-PACKARD_437B_2.0`, with owner-confirmed 8482A connection and source state. Reconfirm the actual setup for subsequent runs; broader interaction checks remain pending. The front-panel address was not independently read in that run.
 
 The adapter is XyphroLabs **USBGpib V2**, vendor/product **03eb:2065**, with recorded adapter firmware **V2.4**, an Anker USB-C cable, and no established exact PCB revision. Adapter firmware is separate from instrument software. Discover the actual USB descriptor/resource; do not assume it is a stable meter identifier. See [adapter details](validation/ADAPTER-IDENTIFICATION.md).
 

@@ -1,6 +1,6 @@
 # Current plan
 
-Updated: November 19, 2026. The [project scope](PROJECT-SCOPE.md) governs development.
+Updated: November 23, 2026. The [project scope](PROJECT-SCOPE.md) governs development.
 
 ## Decision register
 
@@ -13,16 +13,19 @@ Updated: November 19, 2026. The [project scope](PROJECT-SCOPE.md) governs develo
 | Equipment | Meter SN 3125U22346 and sensor SN MY41094127; [current records](EQUIPMENT.md) |
 | Hardware scope | Relevant checks when equipment/operations are used; no blanket software-development gate |
 | Reporting | Traceable saved evidence, descriptive statistics, optional attributed criteria, PDF/portable delivery |
-| DUT control | Human-guided operation supported; automatic transmitter/supply drivers optional |
+| DUT control | Human-guided operation supported. The combined sweep has an automatic simulation and an optional full PDF. Live Pico/Pi tuning remains open. Supply control remains optional |
 
 ## Implemented capabilities
 
 The typed command interface, bounded logger/transport, synthetic demos, provenance, analysis/reporting, WF-01–WF-03 reference runners, combined reference suites, saved-data reporting/history/comparison, supplied-limit assessments, profiles, guided captures, and explicit ZERO/CAL interface are implemented. WF-04–WF-06 and shared controls support synthetic/fake execution. Implementation is distinct from physical qualification of the current meter.
 
+Serial-specific Mac-controlled 8482A MY41094127 factor correction is implemented for explicit-frequency logging and configured guided points. It uses certificate interpolation and records correction provenance; the [November 23 30 m bench record](validation/30M-POWER-20261123.md) reports one physical point at 24.500 mW indicated at sensor input, with stated limits.
+
 ## Remaining work
 
-- Confirm current meter identity/resource, sensor/factors, and actual setup, and perform relevant interaction checks for its selected use. Laboratory software 2.0/address 13 are not fresh project observations.
-- Use the guided path with an actual transmitter and suitable documented RF measurement path when selected.
+- Implement live transmitter control and qualified measurement timing from the [automatic frequency × drive sweep plan](workflows/AUTOMATIC-FREQUENCY-DRIVE-PLAN.md) for the selected Pico, Pi, and Si5351 output profiles.
+- Confirm fresh setup for subsequent selected use and perform relevant additional checks when selected. Firmware 2.0/resource and the owner-supplied sensor setup were observed in the Mac bench run; laboratory address 13 remains unverified.
+- Extend physical transmitter measurements beyond the recorded 30 m point, or exercise the full guided sweep path, when selected.
 - Perform physical setting, frequency, or voltage experiments when selected; supply control is needed only for voltage experiments.
 - Fix demonstrated defects. No further mandatory POWER REF feature is identified.
 

@@ -188,12 +188,24 @@ def server(manager, port=8765):
                     self._send(202, r.encoded(result))
                     return
                 if path == "/api/guided":
-                    p._keys(body, ("plan", "operator", "meter_mode", "prepared"))
+                    p._keys(
+                        body,
+                        ("plan", "operator", "meter_mode", "prepared")
+                        + (("include_pdf",) if "include_pdf" in body else ()),
+                    )
+                    p.require(
+                        "include_pdf" not in body or type(body["include_pdf"]) is bool,
+                        "PDF selection must be a boolean",
+                    )
                     self._send(
                         202,
                         r.encoded(
                             manager.start_guided(
-                                body["plan"], body["operator"], body["meter_mode"], body["prepared"]
+                                body["plan"],
+                                body["operator"],
+                                body["meter_mode"],
+                                body["prepared"],
+                                include_pdf=body.get("include_pdf"),
                             )
                         ),
                     )
@@ -280,8 +292,22 @@ def server(manager, port=8765):
                     )
                     return
                 if path == "/api/report-recovery":
-                    p._keys(body, ("source_job_id",))
-                    self._send(202, r.encoded(manager.regenerate_reports(body["source_job_id"])))
+                    p._keys(
+                        body,
+                        ("source_job_id",) + (("include_pdf",) if "include_pdf" in body else ()),
+                    )
+                    p.require(
+                        "include_pdf" not in body or type(body["include_pdf"]) is bool,
+                        "PDF selection must be a boolean",
+                    )
+                    self._send(
+                        202,
+                        r.encoded(
+                            manager.regenerate_reports(
+                                body["source_job_id"], include_pdf=body.get("include_pdf")
+                            )
+                        ),
+                    )
                     return
                 if path == "/api/cancel":
                     p._keys(body, ("job_id",))
@@ -362,6 +388,7 @@ def main(argv=None):
             preparation_config=preparation_config,
             reference_config=reference_config,
             sweep_config=sweep_config,
+            workflow_lock_root=args.reference_root.resolve() / "tmp/workflow-locks",
         )
         app = server(manager, args.port)
         print(f"Operator interface: http://127.0.0.1:{app.server_port}", flush=True)

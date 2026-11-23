@@ -104,11 +104,14 @@ def _pair(source, report):
         schema = "hp437b.test-suite-report.v1"
         for item in cap["children"]:
             _pair(Path(source) / item["path"], Path(report) / "workflows" / item["workflow"])
-    elif report_inv.get("schema") == "hp437b.guided-sweep-report.v1":
+    elif report_inv.get("schema") in (
+        "hp437b.guided-sweep-report.v1",
+        "hp437b.guided-combined-report.v2",
+    ):
         from . import guided_report
 
         run_id = guided_report.validate_pair(source, report)
-        schema = guided_report.SCHEMA
+        schema = report_inv["schema"]
         expected = output.json("results.json")
     elif report_inv.get("schema") == "hp437b.reference-report.v1":
         from . import reference_report
@@ -154,12 +157,25 @@ def _pair(source, report):
         == r.digest(evidence.read("artifacts.json")),
         "Report source hash mismatch",
     )
-    p.require(
-        meta.get("pdf", {}).get("page_count") == 1
-        and output.read("report.pdf").startswith(b"%PDF-"),
-        "Portable export requires a sealed one-page PDF report",
-    )
+    if schema == "hp437b.guided-combined-report.v2":
+        _check_combined_pdf(meta, output.read("report.pdf"))
+    else:
+        p.require(
+            meta.get("pdf", {}).get("page_count") == 1
+            and output.read("report.pdf").startswith(b"%PDF-"),
+            "Portable export requires a sealed one-page PDF report",
+        )
     return evidence, output, run_id
+
+
+def _check_combined_pdf(meta, data):
+    from . import guided_report
+
+    p.require(
+        meta.get("schema") == guided_report.COMPLETE_SCHEMA and meta.get("include_pdf") is True,
+        "Portable combined reports require a selected PDF",
+    )
+    guided_report.check_complete_pdf(data, meta.get("pdf", {}).get("page_count"))
 
 
 def source_inv_mode(bundle):
@@ -193,13 +209,16 @@ def package(source, report, target=None):
         artifacts={},
     )
     readme = b"RF Output Power Test - portable report\n\nExtract the entire ZIP into a new directory. Open report/report.pdf for the one-page answer. Open report/report.html for linked detail and individual reports. Sealed original evidence is under evidence/. Provenance references are relative to the corresponding original capture (for suites: evidence/captures/WF-04 etc.).\n\nHashes detect changes, not author/device authenticity. All included measurements are synthetic. No equipment, network, or AI-provider access is needed.\n\nVerify without extracting: python -m hp437b.report_delivery verify --package FILE.zip\n"
+    report_schema = p._json(output.read("artifacts.json")).get("schema")
+    if report_schema == "hp437b.guided-combined-report.v2":
+        readme = readme.replace(b"the one-page answer", b"the complete guided sweep report")
     if manifest["mode"] == "physical":
         readme = readme.replace(
             b"All included measurements are synthetic.",
             (
                 b"Recorded operator-guided radio measurements; operator-confirmed labels and equipment/setup limits apply."
-                if p._json(output.read("artifacts.json")).get("schema")
-                == "hp437b.guided-sweep-report.v1"
+                if report_schema
+                in ("hp437b.guided-sweep-report.v1", "hp437b.guided-combined-report.v2")
                 else b"Recorded POWER REF measurements; equipment/setup limits and separate front-panel confirmation apply."
             ),
         )
@@ -324,6 +343,14 @@ def verify(path):
                     manifest["artifacts"][prefix + "/" + name] == expected,
                     "Archive inventory/member mismatch",
                 )
+        report_inv = p._json(archive.read("report/artifacts.json"))
+        if report_inv.get("schema") == "hp437b.guided-combined-report.v2":
+            meta = p._json(archive.read("report/metadata.json"))
+            p.require(
+                meta.get("source_inventory_sha256") == manifest["evidence_inventory_sha256"],
+                "Combined report/capture binding mismatch",
+            )
+            _check_combined_pdf(meta, archive.read("report/report.pdf"))
     return manifest
 
 

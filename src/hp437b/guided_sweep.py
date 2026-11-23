@@ -9,11 +9,12 @@ from decimal import Decimal as D
 from pathlib import Path
 from typing import Protocol
 
-from . import protocol, report_context
+from . import protocol, report_context, sweep_matrix
 from . import provenance as p
 from . import reporting as r
 from .instrument import Instrument
 from .logger import _atomic_json, collect
+from .sensor_correction import correction
 from .simulation import DemoTransport
 from .transport import VisaTransport
 from .workflow_report import _seal
@@ -51,6 +52,7 @@ def example():
 
 
 def validate(plan):
+    automatic = isinstance(plan, dict) and plan.get("schema") == sweep_matrix.SCHEMA
     p._keys(
         plan,
         (
@@ -65,9 +67,10 @@ def validate(plan):
             "settling_s",
             "timeout_s",
             "measurement_notes",
+            *(("profile",) if automatic else ()),
         ),
     )
-    p.require(plan["schema"] == SCHEMA, "Unsupported guided sweep plan")
+    p.require(automatic or plan["schema"] == SCHEMA, "Unsupported guided sweep plan")
     text(plan["name"])
     text(plan["measurement_notes"], 1000)
     p.require(plan["series"] in ("frequency", "drive", "combined"), "Invalid series")
@@ -94,6 +97,8 @@ def validate(plan):
             f"Invalid {key}: use {low}–{high}",
         )
     p.require(plan["samples"] * plan["interval_s"] <= 3600, "Point capture exceeds one hour")
+    if automatic:
+        sweep_matrix.validate(plan)
     return p._json(r.encoded(plan))
 
 
@@ -102,13 +107,29 @@ def points(plan):
     pairs = [(f, d) for f in plan["frequencies"] for d in plan["drives"]]
     if plan["order"] == "drive":
         pairs = [(f, d) for d in plan["drives"] for f in plan["frequencies"]]
-    return [dict(point_id=f"P{i:03d}", frequency=f, drive=d) for i, (f, d) in enumerate(pairs, 1)]
+    result = []
+    for i, (frequency, drive) in enumerate(pairs, 1):
+        point = dict(point_id=f"P{i:03d}", frequency=frequency, drive=drive)
+        result.append({**point, **sweep_matrix.point_data(plan, point)})
+    return result
+
+
+def check_mode(plan, mode):
+    p.require(mode in ("synthetic", "physical"), "Invalid meter mode")
+    if plan["schema"] == sweep_matrix.SCHEMA:
+        p.require(
+            mode == "synthetic",
+            "Automatic sweep requires a verified device bridge. Select simulated meter or use manual confirmation.",
+        )
 
 
 def configuration(document):
     p.require(isinstance(document, dict), "Invalid meter configuration")
     keys = ("resource", "meter_serial", "sensor_serial", "known_issues", "fixture")
-    p._keys(document, (*keys, "signal_source") if "signal_source" in document else keys)
+    p._keys(
+        document,
+        (*keys, *(key for key in ("signal_source", "sensor_correction") if key in document)),
+    )
     p.require(
         document.get("signal_source", "external") in ("external", "power_ref"),
         "Invalid configured signal source",
@@ -122,7 +143,30 @@ def configuration(document):
     )
     for issue in document["known_issues"]:
         text(issue, 500)
+    if "sensor_correction" in document:
+        settings = document["sensor_correction"]
+        p._keys(settings, ("profile", "frequency_hz"))
+        p.require(
+            not reference_source(document), "Sensor sweep correction is for external RF captures"
+        )
+        p.require(
+            isinstance(settings["frequency_hz"], dict) and 1 <= len(settings["frequency_hz"]) <= 32,
+            "Supply exact frequencies by point label",
+        )
+        for label, hz in settings["frequency_hz"].items():
+            text(label, 60)
+            correction(settings["profile"], document["sensor_serial"], hz)
     return p._json(r.encoded(document))
+
+
+def point_correction(config, label):
+    if config is None or "sensor_correction" not in config:
+        return None
+    settings = config["sensor_correction"]
+    p.require(
+        label in settings["frequency_hz"], "Exact frequency missing for corrected sweep point"
+    )
+    return correction(settings["profile"], config["sensor_serial"], settings["frequency_hz"][label])
 
 
 def reference_source(config):
@@ -130,6 +174,8 @@ def reference_source(config):
 
 
 def check_source_plan(plan, config):
+    for label in plan["frequencies"]:
+        point_correction(config, label)
     if reference_source(config):
         p.require(
             plan["series"] == "drive"
@@ -219,6 +265,7 @@ def capture_point(
             sleep(min(0.1, max(0, end - time.monotonic())))
 
     pause(plan["settling_s"])
+    sensor_correction = point_correction(config, point["frequency"])
     if cancelled():
         raise KeyboardInterrupt("Series stopped before opening the meter")
     transport = (
@@ -252,13 +299,14 @@ def capture_point(
 
     instrument = GuidedInstrument(transport, timeout=plan["timeout_s"])
     context = dict(
-        workflow=SCHEMA,
+        workflow=plan["schema"],
         point=point,
-        confirmation=confirmation,
         plan_sha256=r.digest(r.encoded(plan)),
         equipment=config,
         measurement_plane="meter_indication_at_sensor_input",
     )
+    key = "simulation_authorization" if plan["schema"] == sweep_matrix.SCHEMA else "confirmation"
+    context[key] = confirmation
     try:
         return collect(
             instrument,
@@ -267,6 +315,7 @@ def capture_point(
             interval=plan["interval_s"],
             unit="W",
             context=context,
+            sensor_correction=sensor_correction,
             simulation=mode == "synthetic",
             connect=(lambda: transport.open(plan["timeout_s"])) if mode == "physical" else None,
             sleep=pause,
@@ -289,7 +338,7 @@ def run(
     capture=capture_point,
 ):
     plan = validate(plan)
-    p.require(mode in ("synthetic", "physical"), "Invalid meter mode")
+    check_mode(plan, mode)
     report_context.validate_operator(operator)
     if mode == "physical":
         config = configuration(config)
@@ -305,7 +354,7 @@ def run(
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     record = dict(
-        schema=SCHEMA,
+        schema=plan["schema"],
         mode=mode,
         run_id=str(uuid.uuid4()),
         plan=plan,
@@ -318,31 +367,38 @@ def run(
         error=None,
     )
     _atomic_json(output / "workflow.json", record)
+    automatic = plan["schema"] == sweep_matrix.SCHEMA
     try:
         for i, point in enumerate(record["points"]):
             if gate.cancelled():
                 raise KeyboardInterrupt("Series stopped at a point boundary")
             point["status"] = "waiting"
             token = uuid.uuid4().hex
-            confirmation = check_confirmation(
-                gate.confirm({k: point[k] for k in ("point_id", "frequency", "drive")}, token),
-                point,
-                token,
-            )
+            planned_point = {k: v for k, v in point.items() if k != "status"}
+            if automatic:
+                confirmation = simulation_authorization(record, planned_point, token)
+                filename = "simulation-authorization.json"
+            else:
+                confirmation = check_confirmation(gate.confirm(planned_point, token), point, token)
+                filename = "confirmation.json"
             if gate.cancelled():
                 raise KeyboardInterrupt("Series stopped before capture")
             folder = output / point["point_id"]
             folder.mkdir()
-            _atomic_json(folder / "confirmation.json", confirmation)
+            _atomic_json(folder / filename, confirmation)
             point.update(status="running", token=token)
             _atomic_json(output / "workflow.json", record)
             emit(
-                phase="running", prompt=None, index=i, current="GUIDED", stage="settling / capture"
+                phase="running",
+                prompt=None,
+                index=i,
+                current="GUIDED",
+                stage="simulated capture" if automatic else "settling / capture",
             )
             capture(
                 folder / "samples.csv",
                 plan,
-                {k: point[k] for k in ("point_id", "frequency", "drive")},
+                planned_point,
                 confirmation,
                 mode=mode,
                 config=config,
@@ -363,27 +419,64 @@ def run(
     finally:
         record["finished_utc"] = datetime.now(UTC).isoformat()
         _atomic_json(output / "workflow.json", record)
-        _seal(output, dict(schema=SCHEMA, mode=mode, run_id=record["run_id"]))
+        _seal(output, dict(schema=plan["schema"], mode=mode, run_id=record["run_id"]))
     return load(output)[1]
+
+
+def simulation_authorization(record, point, token):
+    return dict(
+        kind="automatic-simulation",
+        run_id=record["run_id"],
+        plan_sha256=r.digest(r.encoded(record["plan"])),
+        point=point,
+        token=token,
+    )
 
 
 def analyze_unsealed(source, record):
     """Recompute from native logger rows; partial observations never complete a point."""
     results = []
     plan_hash = r.digest(r.encoded(record["plan"]))
+    automatic = record["schema"] == sweep_matrix.SCHEMA
     prior_finished = None
     session_ids = set()
     for point in record["points"]:
         folder = Path(source) / point["point_id"]
         values, session, confirmation = [], None, None
+        planned_point = {k: v for k, v in point.items() if k not in ("status", "token")}
         elapsed = []
-        if (folder / "confirmation.json").is_file():
+        if automatic and (folder / "simulation-authorization.json").is_file():
+            confirmation = p._json((folder / "simulation-authorization.json").read_bytes())
+            p.require(
+                confirmation == simulation_authorization(record, planned_point, point["token"]),
+                "Simulation authorization differs from the frozen point",
+            )
+        if not automatic and (folder / "confirmation.json").is_file():
             confirmation = p._json((folder / "confirmation.json").read_bytes())
             check_confirmation(confirmation, point, point["token"])
         if (folder / "samples.csv.session.json").is_file():
+            p.require(confirmation is not None, "Native session lacks point authorization")
             session = p._json((folder / "samples.csv.session.json").read_bytes())
             context = session["context"]
             settings = session["settings"]
+            expected_correction = point_correction(record["equipment"], point["frequency"])
+            if expected_correction is not None:
+                receipt = session.get("sensor_correction", {})
+                p.require(
+                    {
+                        k: v
+                        for k, v in receipt.items()
+                        if k not in ("command_sent", "status_checked")
+                    }
+                    == expected_correction,
+                    "Native sensor correction mismatch",
+                )
+                if point["status"] == "completed":
+                    p.require(
+                        receipt.get("command_sent") is True
+                        and receipt.get("status_checked") is True,
+                        "Completed point lacks applied correction evidence",
+                    )
             p.require(
                 settings["unit"] == "W"
                 and settings["count"] == record["plan"]["samples"]
@@ -396,10 +489,15 @@ def analyze_unsealed(source, record):
                 session["session_id"] not in session_ids, "Session identity reused across points"
             )
             session_ids.add(session["session_id"])
-            confirmed = datetime.fromisoformat(confirmation["confirmed_utc"])
+            started = datetime.fromisoformat(session["started_utc"])
+            authorized = (
+                datetime.fromisoformat(record["started_utc"])
+                if automatic
+                else datetime.fromisoformat(confirmation["confirmed_utc"])
+            )
             p.require(
-                prior_finished is None or confirmed >= prior_finished,
-                "Confirmation predates previous point closure",
+                prior_finished is None or (started if automatic else authorized) >= prior_finished,
+                "Capture or confirmation predates previous point closure",
             )
             prior_finished = datetime.fromisoformat(session["finished_utc"])
             if "initial_status_raw_hex" in session:
@@ -411,18 +509,19 @@ def analyze_unsealed(source, record):
                     and not status.entry_error,
                     "Invalid initial meter status",
                 )
+            key = "simulation_authorization" if automatic else "confirmation"
             p.require(
                 session["simulation"] == (record["mode"] == "synthetic")
-                and context["confirmation"] == confirmation
+                and context["workflow"] == record["schema"]
+                and context[key] == confirmation
                 and context["plan_sha256"] == plan_hash
                 and context["equipment"] == record["equipment"]
-                and context["point"] == {k: point[k] for k in ("point_id", "frequency", "drive")},
+                and context["point"] == planned_point,
                 "Native session context mismatch",
             )
             p.require(
-                datetime.fromisoformat(session["started_utc"])
-                >= datetime.fromisoformat(confirmation["confirmed_utc"]),
-                "Capture predates confirmation",
+                started >= authorized,
+                "Capture predates authorization",
             )
             with (folder / "samples.csv").open(newline="") as handle:
                 rows = list(csv.DictReader(handle))
@@ -465,7 +564,8 @@ def analyze_unsealed(source, record):
         )
         results.append(
             {
-                **{k: point[k] for k in ("point_id", "frequency", "drive", "status")},
+                **planned_point,
+                "status": point["status"],
                 "samples": len(values),
                 "stddev_W": str(variance.sqrt()) if variance is not None else None,
                 "max_receipt_gap_s": str(
@@ -482,7 +582,7 @@ def analyze_unsealed(source, record):
             }
         )
     return dict(
-        schema=SCHEMA,
+        schema=record["schema"],
         mode=record["mode"],
         run_id=record["run_id"],
         execution=record["status"],
@@ -490,6 +590,15 @@ def analyze_unsealed(source, record):
         measurement_plane="meter_indication_at_sensor_input",
         requested_points=len(results),
         completed_points=sum(x["status"] == "completed" for x in results),
+        **(
+            dict(
+                attempted_points=sum("token" in point for point in record["points"]),
+                not_reached_points=sum(row["status"] == "skipped" for row in results),
+                stop_reason=record["error"],
+            )
+            if automatic
+            else {}
+        ),
         points=results,
     )
 
@@ -498,18 +607,20 @@ def load(source):
     bundle = p.Bundle(source)
     inventory = p._json(bundle.read("artifacts.json"))
     p.require(
-        inventory.get("schema") == SCHEMA and inventory.get("mode") in ("physical", "synthetic"),
+        inventory.get("schema") in (SCHEMA, sweep_matrix.SCHEMA)
+        and inventory.get("mode") in ("physical", "synthetic"),
         "Invalid sweep inventory",
     )
     bundle.inventory("artifacts.json", inventory["mode"])
     record = bundle.json("workflow.json")
     p.require(
-        record["schema"] == SCHEMA
+        record["schema"] == inventory["schema"] == record["plan"]["schema"]
         and record["run_id"] == inventory["run_id"]
         and record["mode"] == inventory["mode"]
         and record["status"] in ("completed", "failed", "interrupted"),
         "Invalid sweep identity/status",
     )
+    check_mode(record["plan"], record["mode"])
     report_context.validate_operator(record["operator"])
     if record["mode"] == "physical":
         configuration(record["equipment"])
@@ -527,11 +638,35 @@ def load(source):
     stopped = False
     for point, original in zip(record["points"], expected, strict=True):
         p.require(
+            set(point) <= {*original, "status", "token"},
+            "Unexpected requested point metadata",
+        )
+        p.require(
             all(point[k] == v for k, v in original.items()), "Requested point labels/order changed"
         )
         p.require(
             point["status"] in ("completed", "failed", "interrupted", "skipped"), "Unfinished point"
         )
+        if record["schema"] == sweep_matrix.SCHEMA:
+            files = {
+                name.split("/", 1)[1]
+                for name in bundle.entries
+                if name.startswith(point["point_id"] + "/")
+            }
+            p.require(
+                files
+                <= {
+                    "simulation-authorization.json",
+                    "samples.csv",
+                    "samples.csv.session.json",
+                }
+                and (
+                    not files
+                    if "token" not in point
+                    else point["status"] != "skipped" and "simulation-authorization.json" in files
+                ),
+                "Unexpected or missing simulation evidence",
+            )
         if point["status"] == "completed":
             p.require(not stopped, "Capture continued after a stopped point")
         else:

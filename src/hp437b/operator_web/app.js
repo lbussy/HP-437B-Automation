@@ -45,7 +45,7 @@ function modeChanged(reset=true){
   selectionChanged();return;
  }
  $("reference-workflow").parentElement.hidden=false;
- if(guided){$("page-title").textContent="Measure a manual sweep";$("intro-text").textContent="Set the radio, confirm each point, and capture measured power.";$("reference-setup").hidden=true;$("environment").textContent=$("guided-meter").value==="physical"?"Operator-guided · bench meter":"Operator-guided · simulated meter";$("scope").textContent="One confirmed point at a time. Original measurements stay with the report.";$("mode-note").textContent="Choose frequency, drive setting, or a combined series.";guidedPlanChanged();selectionChanged();return;}
+ if(guided){$("page-title").textContent="Measure a radio sweep";$("intro-text").textContent="Choose manual point confirmation or run a simulated frequency and drive matrix.";$("reference-setup").hidden=true;$("environment").textContent=$("guided-meter").value==="physical"?"Operator-guided · bench meter":"Operator-guided · simulated meter";$("scope").textContent=guidedAutomatic()?"The automatic matrix uses simulated readings.":"Confirm each point before capturing its meter reading.";$("mode-note").textContent="Choose frequency, drive setting, or a combined series.";guidedPlanChanged();selectionChanged();return;}
  $("page-title").textContent=physical?"Measure POWER REF":"Run an RF test suite";$("intro-text").textContent=physical?"Exercise the current meter and sensor with its internal reference.":"Choose a DUT profile and tests. Collect a traceable report.";$("fake-setup").hidden=physical;$("fake-tests").hidden=physical;$("reference-setup").hidden=!physical;
  if(reset)for(const input of document.querySelectorAll('#prepared input'))input.checked=false;
  $("environment").textContent=physical?"POWER REF · current meter":"Simulation · local session";
@@ -54,7 +54,7 @@ function modeChanged(reset=true){
  selectionChanged();
 }
 for(const [key,labelText] of Object.entries(preparation)){const label=node("label",undefined,"test-option"),input=node("input");input.type="checkbox";input.value=key;input.addEventListener("change",selectionChanged);label.append(input,node("span",labelText));$("prepared").append(label);}
-function canStart(){if(preparationMode())return !model.active_id&&!model.pending_reference&&!busy&&prepFactorValid()&&(!preparationBench()||(Boolean(model.preparation)&&Object.values(prepValues()).every(Boolean)));if(referenceSuiteMode())return !model.active_id&&!model.pending_reference&&!busy&&chosen().length>0&&(!referenceSuiteBench()||(Boolean(model.reference)&&Object.values(preparedValues()).every(Boolean)));if(guidedMode())return !model.active_id&&!model.pending_reference&&!busy&&guidedValid()&&($("guided-meter").value!=="physical"||(Boolean(model.guided?.meter)&&Object.values(guidedPrepared()).every(Boolean)));return !model.active_id&&!model.pending_reference&&!busy&&(physicalMode()?Boolean(model.reference)&&Object.values(preparedValues()).every(Boolean):chosen().length>0&&Boolean(selectedProfile));}
+function canStart(){if(preparationMode())return !model.active_id&&!model.pending_reference&&!busy&&prepFactorValid()&&(!preparationBench()||(Boolean(model.preparation)&&Object.values(prepValues()).every(Boolean)));if(referenceSuiteMode())return !model.active_id&&!model.pending_reference&&!busy&&chosen().length>0&&(!referenceSuiteBench()||(Boolean(model.reference)&&Object.values(preparedValues()).every(Boolean)));if(guidedMode())return !model.active_id&&!model.pending_reference&&!busy&&guidedValid()&&(guidedAutomatic()||$("guided-meter").value!=="physical"||(Boolean(model.guided?.meter)&&Object.values(guidedPrepared()).every(Boolean)));return !model.active_id&&!model.pending_reference&&!busy&&(physicalMode()?Boolean(model.reference)&&Object.values(preparedValues()).every(Boolean):chosen().length>0&&Boolean(selectedProfile));}
 function chosen() {if(preparationMode())return [$("preparation-action").value];if(referenceSuiteMode())return [...document.querySelectorAll("#reference-suite-tests input:checked")].map(input=>input.value);if(guidedMode())return ["GUIDED"];if(physicalMode())return [$("reference-workflow").value];return [...document.querySelectorAll('#test-options input:checked')].map(input=>input.value);}
 function profileChanged() {
   selectedProfile=model.profiles.find(profile=>profile.key===$("profile").value);
@@ -187,14 +187,15 @@ async function refresh(force=false) {
     if(activePrep&&hydratedPreparation!==activePrep.job_id){hydratedPreparation=activePrep.job_id;$("mode").value="meter_preparation";$("preparation-source").value=activePrep.meter_mode;$("preparation-action").value=activePrep.workflows[0];}
     const activeRefSuite=model.jobs.find(job=>job.job_id===model.active_id&&job.mode==="reference_suite");
     if(activeRefSuite&&hydratedReferenceSuite!==activeRefSuite.job_id){hydratedReferenceSuite=activeRefSuite.job_id;$("mode").value="reference_suite";$("reference-suite-source").value=activeRefSuite.meter_mode;for(const input of document.querySelectorAll('#reference-suite-tests input'))input.checked=activeRefSuite.workflows.includes(input.value);$("operator").value=activeRefSuite.operator||"";}
+    renderGuidedCatalog();
     const activeGuided=model.jobs.find(job=>job.job_id===model.active_id&&job.mode==="guided");
-    if(activeGuided&&hydratedGuided!==activeGuided.job_id){const p=activeGuided.sweep_plan;hydratedGuided=activeGuided.job_id;$("mode").value="guided";for(const [id,value] of Object.entries({"guided-name":p.name,"guided-series":p.series,"guided-frequencies":p.frequencies.join(", "),"guided-drives":p.drives.join(", "),"guided-order":p.order,"guided-samples":p.samples,"guided-interval":p.interval_s,"guided-settling":p.settling_s,"guided-notes":p.measurement_notes,"guided-meter":activeGuided.meter_mode,"operator":activeGuided.operator||""}))$(id).value=value;}
+    if(activeGuided&&hydratedGuided!==activeGuided.job_id){const p=activeGuided.sweep_plan;$("guided-pdf").checked=activeGuided.include_pdf===true;$("guided-execution").value=p.profile?"simulation":"manual";if(p.profile)$("guided-profile").value=p.profile;hydratedGuided=activeGuided.job_id;$("mode").value="guided";for(const [id,value] of Object.entries({"guided-name":p.name,"guided-series":p.series,"guided-frequencies":p.frequencies.join(", "),"guided-drives":p.drives.join(", "),"guided-order":p.order,"guided-samples":p.samples,"guided-interval":p.interval_s,"guided-settling":p.settling_s,"guided-notes":p.measurement_notes,"guided-meter":activeGuided.meter_mode,"operator":activeGuided.operator||""}))$(id).value=value;}
     renderReferenceProfiles();modeChanged(false);renderRun(model.jobs.find(job=>job.job_id===model.active_id)||model.jobs.find(job=>job.job_id===model.pending_reference)||model.jobs[0]||null);renderHistory();renderRecoveryControls();renderAssessmentControls();
   }catch(exc){$("connection").textContent="Connection to the local operator service was lost. Existing worker runs are not restarted. Reload this page to reconnect and view their status.";$("connection").hidden=false;$("start").disabled=true;$("cancel").disabled=true;$("guided-capture").disabled=true;$("guided-stop").disabled=true;}
   })();inflight=task;try{await task;}finally{if(inflight===task)inflight=null;}
 }
 $("profile").addEventListener("change",profileChanged);
-$("run-form").addEventListener("submit",async event=>{event.preventDefault();if(busy||model.active_id)return;busy=true;generation++;error("");$("start").disabled=true;try{const job=preparationMode()?await api("/api/preparation",{action:$("preparation-action").value,meter_mode:$("preparation-source").value,operator:$("operator").value.trim()||null,prepared:preparationBench()?prepValues():{},reference_factor:$("preparation-action").value==="CAL"?$("preparation-factor").value.trim():null,factor_source:$("preparation-action").value==="CAL"?$("preparation-factor-source").value.trim():null}):referenceSuiteMode()&&$("reference-profile").value?await api("/api/reference-profile-run",{profile_key:$("reference-profile").value,meter_mode:$("reference-suite-source").value,operator:$("operator").value.trim()||null,prepared:referenceSuiteBench()?preparedValues():{}}):referenceSuiteMode()?await api("/api/reference-suite",{workflows:chosen(),meter_mode:$("reference-suite-source").value,operator:$("operator").value.trim()||null,prepared:referenceSuiteBench()?preparedValues():{}}):guidedMode()?await api("/api/guided",{plan:guidedPlan(),operator:$("operator").value.trim()||null,meter_mode:$("guided-meter").value,prepared:$("guided-meter").value==="physical"?guidedPrepared():{}}):physicalMode()?await api("/api/reference",{workflow:$("reference-workflow").value,operator:$("operator").value.trim()||null,prepared:preparedValues()}):await api("/api/jobs",{profile_key:$("profile").value,workflows:chosen(),operator:$("operator").value.trim()||null});for(const input of document.querySelectorAll("#prepared input,#guided-prepared input,#preparation-checks input"))input.checked=false;model.active_id=job.job_id;model.jobs=[job,...model.jobs.filter(item=>item.job_id!==job.job_id)];renderRun(job);await refresh(true);}catch(exc){error(exc.message);}finally{busy=false;selectionChanged();}});
+$("run-form").addEventListener("submit",async event=>{event.preventDefault();if(busy||model.active_id)return;busy=true;generation++;error("");$("start").disabled=true;try{const job=preparationMode()?await api("/api/preparation",{action:$("preparation-action").value,meter_mode:$("preparation-source").value,operator:$("operator").value.trim()||null,prepared:preparationBench()?prepValues():{},reference_factor:$("preparation-action").value==="CAL"?$("preparation-factor").value.trim():null,factor_source:$("preparation-action").value==="CAL"?$("preparation-factor-source").value.trim():null}):referenceSuiteMode()&&$("reference-profile").value?await api("/api/reference-profile-run",{profile_key:$("reference-profile").value,meter_mode:$("reference-suite-source").value,operator:$("operator").value.trim()||null,prepared:referenceSuiteBench()?preparedValues():{}}):referenceSuiteMode()?await api("/api/reference-suite",{workflows:chosen(),meter_mode:$("reference-suite-source").value,operator:$("operator").value.trim()||null,prepared:referenceSuiteBench()?preparedValues():{}}):guidedMode()?await api("/api/guided",{plan:guidedPlan(),operator:$("operator").value.trim()||null,meter_mode:guidedAutomatic()?"synthetic":$("guided-meter").value,prepared:!guidedAutomatic()&&$("guided-meter").value==="physical"?guidedPrepared():{},...($("guided-series").value==="combined"?{include_pdf:$("guided-pdf").checked}:{})}):physicalMode()?await api("/api/reference",{workflow:$("reference-workflow").value,operator:$("operator").value.trim()||null,prepared:preparedValues()}):await api("/api/jobs",{profile_key:$("profile").value,workflows:chosen(),operator:$("operator").value.trim()||null});for(const input of document.querySelectorAll("#prepared input,#guided-prepared input,#preparation-checks input"))input.checked=false;model.active_id=job.job_id;model.jobs=[job,...model.jobs.filter(item=>item.job_id!==job.job_id)];renderRun(job);await refresh(true);}catch(exc){error(exc.message);}finally{busy=false;selectionChanged();}});
 $("cancel").addEventListener("click",async()=>{if(!model.active_id)return;generation++;$("cancel").disabled=true;error("");try{await api("/api/cancel",{job_id:model.active_id});await refresh(true);}catch(exc){error(exc.message);await refresh();}});
 $("import").addEventListener("click",()=>$("profile-file").click());
 $("profile-file").addEventListener("change",async()=>{const file=$("profile-file").files[0];if(!file)return;generation++;error("");try{if(file.size>256*1024)throw new Error("Profile exceeds 256 KiB.");const raw=await file.text();const imported=await api("/api/profiles",{profile_json:raw});await refresh(true);$("profile").value=imported.key;profileChanged();}catch(exc){error("Profile was not imported: "+exc.message);}finally{$("profile-file").value="";}});
@@ -207,35 +208,80 @@ const guidedSetup={rf_path_ready:"RF path and sensor input level are suitable fo
 for(const [key,labelText] of Object.entries(guidedSetup)){const label=node("label",undefined,"test-option"),input=node("input");input.type="checkbox";input.value=key;input.addEventListener("change",selectionChanged);label.append(input,node("span",labelText));$("guided-prepared").append(label);}
 function guidedPrepared(){return Object.fromEntries([...document.querySelectorAll('#guided-prepared input')].map(input=>[input.value,input.checked]));}
 const guidedLabels=id=>$(id).value.split(',').map(x=>x.trim()).filter(Boolean);
-function guidedPlan(){let frequencies=guidedLabels("guided-frequencies"),drives=guidedLabels("guided-drives");const series=$("guided-series").value;if(series==="drive")frequencies=frequencies.slice(0,1);if(series==="frequency")drives=drives.slice(0,1);return {schema:"hp437b.guided-sweep.v1",name:$("guided-name").value.trim(),series,order:$("guided-order").value,frequencies,drives,samples:Number($("guided-samples").value),interval_s:Number($("guided-interval").value),settling_s:Number($("guided-settling").value),timeout_s:10,measurement_notes:$("guided-notes").value.trim()};}
+function guidedAutomatic(){return $("guided-series").value==="combined"&&$("guided-execution").value==="simulation";}
+function renderGuidedCatalog(){
+ const catalog=model.guided?.automatic_simulation;
+ if(!catalog||$("guided-profile").options.length)return;
+ for(const profile of catalog.profiles){
+  const option=node("option",`${profile.label} · ${profile.drives_ma.join(", ")} mA`);
+  option.value=profile.id;$("guided-profile").append(option);
+ }
+ for(const band of catalog.bands){
+  const row=node("tr"), label=node("th",band.label);label.scope="row";
+  row.append(label,node("td",String(band.dial_hz)),node("td",String(band.carrier_hz)));
+  $("guided-carriers").append(row);
+ }
+}
+function guidedPlan(){
+ const series=$("guided-series").value, auto=guidedAutomatic();
+ const catalog=model.guided?.automatic_simulation;
+ const profile=catalog?.profiles.find(item=>item.id===$("guided-profile").value);
+ let frequencies=auto?(catalog?.bands||[]).map(band=>band.label):guidedLabels("guided-frequencies");
+ let drives=auto?(profile?.drives_ma||[]).map(ma=>`${ma} mA`):guidedLabels("guided-drives");
+ if(series==="drive")frequencies=frequencies.slice(0,1);
+ if(series==="frequency")drives=drives.slice(0,1);
+ return {
+  schema:auto?catalog?.schema:"hp437b.guided-sweep.v1",name:$("guided-name").value.trim(),
+  series,order:auto?"drive":$("guided-order").value,frequencies,drives,
+  samples:auto?Math.min(Number($("guided-samples").value),3):Number($("guided-samples").value),
+  interval_s:Number($("guided-interval").value),settling_s:auto?0:Number($("guided-settling").value),
+  timeout_s:10,measurement_notes:$("guided-notes").value.trim(),...(auto?{profile:profile?.id}:{})
+ };
+}
 function guidedValid(){const p=guidedPlan();return p.name.length>0&&p.measurement_notes.length>0&&p.frequencies.length>0&&p.frequencies.length<=32&&p.drives.length>0&&p.drives.length<=16&&new Set(p.frequencies).size===p.frequencies.length&&new Set(p.drives).size===p.drives.length&&[...p.frequencies,...p.drives].every(x=>x.length<=60)&&Number.isInteger(p.samples)&&p.samples>=1&&p.samples<=1000&&p.interval_s>=.1&&p.interval_s<=60&&p.settling_s>=0&&p.settling_s<=120&&p.samples*p.interval_s<=3600;}
-function guidedPlanChanged(){const p=guidedPlan();$("guided-plan").textContent=guidedValid()?`${p.frequencies.length} frequencies × ${p.drives.length} drive settings = ${p.frequencies.length*p.drives.length} points. Confirmation is required before every capture.`:"Check the labels and capture limits before starting.";$("guided-order").disabled=Boolean(model.active_id)||p.series!=="combined";$("guided-frequency-hint").textContent=p.series==="drive"?"The first frequency label is held fixed for this series.":"Comma-separated labels; up to 32. Include exact frequencies in the labels as needed.";$("guided-drive-hint").textContent=p.series==="frequency"?"The first drive label is held fixed for this series.":"Comma-separated labels; up to 16, including custom setting names.";$("guided-prepared").hidden=$("guided-meter").value!=="physical";}
-function guidedReference(job){return (job?.meter_mode||$("guided-meter").value)==="physical"&&(job?.sweep_config||model.guided?.meter)?.signal_source==="power_ref";}
+function guidedPlanChanged(){
+ const p=guidedPlan(), auto=guidedAutomatic(), active=Boolean(model.active_id);
+ const points=p.frequencies.length*p.drives.length;
+ $("guided-plan").textContent=guidedValid()
+  ?`${p.frequencies.length} frequencies × ${p.drives.length} drive settings = ${points} points. ${auto?`Drive setting first, ${p.samples} readings per point.`:"Confirmation is required before every capture."}`
+  :"Check the labels and capture limits before starting.";
+ $("guided-execution-field").hidden=p.series!=="combined";
+ $("guided-simulation").hidden=!auto;
+ $("guided-pdf-field").hidden=p.series!=="combined";
+ for(const id of ["guided-frequencies","guided-drives","guided-order","guided-meter","guided-settling","guided-samples"]){
+  $(id).parentElement.hidden=auto;
+  $(id).disabled=active||auto||(id==="guided-order"&&p.series!=="combined");
+ }
+ $("guided-frequency-hint").textContent=p.series==="drive"?"The first frequency label is held fixed for this series.":"Comma-separated labels; up to 32. Include exact frequencies in the labels as needed.";
+ $("guided-drive-hint").textContent=p.series==="frequency"?"The first drive label is held fixed for this series.":"Comma-separated labels; up to 16, including custom setting names.";
+ $("guided-prepared").hidden=auto||$("guided-meter").value!=="physical";
+}
+function guidedReference(job){return !(job?.sweep_plan?.profile||(!job&&guidedAutomatic()))&&(job?.meter_mode||$("guided-meter").value)==="physical"&&(job?.sweep_config||model.guided?.meter)?.signal_source==="power_ref";}
 let guidedPromptKey=null, guidedSubmit=false;
 function renderGuided(job){
  const active=Boolean(model.active_id),p=job?.sweep_plan||guidedPlan(),prompt=job?.prompt,phase=job?.phase||"ready",rows=job?.point_results||[],completed=rows.filter(x=>x.status==="completed").length;
  setText("run-title","Point capture");setText("run-state",({ready:"Ready",starting:"Starting",waiting:"Waiting for you",running:"Settling / capturing",reporting:"Preparing reports",finished:"Finished",failed:"Needs attention"})[phase]||phase);$("run-state").className="state "+phase;
  setText("run-headline",phase==="waiting"?"Confirm the next point":phase==="running"?"Capturing measured power":phase==="finished"?(job.outcome==="completed"?"Series complete":"Series stopped"):phase==="failed"?"The run needs attention":phase==="reporting"?"Capture saved. Preparing reports.":"Prepare the sweep and start when ready.");
- setText("run-description",job?.error||`${p.name}. ${completed} of ${p.frequencies.length*p.drives.length} points captured. ${job?.meter_mode==="synthetic"||(!job&&$("guided-meter").value==="synthetic")?"Simulated measurements.":"Meter-indicated power at sensor input."}`);
+ setText("run-description",job?.error||`${p.name}. ${completed} of ${p.frequencies.length*p.drives.length} points captured. ${p.profile||job?.meter_mode==="synthetic"||(!job&&$("guided-meter").value==="synthetic")?"Simulated measurements.":"Meter-indicated power at sensor input."}`);
  $("guided-point").hidden=!prompt||phase!=="waiting";const key=job?.job_id+":"+prompt?.token;
  if(key!==guidedPromptKey){guidedPromptKey=key;$("guided-frequency-confirm").checked=false;$("guided-drive-confirm").checked=false;guidedSubmit=false;}
- const ref=guidedReference(job);
- setText("environment",ref?"Operator-guided · POWER REF":(job?.meter_mode||$("guided-meter").value)==="physical"?"Operator-guided · bench meter":"Operator-guided · simulated meter");
+ const auto=Boolean(p.profile),ref=guidedReference(job);
+ setText("environment",auto?"Automatic sweep · simulation":ref?"Operator-guided · POWER REF":(job?.meter_mode||$("guided-meter").value)==="physical"?"Operator-guided · bench meter":"Operator-guided · simulated meter");
  if(prompt){setText("guided-target",`${prompt.point_id} · ${prompt.frequency} / ${prompt.drive}`);setText("guided-frequency-label",ref?`I confirm the fixed reference label: ${prompt.frequency}`:`I set the frequency to ${prompt.frequency}`);setText("guided-drive-label",ref?`I confirm capture ${prompt.drive} with POWER REF on`:`I set the drive to ${prompt.drive}`);}
  setText("guided-instruction",ref?"Fixed POWER REF bench exercise. Turn POWER REF on and allow 20 seconds to settle before the first capture. Repeat labels do not change frequency or drive. Turn POWER REF off when finished or stopped.":"Set the radio to these labels and enable the test signal. Confirm both labels to begin settling and capture.");
  $("guided-capture").disabled=guidedSubmit||!active||phase!=="waiting"||job?.cancel_requested||!$("guided-frequency-confirm").checked||!$("guided-drive-confirm").checked;
  $("progress-label").textContent="Point completion";$("progress-count").textContent=`${completed} / ${p.frequencies.length*p.drives.length}`;$("progress").max=p.frequencies.length*p.drives.length;$("progress").value=completed;$("steps").replaceChildren();
- $("guided-controls").hidden=false;$("boundary-text").parentElement.hidden=true;$("guided-stop").disabled=!job?.active||!["starting","waiting","running"].includes(phase)||job?.cancel_requested;setText("guided-stop-note",job?.cancel_requested?"Stop requested. Saved points are retained; another point will not start.":ref?"Capture stops before the next measurement. Turn POWER REF off manually when finished or stopped.":"Capture stops before the next measurement. Turn radio RF off when finished.");
+ $("guided-controls").hidden=false;$("boundary-text").parentElement.hidden=true;$("guided-stop").disabled=!job?.active||!["starting","waiting","running"].includes(phase)||job?.cancel_requested;setText("guided-stop-note",job?.cancel_requested?"Stop requested. Saved points are retained; another point will not start.":auto?"Stops before the next simulated reading.":ref?"Capture stops before the next measurement. Turn POWER REF off manually when finished or stopped.":"Capture stops before the next measurement. Turn radio RF off when finished.");
  $("guided-results").hidden=false;const head=node("tr");head.append(node("th","Frequency"));for(const d of p.drives)head.append(node("th",d));$("guided-results-head").replaceChildren(head);
  const body=p.frequencies.map(f=>{const tr=node("tr");tr.append(node("th",f));for(const d of p.drives){const row=rows.find(x=>x.frequency===f&&x.drive===d),current=prompt?.frequency===f&&prompt?.drive===d&&phase==="waiting";const td=node("td",row?.mean_W!==null&&row?.mean_W!==undefined?`${(Number(row.mean_W)*1000).toPrecision(5)}${row.status!=="completed"?" (partial)":""}`:current?"Next":row?.status==="failed"?"Failed":"—",current?"current":undefined);tr.append(td);}return tr;});$("guided-results-body").replaceChildren(...body);
- $("boundary-text").textContent=job?.cancel_requested?"Stop requested. Saved points are retained; another point will not start.":ref?"Stop ends the series before the next measurement. Turn POWER REF off manually.":"Stop ends the series before the next measurement. Turn radio RF off when the series finishes.";$("cancel").textContent="Stop series";$("cancel").disabled=!job?.active||!["starting","waiting","running"].includes(phase)||job?.cancel_requested;
- for(const el of document.querySelectorAll('#guided-setup input,#guided-setup select,#guided-setup textarea'))el.disabled=active;$("guided-order").disabled=active||p.series!=="combined";
+ $("boundary-text").textContent=job?.cancel_requested?"Stop requested. Saved points are retained; another point will not start.":auto?"Stops before the next simulated reading.":ref?"Stop ends the series before the next measurement. Turn POWER REF off manually.":"Stop ends the series before the next measurement. Turn radio RF off when the series finishes.";$("cancel").textContent="Stop series";$("cancel").disabled=!job?.active||!["starting","waiting","running"].includes(phase)||job?.cancel_requested;
+ for(const el of document.querySelectorAll('#guided-setup input,#guided-setup select,#guided-setup textarea'))el.disabled=active;guidedPlanChanged();
  for(const id of ["mode","profile","operator","import","reference-workflow"])$(id).disabled=active;for(const input of document.querySelectorAll('#prepared input,#test-options input'))input.disabled=active;
- $("front-panel").hidden=true;$("pdf").hidden=!job?.pdf_ready;$("package").hidden=!job?.package_ready;$("html-report").hidden=!job?.pdf_ready;
+ $("front-panel").hidden=true;$("pdf").hidden=!job?.pdf_ready;$("package").hidden=!job?.package_ready;$("html-report").hidden=!job?.report_ready;
  if(job){$("pdf").href=`/artifacts/${job.job_id}/report.pdf`;$("html-report").href=`/artifacts/${job.job_id}/report.html`;$("package").href=`/artifacts/${job.job_id}/package.zip`;}
- $("report-note").textContent=job?.pdf_ready?"The full report includes every point and both comparisons. The PDF summarizes the series.":"Reports and original point evidence appear when the series finishes or stops.";$("start").textContent=active?"Sweep in progress…":preparationMode()?`Run ${preparationBench()?"":"simulated "}${$("preparation-action").value}`:referenceSuiteMode()?"Start POWER REF suite":guidedMode()?"Start guided sweep":physicalMode()?"Start POWER REF workflow":"Start suite";$("start").disabled=!canStart();
+ $("report-note").textContent=job?.report_ready?"The report includes all requested points and the original capture remains saved.":"Reports and original point evidence appear when the series finishes or stops.";$("start").textContent=active?"Sweep in progress…":preparationMode()?`Run ${preparationBench()?"":"simulated "}${$("preparation-action").value}`:referenceSuiteMode()?"Start POWER REF suite":guidedMode()?"Start guided sweep":physicalMode()?"Start POWER REF workflow":"Start suite";$("start").disabled=!canStart();
 }
-for(const el of document.querySelectorAll('#guided-setup input,#guided-setup select,#guided-setup textarea'))el.addEventListener("input",()=>{if(el.id==="guided-meter")for(const input of document.querySelectorAll('#guided-prepared input'))input.checked=false;guidedPlanChanged();selectionChanged();if(!model.jobs.length)renderRun(null);});
+for(const el of document.querySelectorAll('#guided-setup input,#guided-setup select,#guided-setup textarea'))el.addEventListener("input",()=>{if(el.id==="guided-execution"||el.id==="guided-series")modeChanged(false);if(el.id==="guided-meter")for(const input of document.querySelectorAll('#guided-prepared input'))input.checked=false;guidedPlanChanged();selectionChanged();if(!model.jobs.length)renderRun(null);});
 $("guided-stop").addEventListener("click",()=>$("cancel").click());
 for(const id of ["guided-frequency-confirm","guided-drive-confirm"])$(id).addEventListener("change",()=>{const job=model.jobs.find(x=>x.job_id===model.active_id);if(job)renderGuided(job);});
 $("guided-capture").addEventListener("click",async()=>{const job=model.jobs.find(x=>x.job_id===model.active_id);if(!job?.prompt||guidedSubmit||$("guided-capture").disabled)return;guidedSubmit=true;$("guided-capture").disabled=true;generation++;try{await api("/api/guided-confirm",{job_id:job.job_id,confirmation:{...job.prompt,operator:$("operator").value.trim()||null,frequency_confirmed:$("guided-frequency-confirm").checked,drive_confirmed:$("guided-drive-confirm").checked}});await refresh(true);}catch(exc){error(exc.message);guidedSubmit=false;await refresh(true);}});
@@ -244,6 +290,7 @@ refresh();setInterval(refresh,500);
 for(const input of document.querySelectorAll('#reference-suite-tests input'))input.addEventListener('change',selectionChanged);
 $("reference-suite-source").addEventListener('change',()=>modeChanged(true));
 
+let recoverySource=null;
 function renderRecoveryControls(){
  const sources=model.report_sources||[],signature=JSON.stringify(sources);
  if(signature!==recoverySignature){
@@ -251,17 +298,26 @@ function renderRecoveryControls(){
   $("recovery-source").replaceChildren(...sources.map(source=>{const option=node("option",`${new Date(source.started_utc).toLocaleString()} · ${source.workflows.join(" + ")} · ${source.outcome||"capture retained"} · ${source.job_id.slice(0,8)}`);option.value=source.job_id;return option;}));
   if(sources.some(x=>x.job_id===selected))$("recovery-source").value=selected;
  }
+ const source=sources.find(job=>job.job_id===$("recovery-source").value);
+ const guided=source?.mode==="guided";
+ if(recoverySource!==source?.job_id){
+  recoverySource=source?.job_id;$("recovery-include-pdf").checked=source?.include_pdf===true;
+ }
+ $("recovery-pdf-field").hidden=!guided;
  const attempt=model.jobs.find(job=>job.mode==="report_recovery");
  setText("recovery-status",attempt?(attempt.phase==="failed"?"Report regeneration failed: "+attempt.error+" Original measurements are retained; select the capture to try again.":attempt.phase==="finished"?"Reports regenerated from saved capture "+attempt.source_job_id+". No new measurements.":"Validating saved evidence and generating reports. No meter connection."):"");
+ $("recovery-html").hidden=!attempt?.report_ready||!attempt.workflows.includes("GUIDED");
+ if(attempt)$("recovery-html").href=`/artifacts/${attempt.job_id}/report.html`;
  $("recovery-pdf").hidden=!attempt?.pdf_ready;$("recovery-package").hidden=!attempt?.package_ready;
  if(attempt){$("recovery-pdf").href=`/artifacts/${attempt.job_id}/report.pdf`;$("recovery-package").href=`/artifacts/${attempt.job_id}/package.zip`;}
  const disabled=busy||Boolean(model.active_id)||!sources.length;
- $("recovery-source").disabled=disabled;$("recover-report").disabled=disabled;
- setText("recovery-note",!sources.length?"No sealed POWER REF captures are available in this run directory.":model.active_id?"Wait for the active run or report attempt to finish.":"Creates a separate report attempt. Interrupted captures keep their partial results; source files are validated before publication.");
+ $("recovery-source").disabled=disabled;$("recover-report").disabled=disabled;$("recovery-include-pdf").disabled=disabled;
+ setText("recovery-note",!sources.length?"No sealed captures are available in this run directory.":model.active_id?"Wait for the active run or report attempt to finish.":"Creates a separate report attempt. Interrupted captures keep their partial results; source files are validated before publication.");
 }
+$("recovery-source").addEventListener("change",renderRecoveryControls);
 $("recover-report").addEventListener("click",async()=>{
  if($("recover-report").disabled)return;busy=true;generation++;renderRecoveryControls();error("");
- try{await api("/api/report-recovery",{source_job_id:$("recovery-source").value});}
+ try{await api("/api/report-recovery",{source_job_id:$("recovery-source").value,...($("recovery-pdf-field").hidden?{}:{include_pdf:$("recovery-include-pdf").checked})});}
  catch(exc){error("Reports were not regenerated. "+exc.message+". Original measurements are retained; select another capture or repair a copy before retrying.");}
  finally{busy=false;await refresh(true);}
 });
@@ -278,14 +334,14 @@ async function loadHistory(){
  try{
   const data=await api("/api/run-history",{offset:historyOffset,category:$("history-filter").value});historyLoaded=true;historyTotal=data.total;
   const rows=data.entries.map(job=>{
-   const tr=node("tr"),select=node("td"),box=node("input");box.type="checkbox";box.checked=historySelection.has(job.job_id);box.disabled=!job.report_recovery_available;box.setAttribute("aria-label",`Select measurement ${job.job_id.slice(0,8)}`);
+   const tr=node("tr"),select=node("td"),box=node("input");box.type="checkbox";box.checked=historySelection.has(job.job_id);box.disabled=!job.report_recovery_available||job.mode==="guided";box.setAttribute("aria-label",`Select measurement ${job.job_id.slice(0,8)}`);
    box.addEventListener("change",()=>{if(box.checked&&historySelection.size>=4){box.checked=false;setText("history-note","Select at most four measurements; clear a selection first.");return;}box.checked?historySelection.add(job.job_id):historySelection.delete(job.job_id);$("comparison").hidden=true;updateComparisonSelection();});select.append(box);
    const report=["report_recovery","acceptance_review"].includes(job.mode),assessment=job.mode==="acceptance_review",subject=node("td");subject.append(node("div",job.profile_name),node("small",`${job.mode==="meter_preparation"?"Meter preparation":assessment?"Acceptance assessment":report?"Report regeneration":"Measurement"} · ${job.job_id.slice(0,8)}${report?" · source "+job.source_job_id.slice(0,8):" · "+job.workflows.join(" + ")}`));
    const outcome=job.phase==="failed"?(report?"Report error":"Needs attention"):job.phase!=="finished"?job.phase:report?(assessment?"Assessed: "+job.assessment_outcome:"Reports ready"):job.outcome==="interrupted"?"Cancelled":job.outcome==="failed"?"Stopped":"Complete";
    tr.append(select,subject,node("td",new Date(job.started_utc).toLocaleString()),node("td",outcome));
-   const actions=node("td",undefined,"history-links");if(job.pdf_ready)actions.append(reportLink(job,"report.pdf","PDF"));if(job.package_ready)actions.append(reportLink(job,"package.zip","Package"));if(job.assessment_ready){actions.append(reportLink(job,"assessment/report.pdf","Assessed PDF"),reportLink(job,"assessment/package.zip","Assessment package"));}
+   const actions=node("td",undefined,"history-links");if(job.report_ready&&job.workflows.includes("GUIDED"))actions.append(reportLink(job,"report.html","Report"));if(job.pdf_ready)actions.append(reportLink(job,"report.pdf","PDF"));if(job.package_ready)actions.append(reportLink(job,"package.zip","Package"));if(job.assessment_ready){actions.append(reportLink(job,"assessment/report.pdf","Assessed PDF"),reportLink(job,"assessment/package.zip","Assessment package"));}
    if(job.preparation_ready)actions.append(reportLink(job,"preparation/receipt.html","Preparation receipt"),reportLink(job,"preparation/receipt.json","Raw JSON"));
-   if(job.report_recovery_available||report){const button=node("button","View details","text-button");button.type="button";button.setAttribute("aria-label",`View details for ${job.job_id.slice(0,8)}`);button.addEventListener("click",()=>showRunDetails(job.job_id));actions.append(button);}
+   if((job.report_recovery_available||report)&&!job.workflows.includes("GUIDED")){const button=node("button","View details","text-button");button.type="button";button.setAttribute("aria-label",`View details for ${job.job_id.slice(0,8)}`);button.addEventListener("click",()=>showRunDetails(job.job_id));actions.append(button);}
    if(!actions.childNodes.length)actions.textContent="No report available";tr.append(actions);return tr;
   });$("history-body").replaceChildren(...rows);
   setText("history-note",data.total?`Showing ${historyOffset+1}–${Math.min(historyOffset+20,data.total)} of ${data.total} saved runs.${data.unreadable_jobs.length?" "+data.unreadable_jobs.length+" unreadable run records omitted.":""}`:"No saved runs match this filter.");
@@ -333,7 +389,7 @@ function criteriaFields(target,kinds,values={}){
  }
 }
 function renderAssessmentControls(){
- const sources=model.report_sources||[],signature=JSON.stringify(sources);
+ const sources=(model.report_sources||[]).filter(source=>source.mode!=="guided"),signature=JSON.stringify(sources);
  if(signature!==assessmentSignature){assessmentSignature=signature;const selected=$("assessment-source").value;$("assessment-source").replaceChildren(...sources.map(source=>{const option=node("option",`${new Date(source.started_utc).toLocaleString()} · ${source.workflows.join(" + ")} · ${source.outcome||"capture retained"} · ${source.job_id.slice(0,8)}`);option.value=source.job_id;return option;}));if(sources.some(x=>x.job_id===selected))$("assessment-source").value=selected;}
  if(assessmentFormSource!==$("assessment-source").value)buildCriteriaFields();
  const disabled=busy||Boolean(model.active_id)||!sources.length;for(const input of document.querySelectorAll('#assessment-form input,#assessment-form select,#assessment-form button'))input.disabled=disabled;

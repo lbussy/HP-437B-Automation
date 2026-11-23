@@ -62,7 +62,11 @@ def measurement(raw: bytes, unit: Unit) -> Measurement:
         if not 1 <= code <= 49:
             raise ProtocolError("Invalid measurement error sentinel code")
         return Measurement(None, unit, code, raw)
-    if not re.fullmatch(r"[+-][0-9]\.[0-9]{4}E[+-][0-9]{2}", text):
+    # The manual describes the usual normalized form. Firmware 2.0 also
+    # returns engineering mantissas, e.g. +24.500E-03 W, with the same five
+    # digits and message width. Preserve all framing and sentinel checks.
+    mantissa = r"(?:[0-9]\.[0-9]{4}|[0-9]{2}\.[0-9]{3}|[0-9]{3}\.[0-9]{2})"
+    if not re.fullmatch(rf"[+-]{mantissa}E[+-][0-9]{{2}}", text):
         raise ProtocolError("Expected signed five-digit measurement mantissa")
     value = Decimal(text)
     if abs(value) >= Decimal("1E40"):

@@ -14,6 +14,7 @@ from pathlib import Path
 
 from .errors import StateUncertain
 from .instrument import Instrument
+from .sensor_correction import validate_receipt
 
 FIELDS = [
     "session_id",
@@ -56,6 +57,7 @@ def collect(
     interval: float = 1.0,
     unit: str = "dBm",
     context: dict | None = None,
+    sensor_correction: dict | None = None,
     connect=None,
     simulation: bool = False,
     clock=time.monotonic,
@@ -80,6 +82,7 @@ def collect(
         raise ValueError("Choose absolute units W or dBm")
     # Validate caller provenance before reserving output or touching hardware.
     user_context = json.loads(json.dumps(context or {}, allow_nan=False))
+    correction = validate_receipt(sensor_correction) if sensor_correction is not None else None
     started_utc = utcnow().isoformat()
     path = Path(output)
     sidecar = path.with_name(path.name + ".session.json")
@@ -109,6 +112,8 @@ def collect(
         },
         "context": user_context,
     }
+    if correction is not None:
+        record["sensor_correction"] = {**correction, "command_sent": False, "status_checked": False}
     writer = csv.DictWriter(handle, fieldnames=FIELDS)
     try:
         writer.writeheader()
@@ -121,6 +126,10 @@ def collect(
         record["instrument"] = identity
         record["transport"] = dict(getattr(instrument.transport, "metadata", {}))
         instrument.configure_absolute(unit)
+        if correction is not None:
+            instrument.command("KB", correction["commanded_factor_percent"])
+            record["sensor_correction"]["command_sent"] = True
+            _atomic_json(sidecar, record)
         # SM is updated only after a measurement (manual 3-33). Consume a
         # setup acquisition before asking for status, avoiding stale unit fields.
         probe = instrument.acquire("TR2")
@@ -129,6 +138,17 @@ def collect(
         if initial.unit != unit:
             raise ValueError("Initial status does not match requested absolute units")
         record["initial_status_raw_hex"] = initial.raw.hex()
+        if correction is not None:
+            if (
+                initial.entry_error
+                or initial.measurement_error
+                or initial.offset_on
+                or initial.duty_on
+            ):
+                raise ValueError(
+                    "Corrected capture requires error-free status with offset and duty correction off"
+                )
+            record["sensor_correction"]["status_checked"] = True
         # Offset/duty/calibration settings remain visible in this status; no automatic preset/zero.
         record["status"] = "running"
         _atomic_json(sidecar, record)

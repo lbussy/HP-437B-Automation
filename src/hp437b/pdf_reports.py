@@ -1,4 +1,4 @@
-"""Optional one-page PDF sheets from validated workflow results, never HTML or devices."""
+"""Optional PDF reports rendered from validated workflow results."""
 
 from decimal import Decimal as D
 from importlib import metadata, resources
@@ -65,6 +65,7 @@ def _write(
     suite=None,
     physical=False,
     source_label=None,
+    multipage=False,
 ):
     root = preflight()
     from reportlab.lib import colors
@@ -134,12 +135,13 @@ def _write(
             p.require(
                 0 < width <= 10000 and 0 < height <= 10000, "Invalid generated PDF plot dimensions"
             )
+        plot_height = 260 if multipage else 120
         content.extend(
             [
                 Image(
                     BytesIO(plot_bytes),
-                    width=min(520, 120 * width / height),
-                    height=min(120, 520 * height / width),
+                    width=min(520, plot_height * width / height),
+                    height=min(plot_height, 520 * height / width),
                 ),
                 Spacer(1, 7),
             ]
@@ -177,8 +179,17 @@ def _write(
             if suite is not None
             else "Equipment: Meter, sensor, and fixture records in provenance.json."
         )
+        if multipage and not physical:
+            details = "SIMULATED — no meter or transmitter used."
+        page_label = f"   |   Page {doc.page}" if multipage else ""
         foot = paragraph(
-            details + "\n" + report_sheet.producer_note(producer) + "\nRecord: " + run_id, small
+            details
+            + "\n"
+            + report_sheet.producer_note(producer)
+            + "\nRecord: "
+            + run_id
+            + page_label,
+            small,
         )
         _, height = foot.wrap(540, 55)
         p.require(height <= 55, "PDF footer exceeds one-page layout")
@@ -209,9 +220,14 @@ def _write(
         doc.build(content, onFirstPage=footer, onLaterPages=footer, canvasmaker=canvasmaker)
     except LayoutError as exc:
         raise ValueError(
-            "PDF content cannot fit the one-page layout; capture is preserved"
+            "PDF content cannot fit the report layout; capture is preserved"
+            if multipage
+            else "PDF content cannot fit the one-page layout; capture is preserved"
         ) from exc
-    p.require(pages == [1], "PDF report exceeds one page; capture is preserved for re-reporting")
+    p.require(
+        bool(pages) if multipage else pages == [1],
+        "PDF exceeds the permitted layout; capture is preserved for re-reporting",
+    )
     p.require(not (output / "report.pdf").exists(), "PDF output exists")
     (output / "report.pdf").write_bytes(data.getvalue())
     (output / "font-license.txt").write_text(license_text, encoding="utf-8")
@@ -222,7 +238,7 @@ def _write(
         renderer="ReportLab",
         renderer_version=metadata.version("reportlab"),
         page_size="Letter",
-        page_count=1,
+        page_count=len(pages),
         invariant=True,
         font_license="font-license.txt",
     )

@@ -8,6 +8,7 @@ from .commands import COMMANDS
 from .errors import HP437BError
 from .instrument import BUS_GUARDS, Instrument
 from .logger import collect
+from .sensor_correction import PROFILE, correction
 from .simulation import DemoTransport
 from .transport import VisaTransport
 
@@ -25,6 +26,12 @@ def parser() -> argparse.ArgumentParser:
         )
         if name == "log":
             command.add_argument("--resource", required=True, help="Explicit USB…::INSTR resource")
+            command.add_argument("--sensor-correction", choices=(PROFILE,))
+            command.add_argument(
+                "--frequency-hz",
+                type=int,
+                help="Exact RF frequency for automatic sensor correction",
+            )
         command.add_argument("--output", required=True)
         bounds = command.add_mutually_exclusive_group()
         bounds.add_argument("--count", type=int, default=None)
@@ -55,6 +62,14 @@ def main(argv=None) -> int:
         return 0
     transport = None
     try:
+        selected_correction = None
+        if args.operation == "log":
+            if bool(args.sensor_correction) != (args.frequency_hz is not None):
+                raise ValueError("Specify both --sensor-correction and --frequency-hz")
+            if args.sensor_correction:
+                selected_correction = correction(
+                    args.sensor_correction, args.sensor_serial, args.frequency_hz
+                )
         transport = DemoTransport() if args.operation == "demo" else VisaTransport(args.resource)
         instrument = Instrument(transport, timeout=args.timeout)
         record = collect(
@@ -67,6 +82,7 @@ def main(argv=None) -> int:
             interval=args.interval,
             unit=args.unit,
             simulation=args.operation == "demo",
+            sensor_correction=selected_correction,
             connect=(lambda: transport.open(args.timeout)) if args.operation == "log" else None,
             context={
                 "resource": getattr(args, "resource", "synthetic"),

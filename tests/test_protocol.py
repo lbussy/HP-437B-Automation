@@ -16,6 +16,35 @@ def test_signed_power_and_error_sentinel():
 
 
 @pytest.mark.parametrize(
+    "raw,value",
+    [
+        (b"+24.500E-03\r\n", "0.024500"),
+        (b"+100.00E-03\r\n", "0.10000"),
+        (b"-30.123E+00\r\n", "-30.123"),
+    ],
+)
+def test_five_digit_engineering_mantissas(raw, value):
+    result = protocol.measurement(raw, "W")
+    assert result.value == Decimal(value) and result.raw == raw
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b"+24.50E-03\r\n",
+        b"+24.5000E-03\r\n",
+        b"+24500.E-03\r\n",
+        b"+24.500E-03",
+        b"24.500E-03\r\n",
+        b"+100.00E+40\r\n",
+    ],
+)
+def test_engineering_format_keeps_precision_framing_and_reserved_guards(raw):
+    with pytest.raises(ProtocolError):
+        protocol.measurement(raw, "W")
+
+
+@pytest.mark.parametrize(
     "raw",
     [
         b"NaN\r\n",

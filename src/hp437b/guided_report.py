@@ -2,17 +2,40 @@
 
 import csv
 import html
+import re
 from decimal import Decimal as D
 from pathlib import Path
 
 from . import guided_sweep as sweep
 from . import pdf_reports as pdf
 from . import provenance as p
-from . import report_identity, report_sheet
+from . import report_identity, report_sheet, sweep_matrix
 from . import reporting as r
 from .workflow_report import _seal, preflight
 
 SCHEMA = "hp437b.guided-sweep-report.v1"
+COMPLETE_SCHEMA = "hp437b.guided-combined-report.v2"
+
+
+def check_complete_pdf(data, page_count):
+    # ReportLab writes the generated page tree as plain PDF objects. Compare
+    # its page-object count and tree count with the sealed renderer receipt.
+    page_objects = re.findall(
+        rb"(?m)^([0-9]+) 0 obj\r?\n<<(?:(?!endobj).)*?/Type /Page\s*>>\s*endobj",
+        data,
+        re.S,
+    )
+    trees = re.findall(rb"/Count ([0-9]+) /Kids \[([^\]]*)\] /Type /Pages", data)
+    p.require(
+        data.startswith(b"%PDF-")
+        and type(page_count) is int
+        and page_count == len(page_objects)
+        and page_count > 0
+        and len(trees) == 1
+        and int(trees[0][0]) == page_count
+        and re.findall(rb"([0-9]+) 0 R", trees[0][1]) == page_objects,
+        "Combined PDF page count differs from its sealed receipt",
+    )
 
 
 def provenance(record, bundle):
@@ -24,7 +47,9 @@ def provenance(record, bundle):
         equipment=record["equipment"],
         declared_plan=record["plan"],
         prepared=record["prepared"],
-        label_basis="Operator-confirmed declarations; not independently measured",
+        label_basis="Simulated setpoints; no transmitter control or RF evidence"
+        if record["schema"] == sweep_matrix.SCHEMA
+        else "Operator-confirmed declarations; not independently measured",
         evidence={
             name: dict(sha256=item["sha256"], bytes=item["bytes"])
             for name, item in bundle.entries.items()
@@ -36,6 +61,12 @@ def validate_pair(source, output):
     record, values, bundle = sweep.load(source)
     report = p.Bundle(output)
     report.inventory("artifacts.json", record["mode"])
+    meta = report.json("metadata.json")
+    p.require(
+        meta["source_inventory_sha256"] == r.digest(bundle.read("artifacts.json"))
+        and meta["run_id"] == record["run_id"],
+        "Guided report source binding mismatch",
+    )
     p.require(
         report.json("results.json") == values, "Guided report results differ from native evidence"
     )
@@ -77,11 +108,12 @@ def plots(output, record, result):
                 label=label,
             )
         ax.set_xticks(range(len(labels)), labels, rotation=45, ha="right")
-        ax.set_xlabel(
-            "Frequency label (operator confirmed)"
-            if axis == "frequency"
-            else "Drive label (operator confirmed)"
+        basis = (
+            "simulated setpoint"
+            if record["schema"] == sweep_matrix.SCHEMA
+            else "operator confirmed"
         )
+        ax.set_xlabel(("Frequency" if axis == "frequency" else "Drive") + f" label ({basis})")
         ax.set_ylabel("Meter-indicated power at sensor input (mW)")
         ax.set_title(title + (" · SIMULATED" if record["mode"] == "synthetic" else ""))
         ax.grid(axis="y", alpha=0.2)
@@ -94,22 +126,50 @@ def plots(output, record, result):
     return files
 
 
-def publish(source, output, *, plot=True, package=True):
+def _milliwatts(value):
+    return pdf._number(D(value) * 1000 if value is not None else None)
+
+
+def _point_factor(bundle, row):
+    key = row["point_id"] + "/samples.csv.session.json"
+    if key not in bundle.entries:
+        return "—"
+    correction = bundle.json(key).get("sensor_correction")
+    if correction and correction["status_checked"]:
+        return correction["commanded_factor_percent"] + "%"
+    return "—"
+
+
+def publish(source, output, *, plot=True, package=None, include_pdf=None):
     from . import report_delivery as delivery
 
     source, output = preflight(source, output, plots=plot)
-    delivery.preflight_delivery(source, output, pdf=True, package=package)
     record, result, bundle = sweep.load(source)
+    automatic = record["schema"] == sweep_matrix.SCHEMA
+    if automatic and include_pdf is None:
+        include_pdf = False
+    p.require(include_pdf is None or type(include_pdf) is bool, "Invalid PDF option")
+    complete = include_pdf is not None
+    p.require(
+        not complete or record["plan"]["series"] == "combined",
+        "PDF selection is available for the combined sweep",
+    )
+    wants_pdf = include_pdf is not False
+    package = wants_pdf if package is None else package
+    p.require(not package or wants_pdf, "A guided package requires PDF output")
+    delivery.preflight_delivery(source, output, pdf=wants_pdf, package=package)
     source_hash = r.digest(bundle.read("artifacts.json"))
     output.mkdir(parents=True)
     producer = report_identity.identify()
     meta = dict(
-        schema=SCHEMA,
+        schema=COMPLETE_SCHEMA if complete else SCHEMA,
         run_id=record["run_id"],
         mode=record["mode"],
         source_inventory_sha256=source_hash,
         report_producer=producer,
     )
+    if complete:
+        meta["include_pdf"] = wants_pdf
     for name, value in (
         ("metadata", meta),
         ("results", result),
@@ -129,11 +189,15 @@ def publish(source, output, *, plot=True, package=True):
         "Recorded measurements" if record["mode"] == "physical" else "SIMULATED measurements"
     )
     notes = [
-        "Frequency and drive labels are operator-confirmed declarations.",
-        "Power is the meter indication at sensor input. Existing meter corrections are retained; no new fixture correction, uncertainty, or automatic baseline subtraction is added.",
+        "Dial, carrier, drive, and power shown here are synthetic. No transmitter or meter was contacted."
+        if record["schema"] == sweep_matrix.SCHEMA
+        else "Frequency and drive labels are operator-confirmed declarations.",
+        "Power is the meter indication at sensor input. Configured sensor correction, when selected, is applied before each capture and retained in native session receipts. No new fixture correction, uncertainty, or automatic baseline subtraction is added.",
         "Measurement notes: " + record["plan"]["measurement_notes"],
         "Acceptance: NOT EVALUATED. No acceptance limits were supplied.",
     ]
+    if complete:
+        notes.append("Unfiltered GPIO harmonics can contribute to the sensor-input indication.")
     if reference:
         notes.insert(
             0,
@@ -152,6 +216,8 @@ def publish(source, output, *, plot=True, package=True):
         "When: " + record["started_utc"],
         "Execution: " + result["execution"] + "; acceptance: NOT EVALUATED",
     ]
+    if automatic:
+        lines.append("Simulated output: " + sweep_matrix.PROFILES[record["plan"]["profile"]][0])
     observed = [
         D(row["mean_W"])
         for row in result["points"]
@@ -172,31 +238,43 @@ def publish(source, output, *, plot=True, package=True):
         ["Measurement plane", "Meter indication at sensor input"],
         ["Point order", record["plan"]["order"] + " first"],
     ]
+    columns = ["Point", "Frequency"]
+    if automatic:
+        columns.extend(["Dial Hz", "Test RF Hz"])
+    columns.extend(["Drive", "Status", "N", "Mean mW", "dBm"])
+    if complete:
+        columns.extend(["Min mW", "Max mW", "Std dev mW", "CAL FAC"])
+    table_rows = []
+    for point in result["points"]:
+        row = [point["point_id"], point["frequency"]]
+        if automatic:
+            row.extend([point["dial_hz"], point["carrier_hz"]])
+        row.extend(
+            [
+                point["drive"],
+                point["status"],
+                point["samples"],
+                _milliwatts(point["mean_W"]),
+                pdf._number(point["mean_dBm"]),
+            ]
+        )
+        if complete:
+            row.extend(
+                [
+                    _milliwatts(point["min_W"]),
+                    _milliwatts(point["max_W"]),
+                    _milliwatts(point["stddev_W"]),
+                    _point_factor(bundle, point),
+                ]
+            )
+        table_rows.append(row)
     table = (
         "<table><thead><tr>"
-        + "".join(
-            "<th>" + esc(x) + "</th>"
-            for x in ("Point", "Frequency", "Drive", "Status", "Samples", "Mean (mW)", "Mean (dBm)")
-        )
+        + "".join("<th scope='col'>" + esc(x) + "</th>" for x in columns)
         + "</tr></thead><tbody>"
     )
-    for point in result["points"]:
-        table += (
-            "<tr>"
-            + "".join(
-                "<td>" + esc(x) + "</td>"
-                for x in (
-                    point["point_id"],
-                    point["frequency"],
-                    point["drive"],
-                    point["status"],
-                    point["samples"],
-                    pdf._number(D(point["mean_W"]) * 1000) if point["mean_W"] is not None else "—",
-                    pdf._number(point["mean_dBm"]),
-                )
-            )
-            + "</tr>"
-        )
+    for row in table_rows:
+        table += "<tr>" + "".join("<td>" + esc(x) + "</td>" for x in row) + "</tr>"
     table += "</tbody></table>"
     page = (
         "<!doctype html><html lang='en'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>RF Output Power Test</title>"
@@ -219,7 +297,9 @@ def publish(source, output, *, plot=True, package=True):
         )
         + "<div class='table'>"
         + table
-        + "</div><p><a href='points.csv'>Full point table (CSV)</a> · <a href='results.json'>Statistics (JSON)</a> · <a href='report.pdf'>PDF summary</a></p><footer>"
+        + "</div><p><a href='points.csv'>Full point table (CSV)</a> · <a href='results.json'>Statistics (JSON)</a>"
+        + (" · <a href='report.pdf'>PDF report</a>" if wants_pdf else "")
+        + "</p><footer>"
         + esc(
             "Equipment: "
             + (
@@ -236,23 +316,60 @@ def publish(source, output, *, plot=True, package=True):
     )
     (output / "report.html").write_text(page)
     (output / "appendix.html").write_text(page)
-    # The one-page PDF summarizes coverage; complete matrices/plots stay in HTML/CSV.
-    pdf._write(
-        output,
-        lines=lines,
-        columns=["Observation", "Result"],
-        rows=rows,
-        widths=[1, 2],
-        notes=[
-            notes[0],
-            notes[1],
-            "Complete point table, plots, notes, and stop reasons are in the HTML report.",
-        ],
-        producer=producer,
-        run_id=record["run_id"],
-        physical=record["mode"] == "physical",
-        source_label=description + " · operator-guided radio sweep",
-    )
+    if wants_pdf:
+        pdf_rows = rows
+        pdf_columns = ["Observation", "Result"]
+        widths = [1, 2]
+        pdf_notes = notes[:2] + [
+            "Complete point table, plots, notes, and stop reasons are in the HTML report."
+        ]
+        if complete:
+            pdf_columns = ["Point / band", *columns[2:]]
+            widths = [
+                1.35,
+                *([1.05, 1.05] if automatic else []),
+                0.8,
+                1.2,
+                0.5,
+                1,
+                0.75,
+                0.95,
+                0.95,
+                1.05,
+                0.95,
+            ]
+            pdf_rows = [[f"{row[0]} {row[1]}", *row[2:]] for row in table_rows]
+            equipment = record["equipment"]
+            lines += [
+                f"Coverage: {result['completed_points']} of {result['requested_points']} points captured.",
+            ]
+            if equipment:
+                lines.extend(
+                    [
+                        f"Meter / sensor: {equipment['meter_serial']} / {equipment['sensor_serial']}",
+                        "Fixture: " + equipment["fixture"],
+                    ]
+                )
+            pdf_notes = notes
+        pdf._write(
+            output,
+            lines=lines,
+            columns=pdf_columns,
+            rows=pdf_rows,
+            widths=widths,
+            notes=pdf_notes,
+            producer=producer,
+            run_id=record["run_id"],
+            physical=record["mode"] == "physical",
+            source_label=description + " · operator-guided radio sweep",
+            multipage=complete,
+            plot=output / "frequency.png" if complete and "frequency.png" in images else None,
+        )
+        if complete:
+            check_complete_pdf(
+                (output / "report.pdf").read_bytes(),
+                p._json((output / "metadata.json").read_bytes())["pdf"]["page_count"],
+            )
     _seal(output, p._json((output / "metadata.json").read_bytes()))
     p.require(
         r.digest(p.Bundle(source).read("artifacts.json")) == source_hash,
@@ -270,8 +387,9 @@ def main(argv=None):
     parser.add_argument("--bundle", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--no-plots", action="store_true")
+    parser.add_argument("--pdf", action=argparse.BooleanOptionalAction, default=None)
     args = parser.parse_args(argv)
-    publish(args.bundle, args.output, plot=not args.no_plots)
+    publish(args.bundle, args.output, plot=not args.no_plots, include_pdf=args.pdf)
 
 
 if __name__ == "__main__":

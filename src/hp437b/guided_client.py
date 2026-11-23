@@ -8,6 +8,7 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from . import guided_sweep, sweep_matrix
 from . import provenance as p
 
 
@@ -51,7 +52,9 @@ class Client:
     def state(self):
         return self.request("/api/state")
 
-    def start(self, plan, *, operator=None, meter_mode="synthetic", prepared=None):
+    def start(
+        self, plan, *, operator=None, meter_mode="synthetic", prepared=None, include_pdf=None
+    ):
         return self.request(
             "/api/guided",
             dict(
@@ -59,8 +62,15 @@ class Client:
                 operator=operator,
                 meter_mode=meter_mode,
                 prepared=prepared if prepared is not None else {},
+                **({"include_pdf": include_pdf} if include_pdf is not None else {}),
             ),
         )
+
+    def export(self, source_job_id, *, include_pdf=None):
+        body = {"source_job_id": source_job_id}
+        if include_pdf is not None:
+            body["include_pdf"] = include_pdf
+        return self.request("/api/report-recovery", body)
 
     def confirm(self, job_id, prompt, *, operator=None):
         """Call only after the caller has verified the supplied frequency/drive labels."""
@@ -84,14 +94,20 @@ class Client:
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--url", required=True)
+    parser.add_argument("--url")
     sub = parser.add_subparsers(dest="action", required=True)
     sub.add_parser("state")
+    plan = sub.add_parser("simulation-plan", help="Print a plan for the selected simulated output")
+    plan.add_argument("profile", choices=sweep_matrix.PROFILES)
     start = sub.add_parser("start")
     start.add_argument("--plan", type=Path, required=True)
     start.add_argument("--operator")
     start.add_argument("--meter-mode", choices=("synthetic", "physical"), default="synthetic")
     start.add_argument("--prepared", type=Path, help="Fresh physical setup confirmation JSON")
+    start.add_argument("--pdf", action=argparse.BooleanOptionalAction, default=None)
+    export = sub.add_parser("export")
+    export.add_argument("--job-id", required=True)
+    export.add_argument("--pdf", action=argparse.BooleanOptionalAction, default=None)
     confirm = sub.add_parser("confirm")
     confirm.add_argument("--job-id", required=True)
     confirm.add_argument("--point-id", required=True)
@@ -101,6 +117,13 @@ def main(argv=None):
     stop = sub.add_parser("stop")
     stop.add_argument("--job-id", required=True)
     args = parser.parse_args(argv)
+    if args.action == "simulation-plan":
+        print(
+            json.dumps(sweep_matrix.simulation_plan(guided_sweep.example(), args.profile), indent=2)
+        )
+        return
+    if args.url is None:
+        parser.error("--url is required for service actions")
     client = Client(args.url)
     if args.action == "state":
         result = client.state()
@@ -115,7 +138,10 @@ def main(argv=None):
             operator=args.operator,
             meter_mode=args.meter_mode,
             prepared=prepared,
+            include_pdf=args.pdf,
         )
+    elif args.action == "export":
+        result = client.export(args.job_id, include_pdf=args.pdf)
     elif args.action == "stop":
         result = client.stop(args.job_id)
     else:

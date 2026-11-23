@@ -11,7 +11,7 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from . import guided_sweep, pdf_reports, reference_profiles
+from . import guided_sweep, reference_profiles, sweep_matrix
 from . import provenance as p
 from . import report_delivery as delivery
 from . import reporting as r
@@ -53,6 +53,7 @@ class Jobs:
         reference_config=None,
         sweep_config=None,
         preparation_config=None,
+        workflow_lock_root=None,
     ):
         from . import operator_preparation as prep
 
@@ -71,11 +72,13 @@ class Jobs:
             )
         self.reference_config = reference_config
         self.sweep_config = sweep_config
+        self.workflow_lock_root = Path(
+            workflow_lock_root or Path(__file__).resolve().parents[2] / "tmp/workflow-locks"
+        ).resolve()
         self.external = Path(profiles_dir).resolve() if profiles_dir else None
         p.require(
             self.external is None or self.external.is_dir(), "Profiles directory does not exist"
         )
-        pdf_reports.preflight()
         p.require(
             not plots or importlib.util.find_spec("matplotlib") is not None,
             "Install the reports extra or start with --no-plots",
@@ -317,7 +320,7 @@ class Jobs:
                 raise
             return self.get(job_id)
 
-    def start_guided(self, plan, operator, meter_mode, prepared):
+    def start_guided(self, plan, operator, meter_mode, prepared, *, include_pdf=None):
         from . import guided_sweep as guided
 
         with self.mutex:
@@ -325,15 +328,32 @@ class Jobs:
             p.require(self.process is None, "A run is already active")
             p.require(self.pending_reference() is None, "Confirm the prior reference run first")
             plan = guided.validate(plan)
+            if plan["schema"] == sweep_matrix.SCHEMA and include_pdf is None:
+                include_pdf = False
+            p.require(
+                include_pdf is None or (type(include_pdf) is bool and plan["series"] == "combined"),
+                "PDF selection requires the combined sweep and a boolean",
+            )
             operator = r.report_context.validate_operator(operator)
-            p.require(meter_mode in ("synthetic", "physical"), "Select a meter source")
+            guided.check_mode(plan, meter_mode)
             config = None
+            lock_root = self.workflow_lock_root
             if meter_mode == "physical":
                 p.require(
                     self.sweep_config is not None, "A sweep meter must be configured at launch"
                 )
                 config = guided.configuration(self.sweep_config)
                 guided.check_source_plan(plan, config)
+                if (
+                    self.reference_config
+                    and config["resource"] == self.reference_config["resource"]
+                ):
+                    lock_root = Path(self.reference_config["root"]).resolve() / "tmp/workflow-locks"
+                if (
+                    self.preparation_config
+                    and config["resource"] == self.preparation_config["resource"]
+                ):
+                    lock_root = Path(self.preparation_config["workflow_lock_root"]).resolve()
                 p.require(
                     isinstance(prepared, dict)
                     and set(prepared) == set(guided.PREPARED)
@@ -344,7 +364,12 @@ class Jobs:
                 p.require(prepared == {}, "Simulated sweeps do not use bench attestations")
             job_id = uuid.uuid4().hex
             path = self.root / job_id
-            delivery.preflight_delivery(path / "capture", path / "report", pdf=True, package=True)
+            delivery.preflight_delivery(
+                path / "capture",
+                path / "report",
+                pdf=include_pdf is not False,
+                package=include_pdf is not False,
+            )
             request = dict(
                 schema="hp437b.operator-request.v1",
                 mode="guided",
@@ -361,6 +386,10 @@ class Jobs:
                 sweep_config=config,
                 prepared=prepared,
             )
+            if include_pdf is not None:
+                request["include_pdf"] = include_pdf
+            if config is not None:
+                request["workflow_lock_root"] = str(lock_root)
             path.mkdir(mode=0o700)
             atomic(path / "request.json", request)
             atomic(
@@ -654,8 +683,8 @@ class Jobs:
                 raise
             return self.get(job_id)
 
-    def regenerate_reports(self, source_job_id):
-        return self._saved_report(source_job_id, "report_recovery")
+    def regenerate_reports(self, source_job_id, *, include_pdf=None):
+        return self._saved_report(source_job_id, "report_recovery", include_pdf=include_pdf)
 
     def assess_run(self, source_job_id, criteria, assessor):
         from . import acceptance_review
@@ -664,7 +693,16 @@ class Jobs:
         r.report_context.validate_operator(assessor)
         return self._saved_report(source_job_id, "acceptance_review", criteria, assessor)
 
-    def _saved_report(self, source_job_id, mode, criteria=None, assessor=None, test_profile=None):
+    def _saved_report(
+        self,
+        source_job_id,
+        mode,
+        criteria=None,
+        assessor=None,
+        test_profile=None,
+        *,
+        include_pdf=None,
+    ):
         from . import report_recovery
 
         with self.mutex:
@@ -677,6 +715,16 @@ class Jobs:
                 "Wait for the source worker to close",
             )
             original = read(source / "request.json")
+            guided = original.get("mode") == "guided"
+            p.require(
+                not guided or mode == "report_recovery", "Guided captures support regeneration only"
+            )
+            p.require(
+                include_pdf is None or (guided and type(include_pdf) is bool),
+                "PDF selection is available for guided combined captures",
+            )
+            if guided and include_pdf is None:
+                include_pdf = original.get("include_pdf")
             source_hash = report_recovery.inspect(source, original)
             if test_profile is not None:
                 reference_profiles.validate_binding(test_profile, original["workflows"], criteria)
@@ -687,7 +735,12 @@ class Jobs:
                 )
             job_id = uuid.uuid4().hex
             path = self.root / job_id
-            delivery.preflight_delivery(source / "capture", path / "report", pdf=True, package=True)
+            delivery.preflight_delivery(
+                source / "capture",
+                path / "report",
+                pdf=include_pdf is not False,
+                package=include_pdf is not False,
+            )
             path.mkdir(mode=0o700)
             request = dict(
                 schema="hp437b.operator-request.v1",
@@ -701,6 +754,8 @@ class Jobs:
                 source_job_id=source_job_id,
                 source_inventory_sha256=source_hash,
             )
+            if include_pdf is not None:
+                request["include_pdf"] = include_pdf
             if mode == "acceptance_review":
                 request.update(criteria=criteria, assessor=assessor)
             if test_profile is not None:
@@ -863,7 +918,13 @@ class Jobs:
             "test_profile": request.get("test_profile"),
             "assessment_ready": (path / "assessment/artifacts.json").is_file()
             and (path / "assessment/report.pdf").is_file(),
-            "report_recovery_available": request.get("mode") in ("physical", "reference_suite")
+            "report_recovery_available": (
+                request.get("mode") in ("physical", "reference_suite")
+                or (
+                    request.get("mode") == "guided"
+                    and request["sweep_plan"]["series"] == "combined"
+                )
+            )
             and state["phase"] not in ACTIVE
             and (path / "capture/artifacts.json").is_file(),
             "meter_mode": request.get("meter_mode"),
@@ -880,6 +941,9 @@ class Jobs:
             "active": self.active_id == job_id
             and self.process is not None
             and self.process.poll() is None,
+            "include_pdf": request.get("include_pdf"),
+            "report_ready": (path / "report/artifacts.json").is_file()
+            and (path / "report/report.html").is_file(),
             "pdf_ready": (path / "report/artifacts.json").is_file()
             and (path / "report/report.pdf").is_file(),
             "package_ready": (path / "report.zip").is_file(),
@@ -937,6 +1001,8 @@ class Jobs:
                         started_utc=job["started_utc"],
                         workflows=job["workflows"],
                         outcome=job.get("outcome"),
+                        mode=job["mode"],
+                        include_pdf=job["include_pdf"],
                     )
                     for job in jobs
                     if job["report_recovery_available"]
@@ -955,6 +1021,7 @@ class Jobs:
                 guided=dict(
                     default_plan=guided_sweep.example(),
                     meter=self.sweep_config,
+                    automatic_simulation=sweep_matrix.catalog(),
                 ),
                 reference=(
                     dict(
@@ -1004,6 +1071,8 @@ class Jobs:
                                 "phase",
                                 "outcome",
                                 "workflows",
+                                "include_pdf",
+                                "report_ready",
                                 "pdf_ready",
                                 "package_ready",
                                 "report_recovery_available",
@@ -1162,6 +1231,7 @@ class Jobs:
             ".pdf": "application/pdf",
             ".html": "text/html; charset=utf-8",
             ".json": "application/json",
+            ".csv": "text/csv; charset=utf-8",
             ".png": "image/png",
             ".svg": "image/svg+xml",
             ".txt": "text/plain; charset=utf-8",
@@ -1210,12 +1280,21 @@ def worker(path, *, lock_fd=None):
         )
     if request.get("mode") == "guided":
         expected += ("mode", "sweep_plan", "meter_mode", "sweep_config", "prepared")
+        if "workflow_lock_root" in request:
+            expected += ("workflow_lock_root",)
     if "test_profile" in request:
         p.require(
             request.get("mode") in ("reference_suite", "acceptance_review"),
             "Unsupported profile worker mode",
         )
         expected += ("test_profile",)
+    if "include_pdf" in request:
+        p.require(
+            request.get("mode") in ("guided", "report_recovery")
+            and type(request["include_pdf"]) is bool,
+            "Invalid PDF worker option",
+        )
+        expected += ("include_pdf",)
     p._keys(request, expected)
     p.require(
         request["schema"] == "hp437b.operator-request.v1"
@@ -1289,6 +1368,7 @@ def worker(path, *, lock_fd=None):
                     original,
                     request["source_inventory_sha256"],
                     plots=request["plots"],
+                    include_pdf=request.get("include_pdf"),
                 )
             emit(phase="finished", outcome="completed", index=1, error=None)
             return
@@ -1329,24 +1409,42 @@ def worker(path, *, lock_fd=None):
                 emit(phase="finished", current=None)
             return
         if request.get("mode") == "guided":
-            from . import guided_report
+            from contextlib import ExitStack
 
-            result = guided_sweep.run(
-                path / "capture",
-                request["sweep_plan"],
-                guided_sweep.FileGate(path, emit),
-                mode=request["meter_mode"],
-                config=request["sweep_config"],
-                operator=request["operator"],
-                prepared=request["prepared"],
-                emit=emit,
-            )
+            from . import guided_report, reconciliation
+
+            plan = guided_sweep.validate(request["sweep_plan"])
+            guided_sweep.check_mode(plan, request["meter_mode"])
+            with ExitStack() as leases:
+                leases.enter_context(reconciliation._lease(path / ".capture.lock"))
+                if request["meter_mode"] == "physical":
+                    folder = Path(request["workflow_lock_root"])
+                    p.require(folder.is_absolute(), "Guided meter requires the shared lock root")
+                    folder.mkdir(parents=True, exist_ok=True)
+                    key = r.digest(request["sweep_config"]["resource"].encode())
+                    try:
+                        leases.enter_context(reconciliation._lease(folder / (key + ".lock")))
+                    except BlockingIOError:
+                        raise ValueError(
+                            "Another workflow owns the configured sweep meter"
+                        ) from None
+                result = guided_sweep.run(
+                    path / "capture",
+                    plan,
+                    guided_sweep.FileGate(path, emit),
+                    mode=request["meter_mode"],
+                    config=request["sweep_config"],
+                    operator=request["operator"],
+                    prepared=request["prepared"],
+                    emit=emit,
+                )
             emit(
                 phase="reporting",
                 prompt=None,
                 current=None,
                 outcome=result["execution"],
                 acceptance=result["acceptance"],
+                stop_reason=result.get("stop_reason"),
                 point_results=result["points"],
                 results=[
                     dict(
@@ -1358,7 +1456,12 @@ def worker(path, *, lock_fd=None):
                     )
                 ],
             )
-            guided_report.publish(path / "capture", path / "report", plot=request["plots"])
+            guided_report.publish(
+                path / "capture",
+                path / "report",
+                plot=request["plots"],
+                include_pdf=request.get("include_pdf"),
+            )
             emit(phase="finished", error=None)
             return
         if request.get("mode") == "physical":
