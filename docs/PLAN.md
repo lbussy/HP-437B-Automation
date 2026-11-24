@@ -26,7 +26,6 @@ Serial-specific Mac-controlled 8482A MY41094127 factor correction is implemented
 
 ## Remaining work
 
-- The operator workflow supports the [56-point Pico Si5351 plan](workflows/SI5351-PHYSICAL-SWEEP-PLAN.md) through direct Control/1 USB, including sealed captures and reports. The physical run remains gated by [Pico C current admission](VALIDATION.md#pico-si5351-test-tone).
 - Pi owner integration remains covered by the [automatic frequency × drive sweep plan](workflows/AUTOMATIC-FREQUENCY-DRIVE-PLAN.md).
 - Confirm fresh setup for subsequent selected use and perform relevant additional checks when selected. Firmware 2.0/resource and the owner-supplied sensor setup were observed in the Mac bench run; laboratory address 13 remains unverified.
 - Extend conducted transmitter measurements to additional source profiles when selected.

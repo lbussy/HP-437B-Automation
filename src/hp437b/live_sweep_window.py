@@ -56,6 +56,7 @@ class ActiveWindow:
         hard_end_ns: int,
         cancelled,
         *,
+        retry_observation_timeout=False,
         clock=time.monotonic_ns,
     ):
         p.require(
@@ -72,6 +73,7 @@ class ActiveWindow:
         self.timing, self.hard_end_ns = timing, hard_end_ns
         self.stop_by_ns = hard_end_ns - timing.stop_ms * 1_000_000
         self.cancelled, self.clock = cancelled, clock
+        self.retry_observation_timeout = retry_observation_timeout
         self._requested = threading.Event()
         self._closing = threading.Event()
         self._worker = threading.Thread(target=self._watch, daemon=True)
@@ -126,10 +128,25 @@ class ActiveWindow:
             "Missing a fresh, timely observation for the identified RF job",
         )
 
-    def _active(self, deadline_ns):
+    def observe(self, deadline_ns):
+        self._require_open()
+        deadline_ns = min(deadline_ns, self.stop_by_ns)
         issued = self.clock()
-        observed = self.output.observe(self.job, deadline_ns)
+        try:
+            observed = self.output.observe(self.job, deadline_ns)
+        except TimeoutError:
+            if not self.retry_observation_timeout or self.clock() >= deadline_ns:
+                raise
+            # Retry only the read-only status for this exact job. Keep the
+            # original read deadline and give cancellation/Stop precedence.
+            self._require_open()
+            issued = self.clock()
+            observed = self.output.observe(self.job, deadline_ns)
         self._check_receipt(observed, issued, deadline_ns)
+        return observed
+
+    def _active(self, deadline_ns):
+        observed = self.observe(deadline_ns)
         p.require(
             observed.active is True
             and observed.output_inactive is False

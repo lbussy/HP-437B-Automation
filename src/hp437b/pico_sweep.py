@@ -121,12 +121,32 @@ def _power_limited(path):
         )
 
 
+def _point_ready(source, target, disposition, cancelled, *, retry_timeout):
+    def read_only_checks():
+        if cancelled():
+            raise KeyboardInterrupt("Sweep stopped before RF")
+        current = _current(source, target)
+        return _admitted(
+            source, current, disposition.point, disposition.correction_percent, cancelled=cancelled
+        )
+
+    try:
+        return read_only_checks()
+    except TimeoutError:
+        if not retry_timeout:
+            raise
+        # Refresh identity and admission together. This runs before Start and
+        # cannot repeat a configuration or RF mutation.
+        return read_only_checks()
+
+
 def previous_capture(path, plan, fixture, expected_target):
     previous, result, bundle = guided.load(path)
     prefix = result["completed_points"] + result["limited_points"]
     sequence = previous.get("continuation", {}).get("sequence", 0) + 1
     p.require(
-        previous["schema"] == SCHEMA
+        previous["schema"] == plan["schema"]
+        and previous["schema"] in sweep_matrix.PICO_SCHEMAS
         and previous["plan"] == plan
         and previous["review_fixture"] == fixture
         and previous["status"] in ("failed", "interrupted")
@@ -137,6 +157,14 @@ def previous_capture(path, plan, fixture, expected_target):
         and sequence <= 5,
         "Previous capture is ineligible for a known-safe continuation of this sweep",
     )
+    if previous["schema"] == sweep_matrix.SI5351_SCHEMA:
+        zero = bundle.json("zero/diagnostics.json")
+        p.require(
+            zero["status"] == "completed"
+            and zero["zero_assessment"]["accepted_full_case"] is True
+            and zero["transport_closed"] is True,
+            "Earlier Si5351 capture has no verified ZERO",
+        )
     return (
         previous,
         result,
@@ -188,7 +216,6 @@ def run(
     si5351 = schema == sweep_matrix.SI5351_SCHEMA
     p.require(schema in sweep_matrix.PICO_SCHEMAS, "Use the exact physical Pico matrix")
     p.require(source.target_id == target_id(schema), "Selected Pico source does not match the plan")
-    p.require(not si5351 or continue_from is None, "Si5351 continuation is unavailable")
     prepared_check(prepared, schema=schema)
     fixture = configuration(fixture)
     review = live.review(
@@ -316,10 +343,7 @@ def run(
 
         def launch(stack):
             nonlocal target, source_uncertain, attempted
-            target = _current(source, target)
-            target, assessed = _admitted(
-                source, target, disposition.point, disposition.correction_percent, cancelled=gate
-            )
+            target, assessed = _point_ready(source, target, disposition, gate, retry_timeout=si5351)
             journal(
                 source_pending,
                 "start-requested",
@@ -333,7 +357,14 @@ def run(
             tone = source.start(target, disposition.point, TIMING.tone_ms, request_id, assessed)
             window = stack.enter_context(
                 ActiveWindow(
-                    source, target, disposition.point, tone.job, TIMING, tone.hard_end_ns, gate
+                    source,
+                    target,
+                    disposition.point,
+                    tone.job,
+                    TIMING,
+                    tone.hard_end_ns,
+                    gate,
+                    retry_observation_timeout=si5351,
                 )
             )
             _atomic_json(
@@ -358,7 +389,7 @@ def run(
                     == disposition.correction_percent,
                     "Si5351 LOAD changed the sensor correction",
                 )
-            return pilot.wait_running(source, tone, window, launch_by, gate)
+            return pilot.wait_running(window, launch_by, gate)
 
         try:
             pilot._capture(
@@ -708,11 +739,19 @@ def _validate_si5351_review(record):
     drives = [
         change["current"]["active_drive_ma"] for change in changes if not change["restoration"]
     ]
+    carried = record.get("continuation", {}).get("carried_points", 0)
+    p.require(
+        type(carried) is int and 0 <= carried < len(matrix),
+        "Invalid Si5351 continuation length",
+    )
+    remaining_drives = list(dict.fromkeys(point.drive_ma for point in matrix[carried:]))
+    if remaining_drives[0] == target.active_drive_ma:
+        remaining_drives.pop(0)
     restored = [i for i, change in enumerate(changes) if change["restoration"]]
     tokens = [point["token"] for point in record["points"] if "token" in point]
     p.require(
-        drives == list(DRIVES[: len(drives)])
-        and (record["status"] != "completed" or drives == list(DRIVES))
+        drives == remaining_drives[: len(drives)]
+        and (record["status"] != "completed" or drives == remaining_drives)
         and (
             not restored
             or (
@@ -738,7 +777,7 @@ def validate_run(record, bundle):
     p.require(
         (original["profile"], original["output"]) == expected_output(schema)
         and original["target_id"] == target_id(schema)
-        and (not si5351 or ("continuation" not in record and "settings_sha256" in original))
+        and (not si5351 or "settings_sha256" in original)
         and review["fixture_digest"] == r.digest(r.encoded(configuration(record["review_fixture"])))
         and review["review_digest"]
         == r.digest(

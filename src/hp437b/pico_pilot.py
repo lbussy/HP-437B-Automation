@@ -248,9 +248,9 @@ def _baseline(path, config):
     return rows[0]["value"]
 
 
-def wait_running(source, tone, window, launch_by, cancelled):
+def wait_running(window, launch_by, cancelled):
     while time.monotonic_ns() < launch_by and not cancelled():
-        observed = source.observe(tone.job, min(launch_by, window.stop_by_ns))
+        observed = window.observe(launch_by)
         if observed.active:
             return window
         if observed.output_inactive:
@@ -342,7 +342,7 @@ def run(source, output, config, lock_root, prepared, *, cancelled=lambda: False)
                     receipt["job"] = asdict(tone)
                     _atomic_json(output / "pilot.json", receipt)
                     _atomic_json(pending, receipt)
-                    return wait_running(source, tone, window, launch_by, cancelled)
+                    return wait_running(window, launch_by, cancelled)
 
                 try:
                     _capture(output / "rf-on.csv", config, launch=launch)

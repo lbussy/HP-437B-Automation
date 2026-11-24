@@ -73,7 +73,7 @@ Launch the operator service with `--sweep-setup` and `--pico-si5351-setup`. Use 
 
 Prepare the ordinary QRP Labs Si5351A Synthesizer and 25MHz TCXO profile on CLK0, a saved and boot-active drive of 8 mA, and both Pico schedules disabled. Confirm the direct CLK0-to-8482A fixture and an independent way to shut down or disconnect RF if the synth bus fails. The runner changes only the Si5351 drive through normal configuration and verifies the new boot before using it. It restores the initial 8 mA after verified shutdown.
 
-The [56-point matrix](SI5351-PHYSICAL-SWEEP-PLAN.md) uses 2, 4, 6, and 8 mA and includes 2 m at 144.490500 MHz. It retains two readings per point at the existing one-second logger interval with exact-carrier CAL FAC. The worker requires admission of every point and a fresh native Review before each Start. The [current Pico C admission](../VALIDATION.md#pico-si5351-test-tone) blocks the full run at 2 m.
+The [56-point matrix](SI5351-PHYSICAL-SWEEP-PLAN.md) uses 2, 4, 6, and 8 mA and includes 2 m at 144.490500 MHz. It retains two readings per point at the existing one-second logger interval with exact-carrier CAL FAC. Pico C admitted all 56 points in [read-only Review](../VALIDATION.md#pico-si5351-test-tone). The worker requires admission of every point and a fresh native Review before each Start.
 
 ```bash
 python -m hp437b.guided_client si5351-plan > tmp/si5351-plan.json
@@ -84,7 +84,9 @@ python -m hp437b.guided_client --url http://127.0.0.1:8765 start \
   --pdf --pico-review-digest "$REVIEW_DIGEST"
 ```
 
-Use every `hp437b.pico_sweep.SI5351_PREPARED` key for the prepared file. Obtain the digest from a current fully admitted review with the same PDF selection. Regenerate saved plan-only JSON with the current `si5351-plan` command before Start. The Si5351 runner requires a fresh full capture. An unconfirmed shutdown leaves a pending marker for supervised reconciliation.
+Use every `hp437b.pico_sweep.SI5351_PREPARED` key for the prepared file. Obtain the digest from a current fully admitted review with the same PDF selection. Regenerate saved plan-only JSON with the current `si5351-plan` command before Start. The runner can retry a timed-out read-only pre-Start check or exact-job status once within the existing timing limits.
+
+For supervised continuation, add `--pico-previous-job-id JOB_ID` to Start. Use a sealed interrupted capture from the same plan and fixture with verified restoration and the same confirmed idle target state. The worker verifies the earlier points, runs a fresh ZERO, and measures the remaining points. An unconfirmed shutdown leaves a pending marker for supervised reconciliation.
 
 ## Meter setup
 

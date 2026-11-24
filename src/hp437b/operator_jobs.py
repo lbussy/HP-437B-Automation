@@ -445,7 +445,6 @@ class Jobs:
                     pico_sweep.configuration(config)
                     pico_sweep.prepared_check(prepared, schema=plan["schema"])
                     if pico_previous_job_id is not None:
-                        p.require(not si5351, "Si5351 sweeps require a fresh, full capture")
                         prior = self.get(pico_previous_job_id)
                         p.require(
                             prior["phase"] not in ACTIVE and prior["sweep_plan"] == plan,
@@ -1402,8 +1401,7 @@ def worker(path, *, lock_fd=None):
             expected += ("pico_usb", "pico_review_digest")
             if "pico_previous_job_id" in request:
                 p.require(
-                    request["sweep_plan"]["schema"] == sweep_matrix.PICO_SCHEMA
-                    and isinstance(request["pico_previous_job_id"], str)
+                    isinstance(request["pico_previous_job_id"], str)
                     and ID.fullmatch(request["pico_previous_job_id"])
                     and request["pico_previous_job_id"] != path.name,
                     "Invalid prior Pico job ID",

@@ -285,7 +285,7 @@ def reviewed(source, *, pdf=False):
     )
 
 
-def run(tmp_path, source, review, *, pdf=False):
+def run(tmp_path, source, review, *, pdf=False, continue_from=None):
     return pico_sweep.run(
         source,
         tmp_path / "capture",
@@ -296,7 +296,47 @@ def run(tmp_path, source, review, *, pdf=False):
         review.digest,
         operator="Lee Bussy [AA0NT]",
         include_pdf=pdf,
+        continue_from=continue_from,
     )
+
+
+def test_continuation_carries_sealed_prefix_and_measures_only_remaining_drives(
+    tmp_path, monkeypatch
+):
+    wire = Si5351Wire()
+    setup_injected(monkeypatch, wire)
+    source = Si5351Tone(wire, TARGET_ID)
+    reply = wire.reply
+    timeouts = []
+
+    def fail_before_start(request):
+        result = reply(request)
+        if request["path"] == TONE + "review" and len(wire.jobs) == 40 and len(timeouts) < 2:
+            timeouts.append(request["path"])
+            raise TimeoutError("Pre-Start review unavailable")
+        return result
+
+    monkeypatch.setattr(wire, "reply", fail_before_start)
+    earlier = tmp_path / "earlier"
+    partial = run(earlier, source, reviewed(source))
+    assert partial["execution"] == "failed"
+    assert partial["completed_points"] == len(wire.jobs) == 40
+    assert len(timeouts) == 2 and wire.saved == wire.active == 8 and not wire.running
+
+    source = Si5351Tone(wire, TARGET_ID)
+    fresh = reviewed(source)
+    latest = tmp_path / "latest"
+    full = run(latest, source, fresh, continue_from=earlier / "capture")
+    assert full["execution"] == "completed"
+    assert full["completed_points"] == len(wire.jobs) == 56
+    assert full["points"][:40] == partial["points"][:40]
+    assert [drive for _, drive in wire.jobs[40:]] == [6, 6, *([8] * 14)]
+    record, _, _ = guided_sweep.load(latest / "capture")
+    assert record["continuation"]["carried_points"] == 40
+    assert wire.active == wire.saved == 8 and not wire.running
+    assert (latest / "capture/zero/diagnostics.json").is_file()
+    assert not (latest / "capture/P040").exists()
+    assert (latest / "capture/P041/terminal.json").is_file()
 
 
 @pytest.mark.parametrize("include_pdf", [False, True])
@@ -306,6 +346,35 @@ def test_full_si5351_matrix_and_report(tmp_path, monkeypatch, local_http_server,
         pypdf = pytest.importorskip("pypdf")
     wire = Si5351Wire()
     setup_injected(monkeypatch, wire)
+    status_timeouts = []
+    readiness_timeouts = []
+    launch_timeouts = []
+    reply = wire.reply
+
+    def transient_timeouts(request):
+        result = reply(request)
+        ninth_job = {"job_id": [f"{9:032x}"]}
+        if (
+            request["path"].startswith(TONE + "status?")
+            and wire.status_queries.count(ninth_job) == 9
+            and wire.status_queries[-1] == ninth_job
+            and not status_timeouts
+        ):
+            status_timeouts.append(request["path"])
+            raise TimeoutError("Lost the status reply after the second retained reading")
+        if request["path"] == TONE + "review" and len(wire.jobs) == 40 and not readiness_timeouts:
+            readiness_timeouts.append(request["path"])
+            raise TimeoutError("Lost the ready review before Start")
+        if (
+            request["path"].startswith(TONE + "status?")
+            and len(wire.jobs) == 53
+            and not launch_timeouts
+        ):
+            launch_timeouts.append(request["path"])
+            raise TimeoutError("Lost the running status after Start")
+        return result
+
+    monkeypatch.setattr(wire, "reply", transient_timeouts)
     from hp437b.guided_client import Client
     from hp437b.report_delivery import verify
 
@@ -369,6 +438,10 @@ def test_full_si5351_matrix_and_report(tmp_path, monkeypatch, local_http_server,
     record, result, _ = guided_sweep.load(capture)
     assert result["execution"] == "completed", result.get("stop_reason")
     assert result["completed_points"] == result["requested_points"] == 56
+    assert len(status_timeouts) == 1
+    assert len(readiness_timeouts) == 1
+    assert len(launch_timeouts) == 1
+    assert wire.status_queries.count({"job_id": [f"{9:032x}"]}) == 10
     assert wire.jobs == [
         (dial + 1500, drive) for drive in DRIVES for dial in sweep_matrix.SI5351_DIALS.values()
     ]

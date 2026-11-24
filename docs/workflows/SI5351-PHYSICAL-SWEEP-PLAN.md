@@ -1,6 +1,6 @@
 # Si5351 physical sweep implementation plan
 
-The HP-side matrix, Control/1 adapter, runner, and sealed report path are available. The [current Pico C admission](../VALIDATION.md#pico-si5351-test-tone) gates physical execution.
+The HP-side matrix, Control/1 adapter, runner, and sealed report path are available. The supervised 56-point capture is recorded in the [validation record](../VALIDATION.md#pico-si5351-test-tone).
 
 Use the [bounded implementation prompt](SI5351-PHYSICAL-SWEEP-IMPLEMENTATION-PROMPT.md) for HP-side implementation and RF-free validation.
 
@@ -112,7 +112,7 @@ Freeze the exact matrix and preserve per-point authorization, source/config/boot
 
 The loader must reconstruct all 56 requested rows, exact source schema/matrix identity, statistics, and coverage from the frozen plan and native evidence, including partial runs; worker progress and summary counts are not authoritative. It must reject altered matrix/order/drive/clock/ref/carrier, wrong-job or wrong-boot receipts, duplicate sessions, invalid timestamps/windows, changed correction factors or source hashes, and false shutdown/restoration claims. Source-specific validation must not relax GP2 evidence requirements. Sealed capture success and report-generation success are separate.
 
-Preserve saved-data loading and re-reporting for existing schemas, including certificate-path compatibility. Avoid changing shared schema semantics by using a new physical Si5351 schema and explicit dispatch. Existing GP2 continuation remains supported. Automatic Si5351 continuation is not part of this implementation; reject it clearly rather than using GP2 continuation checks on Si5351 records.
+Preserve saved-data loading and re-reporting for existing schemas, including certificate-path compatibility. The physical Si5351 schema has its own source and drive checks. Supervised continuation accepts an explicitly selected, sealed partial capture for the same plan, fixture, and restored idle target. It verifies the earlier evidence, requires a fresh full Review and ZERO, and captures the remaining points.
 
 Apply the current shared report preferences:
 

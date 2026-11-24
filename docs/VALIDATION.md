@@ -6,11 +6,15 @@ The 8482H SN 3318A09219 [calibration review](validation/8482H-CALIBRATION-202611
 
 ## Pico Si5351 Test Tone
 
-The HP adapter follows the WsprryPico Control/1 source at `d5ce8428ce471894865f9129d6d972bfcc5e77d5`. Pico C uses WsprryPico `0.0.0-devel` from `946dbb427be9e86376f1fd6f38d34a45a5065d35`. The authenticated USB readback confirms saved and boot-active CLK0 drive of 8 mA, both schedules disabled, and idle, unowned, inactive output. Read-only review of the requested matrix returned `unqualified_frequency_not_permitted` for all four drives at 144.490500 MHz. The HP runner requires all 56 points to be admitted before meter preparation, drive changes, or Start.
+Pico C (`wpicoc.local`, USB serial `1545B6EFBF78028C`) runs ordinary WsprryPico `0.0.0-devel` from `b0edc0ddd2b5ff686b22a9274c617653214346dd`. The Control/1 profile is `qrp-labs-rev6-25mhz-clk0`. Both experimental-frequency flags are false. [Pico PR #30](https://github.com/WsprryPi/WsprryPico/pull/30)
 
-The [WsprryPico producer checks](https://github.com/WsprryPi/WsprryPico/actions/runs/45415392232) cover conducted 10 ms, identified Stop, and 120-second cases at 14.0971 MHz at 2, 4, 6, and 8 mA. They establish bounded-tone operation and observed shutdown at that carrier. The full HP Si5351 power sweep remains pending. Register shutdown depends on the I²C bus.
+Pico C admitted **all 56 points** in read-only Review using HP adapter `e2dcbee78fa23f977f80132db87d281b79d6089b` over authenticated USB through `wspr5`. Review returned 14 `ready`, 42 `requires_restart`, and zero refusals. At **144.490500 MHz**, the 8 mA point was ready and the 2, 4, and 6 mA points had valid realizations with a required drive restart. The before-and-after readback matched at 8 mA saved and boot-active, both schedules disabled, and idle, unowned, inactive output. The assessment revision matched across Review.
 
-The [HP RF-free contract fixtures](../tests/test_si5351_sweep.py) model this Control/1 source and cover the 56-point operator-to-report path, including refused admission, reconciliation, and unconfirmed shutdown.
+The Review was bound to Control/1 device `c2a3a2a314c948b50a8562a1aeb69669` and boot `f4343446af695f63f8597c3cd123db43`. The installed UF2 has SHA-256 `44e380d88d04a94b3ac8eebb66e3eaa8ae2698f54d67aba2ba1c7b994aa67794`. The retained `hp-56-review-evidence.json` has SHA-256 `24a230efd0115b25a8c06210a3c5e6b6b755003fd1246a7d9c2ac96e58ffc393`.
+
+RF-free Pico tests cover native Start and finite shutdown at 144.490500 MHz for all four nominal drives. The conducted 2 m result applies to its recorded 8 mA setup. Separate conducted tests at 14.0971 MHz cover 10 ms, identified Stop, and 120-second cases at all four drives. Register shutdown depends on the I²C bus. [Exact-source Pico CI](https://github.com/WsprryPi/WsprryPico/actions/runs/45426556062) · [Conducted 2 m qualification](https://github.com/WsprryPi/WsprryPico/blob/b0edc0ddd2b5ff686b22a9274c617653214346dd/engineering/development/si5351.md#qualified-ordinary-profile) · [Conducted 20 m lifecycle checks](https://github.com/WsprryPi/WsprryPico/actions/runs/45415392232)
+
+The supervised HP Si5351 sweep retained **112 readings at 56 points**, with all four drives measured at 144.490500 MHz. The sealed report record is `f2d3366439c743f99dcd5ccebc7a44c0`. It includes verified meter closure and Pico restoration to 8 mA with both schedules disabled and RF inactive. The HP runner requires a fresh full Review before meter preparation, drive changes, or Start. The [HP RF-free contract fixtures](../tests/test_si5351_sweep.py) cover the 56-point operator-to-report path, bounded status retries, supervised continuation, and unconfirmed shutdown.
 
 ## Record the environment
 

@@ -12,7 +12,7 @@ Updated: November 24, 2026. ✅ Complete, ⏳ In progress, and ▧ Not started/d
 | Automatic 8482A correction | ✅ Implemented | Exact-frequency logging and configured guided points use certificate-derived factors and native receipts. Exercised across all 52 Pico points |
 | Transmitter power measurement | ⏳ Conducted Pico direct-GPIO matrix recorded | [52-point bench record](validation/PICO-52-20261123.md) gives sensor-input power and fixture limitations. Additional output profiles remain unverified |
 | WF-04–WF-06 physical experiments | ▧ When selected | Actual setting/frequency/voltage experiment; a supply is needed only for the voltage case |
-| Si5351 56-point physical sweep | ⏳ Software exercised; 2 m admission pending | [Guided workflow](workflows/OPERATOR-GUIDED-SWEEPS.md#pico-si5351) and [Pico C admission](VALIDATION.md#pico-si5351-test-tone). The full physical run requires ordinary firmware admission at 144.490500 MHz and supervised bench execution |
+| Si5351 56-point physical sweep | ✅ 56/56 points captured | 112 retained readings, including all four drive settings at 144.490500 MHz, with verified restoration to 8 mA. See the [validation record](VALIDATION.md#pico-si5351-test-tone) |
 | Automatic frequency × drive sweep and optional PDF | ⏳ Direct GPIO completed 52/52 physical points | [Guided workflow](workflows/OPERATOR-GUIDED-SWEEPS.md#live-control-prerequisites) and [full bench record](validation/PICO-52-20261123.md). Pi live control remains open |
 | Broader/unattended recovery | ▧ Optional/unqualified | No automatic workflow resumption or already-wedged repair claim |
 | Broader command/bus support | ▧ Optional | Resolve relevant [ambiguities](inventory/AMBIGUITIES.md) before enabling guarded operations |
