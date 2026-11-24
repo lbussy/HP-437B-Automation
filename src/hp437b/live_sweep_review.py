@@ -142,10 +142,13 @@ class Review:
         )
 
 
-def _matrix(profile):
+def _matrix(owner, profile):
+    dials = (
+        sweep_matrix.SI5351_DIALS if (owner, profile) == ("pico", "si5351") else sweep_matrix.DIALS
+    )
     points = []
     for drive in sweep_matrix.PROFILES[profile][1]:
-        for band, dial in sweep_matrix.DIALS.items():
+        for band, dial in dials.items():
             points.append(
                 Point(f"P{len(points) + 1:03d}", band, dial, dial + sweep_matrix.OFFSET_HZ, drive)
             )
@@ -201,7 +204,7 @@ def review(
         and target.active_drive_ma in sweep_matrix.PROFILES[target.profile][1],
         "Source is unavailable for a fresh live review",
     )
-    points = _matrix(target.profile)
+    points = _matrix(target.owner, target.profile)
     available_ids = {point.point_id for point in points}
     if selected_ids is not None:
         p.require(
@@ -212,6 +215,8 @@ def review(
         )
     selected = available_ids if selected_ids is None else set(selected_ids)
     p.require(bool(selected) and selected <= available_ids, "Invalid reduced point selection")
+    if (target.owner, target.profile) == ("pico", "si5351"):
+        p.require(selected == available_ids, "Review the full 56-point Pico Si5351 matrix")
     selected_points = tuple(point for point in points if point.point_id in selected)
 
     batch = getattr(reader, "admit_many", None)

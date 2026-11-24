@@ -175,6 +175,7 @@ async function refresh(force=false) {
     $("reference-suite-source").querySelector('option[value="physical"]').disabled=!model.reference;
     if(model.reference){$("reference-identity").textContent=`Meter ${model.reference.meter_serial}; sensor ${model.reference.sensor_serial}. ${model.reference.resource}`;$("reference-issues").textContent="Known issues: "+(model.reference.known_issues.join("; ")||"None reported");}
     $("guided-execution").querySelector('option[value="pico"]').disabled=!model.guided?.live_pico_schema;
+    setText("guided-si5351-note",model.guided?.si5351_unavailable||"");
     $("guided-meter").querySelector('option[value="physical"]').disabled=!model.guided?.meter;
     $("guided-meter-note").textContent=model.guided?.meter?`Meter ${model.guided.meter.meter_serial}; sensor ${model.guided.meter.sensor_serial}. ${model.guided.meter.fixture}${model.guided.meter.signal_source==="power_ref"?" POWER REF repeats only: start with reference off; switch it on before capture and off after finishing or stopping.":""}`:"Configure the bench meter at service launch to enable measured captures.";
     const previous=$("profile").value;
@@ -241,6 +242,9 @@ function guidedReady() {
   || Boolean(model.guided?.meter) && Object.values(guidedPrepared()).every(Boolean);
 }
 async function startGuided() {
+ if ($("guided-execution").value === "pico-si5351") {
+  throw new Error(model.guided?.si5351_unavailable || "Pico Si5351 is unavailable.");
+ }
  const live = guidedPico();
  const meterMode = live ? "physical" : guidedAutomatic() ? "synthetic" : $("guided-meter").value;
  const settings = {
@@ -314,7 +318,7 @@ function guidedPlan(){
   timeout_s:live?30:10,measurement_notes:$("guided-notes").value.trim(),...(auto?{profile:profile?.id}:{})
  };
 }
-function guidedValid(){const p=guidedPlan();return p.name.length>0&&p.measurement_notes.length>0&&p.frequencies.length>0&&p.frequencies.length<=32&&p.drives.length>0&&p.drives.length<=16&&new Set(p.frequencies).size===p.frequencies.length&&new Set(p.drives).size===p.drives.length&&[...p.frequencies,...p.drives].every(x=>x.length<=60)&&Number.isInteger(p.samples)&&p.samples>=1&&p.samples<=1000&&p.interval_s>=.1&&p.interval_s<=60&&p.settling_s>=0&&p.settling_s<=120&&p.samples*p.interval_s<=3600;}
+function guidedValid(){if($("guided-execution").value==="pico-si5351")return false;const p=guidedPlan();return p.name.length>0&&p.measurement_notes.length>0&&p.frequencies.length>0&&p.frequencies.length<=32&&p.drives.length>0&&p.drives.length<=16&&new Set(p.frequencies).size===p.frequencies.length&&new Set(p.drives).size===p.drives.length&&[...p.frequencies,...p.drives].every(x=>x.length<=60)&&Number.isInteger(p.samples)&&p.samples>=1&&p.samples<=1000&&p.interval_s>=.1&&p.interval_s<=60&&p.settling_s>=0&&p.settling_s<=120&&p.samples*p.interval_s<=3600;}
 function guidedPlanChanged(){
  const p=guidedPlan(), live=guidedPico(), auto=guidedAutomatic()||live, active=Boolean(model.active_id);
  const points=p.frequencies.length*p.drives.length;

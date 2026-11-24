@@ -26,7 +26,8 @@ Serial-specific Mac-controlled 8482A MY41094127 factor correction is implemented
 
 ## Remaining work
 
-- Finish the Pi and Si5351 owner integrations in the [automatic frequency × drive sweep plan](workflows/AUTOMATIC-FREQUENCY-DRIVE-PLAN.md).
+- Integrate the Pico Si5351 adapter, physical runner, and sealed reports after the paired Control/1 contract and RF-free fixtures are available. The [56-point plan](workflows/SI5351-PHYSICAL-SWEEP-PLAN.md) is available offline. See the [implementation prompt](workflows/SI5351-PHYSICAL-SWEEP-IMPLEMENTATION-PROMPT.md).
+- Pi owner integration remains covered by the [automatic frequency × drive sweep plan](workflows/AUTOMATIC-FREQUENCY-DRIVE-PLAN.md).
 - Confirm fresh setup for subsequent selected use and perform relevant additional checks when selected. Firmware 2.0/resource and the owner-supplied sensor setup were observed in the Mac bench run; laboratory address 13 remains unverified.
 - Extend conducted transmitter measurements to additional source profiles when selected.
 - Perform physical setting, frequency, or voltage experiments when selected; supply control is needed only for voltage experiments.

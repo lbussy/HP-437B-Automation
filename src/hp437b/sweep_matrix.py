@@ -4,7 +4,11 @@ from . import provenance as p
 
 SCHEMA = "hp437b.automatic-sweep-simulation.v1"
 PICO_SCHEMA = "hp437b.automatic-pico-sweep.v1"
-MATRIX_SCHEMAS = (SCHEMA, PICO_SCHEMA)
+SI5351_PLAN_SCHEMA = "hp437b.automatic-pico-si5351-plan.v1"
+CAPTURE_SCHEMAS = (SCHEMA, PICO_SCHEMA)
+MATRIX_SCHEMAS = (*CAPTURE_SCHEMAS, SI5351_PLAN_SCHEMA)
+SI5351_TARGET = "pico-si5351"
+SI5351_UNAVAILABLE = "Pico Si5351 requires the paired Control/1 contract and RF-free fixtures"
 OFFSET_HZ = 1500
 DIALS = {
     "2200m": 136000,
@@ -21,6 +25,7 @@ DIALS = {
     "10m": 28124600,
     "6m": 50293000,
 }
+SI5351_DIALS = {**DIALS, "2m": 144489000}
 PROFILES = {
     "pico-gpio": ("Pico direct GPIO", (2, 4, 8, 12)),
     "si5351": ("Si5351", (2, 4, 6, 8)),
@@ -55,6 +60,17 @@ def pico_plan(base):
     }
 
 
+def si5351_plan(base):
+    return {
+        **simulation_plan(base, "si5351"),
+        "schema": SI5351_PLAN_SCHEMA,
+        "frequencies": list(SI5351_DIALS),
+        "samples": 2,
+        "interval_s": 1.0,
+        "timeout_s": 30.0,
+    }
+
+
 def catalog():
     return {
         "schema": SCHEMA,
@@ -75,12 +91,14 @@ def validate(plan):
     p.require(
         plan["series"] == "combined"
         and plan["order"] == "drive"
-        and plan["frequencies"] == list(DIALS)
+        and plan["frequencies"] == list(dials_for_schema(plan["schema"]))
         and plan["drives"] == [f"{ma} mA" for ma in PROFILES[profile][1]],
-        "Automatic simulation requires the exact drive-first profile matrix",
+        "Automatic sweep requires the exact drive-first profile matrix",
     )
     if plan["schema"] == PICO_SCHEMA:
         p.require(plan == pico_plan(plan), "Use the reviewed direct-GPIO Pico capture settings")
+    elif plan["schema"] == SI5351_PLAN_SCHEMA:
+        p.require(plan == si5351_plan(plan), "Use the exact Pico Si5351 capture settings")
     else:
         p.require(
             plan["samples"] <= 3 and plan["settling_s"] == 0,
@@ -88,10 +106,14 @@ def validate(plan):
         )
 
 
+def dials_for_schema(schema):
+    return SI5351_DIALS if schema == SI5351_PLAN_SCHEMA else DIALS
+
+
 def point_data(plan, point):
     if plan["schema"] not in MATRIX_SCHEMAS:
         return {}
-    dial = DIALS[point["frequency"]]
+    dial = dials_for_schema(plan["schema"])[point["frequency"]]
     return {
         "dial_hz": dial,
         "carrier_hz": dial + OFFSET_HZ,

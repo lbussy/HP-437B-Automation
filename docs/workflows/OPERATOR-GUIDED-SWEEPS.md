@@ -66,7 +66,7 @@ Use `python -m hp437b.pico_pilot --help` for the separate 30 m, 12 mA bench comm
 
 - The installed Pico passed read-only review of all 52 points. The [conducted 30 m pilot](../validation/30M-POWER-20261123.md#native-test-tone-pilot) and the full hardware-free capture exercise provide different levels of evidence. The [supervised 52-point campaign](../validation/PICO-52-20261123.md) captured every planned combination and verified restoration to 12 mA.
 - WsprryPi accepts an absolute custom RF frequency over its bounded-tone command. Transient drive, generation-bound early stop, and read-only point admission remain open.
-- The ordinary Pico Si5351 profile admits 8 mA. Extending that profile to 2, 4, and 6 mA requires qualification. RP1 drive masks and all hardware-policy refusals must come from the live owning controller.
+- The [56-point Pico Si5351 plan](SI5351-PHYSICAL-SWEEP-PLAN.md) is available offline through `python -m hp437b.guided_client si5351-plan`. It includes 2 m at 144.490500 MHz and two retained readings per point. The operator page shows physical Si5351 as unavailable. Live review and Start require the paired Si5351 Control/1 schema, conformance fixtures, and HP adapter.
 
 ## Meter setup
 

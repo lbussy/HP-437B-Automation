@@ -326,6 +326,7 @@ class Jobs:
     def review_live_guided(self, target_id, selected_ids, include_pdf):
         """Review configured targets without reserving a run or contacting the meter."""
         p.require(isinstance(target_id, str), "Select a configured live review target")
+        p.require(target_id != sweep_matrix.SI5351_TARGET, sweep_matrix.SI5351_UNAVAILABLE)
         with self.mutex:
             self._reap()
             p.require(
@@ -1102,7 +1103,10 @@ class Jobs:
                     default_plan=guided_sweep.example(),
                     meter=self.sweep_config,
                     automatic_simulation=sweep_matrix.catalog(),
-                    live_review_targets=sorted(self.live_review_targets),
+                    live_review_targets=sorted(
+                        self.live_review_targets.keys() - {sweep_matrix.SI5351_TARGET}
+                    ),
+                    si5351_unavailable=sweep_matrix.SI5351_UNAVAILABLE,
                     live_pico_schema=sweep_matrix.PICO_SCHEMA
                     if "pico-gpio" in self.live_review_targets
                     else None,

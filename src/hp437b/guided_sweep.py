@@ -116,6 +116,7 @@ def points(plan):
 
 def check_mode(plan, mode, *, live_pico=False):
     p.require(mode in ("synthetic", "physical"), "Invalid meter mode")
+    p.require(plan["schema"] != sweep_matrix.SI5351_PLAN_SCHEMA, sweep_matrix.SI5351_UNAVAILABLE)
     if plan["schema"] == sweep_matrix.SCHEMA:
         p.require(
             mode == "synthetic",
@@ -641,7 +642,7 @@ def load(source):
     bundle = p.Bundle(source)
     inventory = p._json(bundle.read("artifacts.json"))
     p.require(
-        inventory.get("schema") in (SCHEMA, *sweep_matrix.MATRIX_SCHEMAS)
+        inventory.get("schema") in (SCHEMA, *sweep_matrix.CAPTURE_SCHEMAS)
         and inventory.get("mode") in ("physical", "synthetic"),
         "Invalid sweep inventory",
     )

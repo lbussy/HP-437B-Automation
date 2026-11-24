@@ -132,6 +132,107 @@ def test_automatic_rejects_physical_before_job_allocation(tmp_path):
         manager.close()
 
 
+def test_si5351_client_plan_uses_exact_physical_matrix(capsys):
+    from hp437b.guided_client import main
+
+    main(["si5351-plan"])
+    plan = json.loads(capsys.readouterr().out)
+    points = g.points(plan)
+    dial_hz = [
+        136000,
+        474200,
+        1836600,
+        3568600,
+        5364700,
+        7038600,
+        10138700,
+        14095600,
+        18104600,
+        21094600,
+        24924600,
+        28124600,
+        50293000,
+        144489000,
+    ]
+    assert plan["schema"] == sweep_matrix.SI5351_PLAN_SCHEMA
+    assert plan["samples"] == 2 and plan["interval_s"] == 1
+    assert [p["point_id"] for p in points] == [f"P{i:03}" for i in range(1, 57)]
+    assert [(p["drive_ma"], p["dial_hz"], p["carrier_hz"]) for p in points] == [
+        (drive, hz, hz + 1500) for drive in (2, 4, 6, 8) for hz in dial_hz
+    ]
+    for changes in (
+        {"frequencies": plan["frequencies"][:-1]},
+        {"drives": ["2 mA", "4 mA", "8 mA", "12 mA"]},
+        {"samples": True},
+        {"interval_s": 2},
+    ):
+        with pytest.raises(ValueError):
+            g.validate({**plan, **changes})
+
+
+def test_si5351_review_start_and_worker_are_gated(tmp_path, local_http_server, monkeypatch):
+    from hp437b.guided_client import Client
+
+    def unexpected_io(*args, **kwargs):
+        pytest.fail("The plan-only schema reached a capture or transport boundary")
+
+    monkeypatch.setattr(jobs.subprocess, "Popen", unexpected_io)
+    monkeypatch.setattr(g, "run", unexpected_io)
+    manager = jobs.Jobs(tmp_path / "jobs", plots=False)
+    plan = sweep_matrix.si5351_plan(g.example())
+    try:
+        server, *_ = local_http_server(manager)
+        client = Client(f"http://127.0.0.1:{server.server_port}")
+        state = client.state()
+        assert sweep_matrix.SI5351_TARGET not in state["guided"]["live_review_targets"]
+        assert state["guided"]["si5351_unavailable"] == sweep_matrix.SI5351_UNAVAILABLE
+        for action in (
+            lambda: client.review_live(sweep_matrix.SI5351_TARGET),
+            lambda: client.start(plan, meter_mode="physical", prepared={}, include_pdf=False),
+            lambda: client.start(plan, meter_mode="synthetic", prepared={}, include_pdf=False),
+        ):
+            with pytest.raises(urllib.error.HTTPError) as error:
+                action()
+            assert error.value.code == 400
+            assert json.load(error.value)["error"] == sweep_matrix.SI5351_UNAVAILABLE
+        assert client.state()["jobs"] == []
+    finally:
+        manager.close()
+
+    path = tmp_path / ("a" * 32)
+    path.mkdir()
+    jobs.atomic(
+        path / "request.json",
+        dict(
+            schema="hp437b.operator-request.v1",
+            job_id=path.name,
+            profile={},
+            workflows=["GUIDED"],
+            operator=None,
+            plots=False,
+            started_utc="",
+            mode="guided",
+            sweep_plan=plan,
+            meter_mode="physical",
+            sweep_config=config(),
+            prepared={},
+        ),
+    )
+    jobs.atomic(path / "state.json", {})
+    with pytest.raises(ValueError, match="paired Control/1 contract"):
+        jobs.worker(path)
+    assert jobs.read(path / "state.json")["phase"] == "failed"
+    assert not (path / "capture").exists()
+
+
+def test_si5351_plan_schema_cannot_be_imported_as_capture(tmp_path):
+    (tmp_path / "artifacts.json").write_text(
+        json.dumps({"schema": sweep_matrix.SI5351_PLAN_SCHEMA, "mode": "physical"})
+    )
+    with pytest.raises(ValueError, match="Invalid sweep inventory"):
+        g.load(tmp_path)
+
+
 @pytest.mark.parametrize(
     "profile,total,partial",
     [

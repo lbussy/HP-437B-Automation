@@ -125,6 +125,7 @@ def main(argv=None):
     plan = sub.add_parser("simulation-plan", help="Print a plan for the selected simulated output")
     plan.add_argument("profile", choices=sweep_matrix.PROFILES)
     sub.add_parser("pico-plan", help="Print the exact conducted direct-GPIO Pico plan")
+    sub.add_parser("si5351-plan", help="Print the planned 56-point Pico Si5351 matrix")
     review = sub.add_parser("live-review", help="Review a configured target without starting a run")
     review.add_argument("--target-id", required=True)
     review.add_argument("--point", action="append", dest="selected_ids")
@@ -156,6 +157,9 @@ def main(argv=None):
         return
     if args.action == "pico-plan":
         print(json.dumps(sweep_matrix.pico_plan(guided_sweep.example()), indent=2))
+        return
+    if args.action == "si5351-plan":
+        print(json.dumps(sweep_matrix.si5351_plan(guided_sweep.example()), indent=2))
         return
     if args.url is None:
         parser.error("--url is required for service actions")

@@ -1,5 +1,7 @@
 # Automatic frequency × drive sweep implementation plan
 
+The HP-side Si5351 implementation is scoped by the [56-point physical sweep plan](SI5351-PHYSICAL-SWEEP-PLAN.md): 14 bands including 2 m, four drive levels, and paired Pico Control/1 support. Use that plan for the Si5351 physical matrix and acceptance gates.
+
 Proposed November 23, 2026. Implement in **Operator-guided radio sweep → Frequency × drive setting**. The operator selects one transmitter and RF output, reviews the conducted test setup, and explicitly starts a run. Automatic mode applies each drive setting, tunes a finite carrier, checks readiness, measures with the HP 437B, and verifies shutdown. Keep the existing per-point confirmation path available for manual operation. Generate a full PDF when requested, during the run's reporting stage or later from its saved capture.
 
 The first intended physical campaign is the original **52-point Pico direct-GPIO sweep** on the 13 requested bands. Measure the selected RF output through a documented conducted fixture that meets both the source loading and the sensor input limits. The [30 m bench record](../validation/30M-POWER-20261123.md) supplies evidence for one frequency and drive. Pi and Si5351 are additional selectable source profiles for this same workflow. The plan covers the named hardware and this test only. Keep scheduling, station and advertised WSPR power, other sweep modes, POWER REF workflows, ordinary logging, meter calibration tables, and deployment outside the work.

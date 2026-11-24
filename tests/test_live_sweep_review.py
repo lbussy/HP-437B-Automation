@@ -99,17 +99,35 @@ def test_review_submits_each_absolute_carrier_once_and_freezes_matrix(owner, pro
         ("10m", 28126100),
         ("6m", 50294500),
     ]
+    if profile == "si5351":
+        frequencies.append(("2m", 144490500))
     source = Owner(owner, profile)
     proposal = review(source)
     proposal.require_admitted_start(proposal.digest)
     assert source.received == [
         (band, rf, drive, 55100) for drive in drives for band, rf in frequencies
     ]
-    assert len(proposal.dispositions) == len(proposal.selected_ids) == len(drives) * 13
+    total = len(drives) * len(frequencies)
+    assert len(proposal.dispositions) == len(proposal.selected_ids) == total
     assert proposal.dispositions[6].correction_percent == "101.1"
     # Initial 4 mA to 2 mA, three transitions, and restoration to 4 mA.
     restart_cost = 5 * TIMING.drive_change_ms if owner == "pico" else 0
-    assert proposal.max_run_ms == 90_000 + len(drives) * 13 * 58100 + restart_cost
+    assert proposal.max_run_ms == 90_000 + total * 58100 + restart_cost
+
+
+def test_pico_si5351_requires_full_review_and_blocks_a_refused_2m_drive():
+    source = Owner(profile="si5351")
+    with pytest.raises(ValueError, match="full 56-point"):
+        review(source, selected_ids=["P001"])
+    assert not source.received
+
+    source.forbidden.add(("2m", 6))
+    proposal = review(source)
+    row = proposal.dispositions[41]
+    assert (row.point.point_id, row.point.carrier_hz, row.point.drive_ma) == ("P042", 144490500, 6)
+    assert row.reason == "unsupported_band_or_drive"
+    with pytest.raises(ValueError, match="admitted matrix"):
+        proposal.require_admitted_start(proposal.digest)
 
 
 def test_refused_row_remains_visible_and_reduction_invalidates_prior_review():
