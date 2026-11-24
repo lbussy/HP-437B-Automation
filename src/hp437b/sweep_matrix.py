@@ -3,6 +3,8 @@
 from . import provenance as p
 
 SCHEMA = "hp437b.automatic-sweep-simulation.v1"
+PICO_SCHEMA = "hp437b.automatic-pico-sweep.v1"
+MATRIX_SCHEMAS = (SCHEMA, PICO_SCHEMA)
 OFFSET_HZ = 1500
 DIALS = {
     "2200m": 136000,
@@ -43,6 +45,16 @@ def simulation_plan(base, profile):
     }
 
 
+def pico_plan(base):
+    return {
+        **simulation_plan(base, "pico-gpio"),
+        "schema": PICO_SCHEMA,
+        "samples": 2,
+        "interval_s": 1.0,
+        "timeout_s": 30.0,
+    }
+
+
 def catalog():
     return {
         "schema": SCHEMA,
@@ -67,14 +79,17 @@ def validate(plan):
         and plan["drives"] == [f"{ma} mA" for ma in PROFILES[profile][1]],
         "Automatic simulation requires the exact drive-first profile matrix",
     )
-    p.require(
-        plan["samples"] <= 3 and plan["settling_s"] == 0,
-        "Automatic simulation accepts 1–3 synthetic readings and has no RF settling phase",
-    )
+    if plan["schema"] == PICO_SCHEMA:
+        p.require(plan == pico_plan(plan), "Use the reviewed direct-GPIO Pico capture settings")
+    else:
+        p.require(
+            plan["samples"] <= 3 and plan["settling_s"] == 0,
+            "Automatic simulation accepts 1–3 synthetic readings and has no RF settling phase",
+        )
 
 
 def point_data(plan, point):
-    if plan["schema"] != SCHEMA:
+    if plan["schema"] not in MATRIX_SCHEMAS:
         return {}
     dial = DIALS[point["frequency"]]
     return {

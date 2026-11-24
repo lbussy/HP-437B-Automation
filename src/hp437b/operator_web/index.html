@@ -33,9 +33,9 @@
 <div class="field"><label for="guided-name">Radio / DUT name</label><input id="guided-name" type="text" maxlength="120" value="Radio under test"></div>
 <div class="field"><label for="guided-meter">Meter source</label><select id="guided-meter"><option value="synthetic">Simulated meter</option><option value="physical" disabled>Configured bench meter</option></select><p id="guided-meter-note" class="hint"></p></div>
 <div class="field"><label for="guided-series">Test series</label><select id="guided-series"><option value="combined">Frequency × drive setting</option><option value="frequency">Frequency versus power</option><option value="drive">Drive setting versus power</option></select></div>
-<div id="guided-execution-field" class="field"><label for="guided-execution">Point control</label><select id="guided-execution"><option value="manual">Manual point confirmation</option><option value="simulation">Automatic simulation</option></select></div>
+<div id="guided-execution-field" class="field"><label for="guided-execution">Point control</label><select id="guided-execution"><option value="manual">Manual point confirmation</option><option value="simulation">Automatic simulation</option><option value="pico" disabled>Automatic Pico direct GPIO</option></select></div>
 <div id="guided-simulation" hidden>
-<div class="field"><label for="guided-profile">Simulated output profile</label><select id="guided-profile"></select><p class="hint">Simulation exercises the requested matrix without connecting to a transmitter or meter.</p></div>
+<div id="guided-profile-field" class="field"><label for="guided-profile">Simulated output profile</label><select id="guided-profile"></select><p class="hint">Simulation exercises the requested matrix without connecting to a transmitter or meter.</p></div>
 <details><summary>Review dial and test carrier frequencies</summary><div class="table-scroll"><table><thead><tr><th scope="col">Band</th><th scope="col">Dial (Hz)</th><th scope="col">Test carrier (Hz)</th></tr></thead><tbody id="guided-carriers"></tbody></table></div></details>
 </div>
 <div class="field"><label for="guided-frequencies">Frequency labels</label><textarea id="guided-frequencies" rows="4" maxlength="2000">2200m, 630m, 160m, 80m, 60m, 40m, 30m, 20m, 17m, 15m, 12m, 10m, 8m, 6m, 5m, 4m, 2m</textarea><p id="guided-frequency-hint" class="hint">Comma-separated labels; up to 32. Include exact frequencies in the labels as needed.</p></div>
@@ -45,6 +45,11 @@
 <div class="field"><label for="guided-notes">RF path and measurement notes</label><textarea id="guided-notes" rows="3" maxlength="1000">Meter-indicated power at sensor input; record the RF path and meter corrections here.</textarea></div>
 <label id="guided-pdf-field" class="test-option"><input id="guided-pdf" type="checkbox"><span>Include PDF</span></label>
 <p id="guided-plan" class="hint"></p><fieldset id="guided-prepared" hidden><legend>Confirm the bench setup</legend></fieldset>
+<div id="guided-pico" hidden>
+<button id="guided-pico-review" type="button">Review 52 Pico points</button>
+<p id="guided-pico-review-status" class="hint" role="status"></p>
+<fieldset id="guided-pico-prepared"><legend>Confirm the live conducted bench</legend></fieldset>
+</div>
 </div>
 <div id="reference-suite-setup" hidden>
 <div class="field"><label for="reference-profile">Saved reference profile</label><select id="reference-profile"><option value="">Unsaved selection — no automatic assessment</option></select><p id="reference-profile-note" class="hint">Choose a saved profile to reuse its tests, operator, and optional limits. POWER REF measures the internal reference, not a transmitter.</p></div>

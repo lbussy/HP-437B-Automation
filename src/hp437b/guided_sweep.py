@@ -52,7 +52,7 @@ def example():
 
 
 def validate(plan):
-    automatic = isinstance(plan, dict) and plan.get("schema") == sweep_matrix.SCHEMA
+    automatic = isinstance(plan, dict) and plan.get("schema") in sweep_matrix.MATRIX_SCHEMAS
     p._keys(
         plan,
         (
@@ -114,13 +114,15 @@ def points(plan):
     return result
 
 
-def check_mode(plan, mode):
+def check_mode(plan, mode, *, live_pico=False):
     p.require(mode in ("synthetic", "physical"), "Invalid meter mode")
     if plan["schema"] == sweep_matrix.SCHEMA:
         p.require(
             mode == "synthetic",
             "Automatic sweep requires a verified device bridge. Select simulated meter or use manual confirmation.",
         )
+    if plan["schema"] == sweep_matrix.PICO_SCHEMA:
+        p.require(mode == "physical" and live_pico, "Live Pico sweep requires the reviewed bridge")
 
 
 def configuration(document):
@@ -438,20 +440,32 @@ def analyze_unsealed(source, record):
     results = []
     plan_hash = r.digest(r.encoded(record["plan"]))
     automatic = record["schema"] == sweep_matrix.SCHEMA
+    live_pico = record["schema"] == sweep_matrix.PICO_SCHEMA
+    if live_pico:
+        from . import pico_sweep
+
+        results.extend(pico_sweep.carried_results(source, record))
+
     prior_finished = None
     session_ids = set()
-    for point in record["points"]:
+    for point in record["points"][len(results) :]:
         folder = Path(source) / point["point_id"]
         values, session, confirmation = [], None, None
         planned_point = {k: v for k, v in point.items() if k not in ("status", "token")}
         elapsed = []
+        if live_pico and (folder / "pico-authorization.json").is_file():
+            confirmation = p._json((folder / "pico-authorization.json").read_bytes())
+            p.require(
+                confirmation == pico_sweep.authorization(record, planned_point, point["token"]),
+                "Pico authorization differs from the frozen point",
+            )
         if automatic and (folder / "simulation-authorization.json").is_file():
             confirmation = p._json((folder / "simulation-authorization.json").read_bytes())
             p.require(
                 confirmation == simulation_authorization(record, planned_point, point["token"]),
                 "Simulation authorization differs from the frozen point",
             )
-        if not automatic and (folder / "confirmation.json").is_file():
+        if not automatic and not live_pico and (folder / "confirmation.json").is_file():
             confirmation = p._json((folder / "confirmation.json").read_bytes())
             check_confirmation(confirmation, point, point["token"])
         if (folder / "samples.csv.session.json").is_file():
@@ -471,7 +485,7 @@ def analyze_unsealed(source, record):
                     == expected_correction,
                     "Native sensor correction mismatch",
                 )
-                if point["status"] == "completed":
+                if point["status"] in ("completed", "limited"):
                     p.require(
                         receipt.get("command_sent") is True
                         and receipt.get("status_checked") is True,
@@ -492,11 +506,12 @@ def analyze_unsealed(source, record):
             started = datetime.fromisoformat(session["started_utc"])
             authorized = (
                 datetime.fromisoformat(record["started_utc"])
-                if automatic
+                if automatic or live_pico
                 else datetime.fromisoformat(confirmation["confirmed_utc"])
             )
             p.require(
-                prior_finished is None or (started if automatic else authorized) >= prior_finished,
+                prior_finished is None
+                or (started if automatic or live_pico else authorized) >= prior_finished,
                 "Capture or confirmation predates previous point closure",
             )
             prior_finished = datetime.fromisoformat(session["finished_utc"])
@@ -509,7 +524,13 @@ def analyze_unsealed(source, record):
                     and not status.entry_error,
                     "Invalid initial meter status",
                 )
-            key = "simulation_authorization" if automatic else "confirmation"
+            key = (
+                "simulation_authorization"
+                if automatic
+                else "pico_authorization"
+                if live_pico
+                else "confirmation"
+            )
             p.require(
                 session["simulation"] == (record["mode"] == "synthetic")
                 and context["workflow"] == record["schema"]
@@ -547,15 +568,17 @@ def analyze_unsealed(source, record):
                         elapsed[-1] >= 0 and (len(elapsed) < 2 or elapsed[-1] >= elapsed[-2]),
                         "Native receipt timing moved backwards",
                     )
-            if point["status"] == "completed":
+            if point["status"] in ("completed", "limited"):
                 p.require(
                     session["status"] == "completed"
                     and len(values) == record["plan"]["samples"]
                     and len(rows) == len(values),
                     "Incomplete native point capture",
                 )
+                if live_pico:
+                    pico_sweep.validate_window(folder, record, point, values, session)
         p.require(
-            point["status"] != "completed" or session is not None,
+            point["status"] not in ("completed", "limited") or session is not None,
             "Completed point has no native evidence",
         )
         mean = sum(values, D(0)) / len(values) if values else None
@@ -577,7 +600,9 @@ def analyze_unsealed(source, record):
                 "min_W": str(min(values)) if values else None,
                 "max_W": str(max(values)) if values else None,
                 "mean_dBm": str(10 * (mean / D(".001")).log10())
-                if mean is not None and mean > 0
+                if mean is not None
+                and mean > 0
+                and (not live_pico or point["status"] == "completed")
                 else None,
             }
         )
@@ -596,7 +621,12 @@ def analyze_unsealed(source, record):
                 not_reached_points=sum(row["status"] == "skipped" for row in results),
                 stop_reason=record["error"],
             )
-            if automatic
+            if automatic or live_pico
+            else {}
+        ),
+        **(
+            dict(limited_points=sum(row["status"] == "limited" for row in results))
+            if live_pico
             else {}
         ),
         points=results,
@@ -607,7 +637,7 @@ def load(source):
     bundle = p.Bundle(source)
     inventory = p._json(bundle.read("artifacts.json"))
     p.require(
-        inventory.get("schema") in (SCHEMA, sweep_matrix.SCHEMA)
+        inventory.get("schema") in (SCHEMA, *sweep_matrix.MATRIX_SCHEMAS)
         and inventory.get("mode") in ("physical", "synthetic"),
         "Invalid sweep inventory",
     )
@@ -620,17 +650,24 @@ def load(source):
         and record["status"] in ("completed", "failed", "interrupted"),
         "Invalid sweep identity/status",
     )
-    check_mode(record["plan"], record["mode"])
+    live_pico = record["schema"] == sweep_matrix.PICO_SCHEMA
+    check_mode(record["plan"], record["mode"], live_pico=live_pico)
     report_context.validate_operator(record["operator"])
     if record["mode"] == "physical":
         configuration(record["equipment"])
         check_source_plan(record["plan"], record["equipment"])
-        p.require(
-            isinstance(record["prepared"], dict)
-            and set(record["prepared"]) == set(PREPARED)
-            and all(v is True for v in record["prepared"].values()),
-            "Physical setup confirmation missing",
-        )
+        if live_pico:
+            from . import pico_sweep
+
+            pico_sweep.prepared_check(record["prepared"])
+            pico_sweep.validate_run(record, bundle)
+        else:
+            p.require(
+                isinstance(record["prepared"], dict)
+                and set(record["prepared"]) == set(PREPARED)
+                and all(v is True for v in record["prepared"].values()),
+                "Physical setup confirmation missing",
+            )
     else:
         p.require(record["equipment"] is None, "Synthetic record contains physical equipment")
     expected = points(record["plan"])
@@ -645,7 +682,9 @@ def load(source):
             all(point[k] == v for k, v in original.items()), "Requested point labels/order changed"
         )
         p.require(
-            point["status"] in ("completed", "failed", "interrupted", "skipped"), "Unfinished point"
+            point["status"] in ("completed", "failed", "interrupted", "skipped")
+            or (live_pico and point["status"] == "limited"),
+            "Unfinished point",
         )
         if record["schema"] == sweep_matrix.SCHEMA:
             files = {
@@ -667,7 +706,7 @@ def load(source):
                 ),
                 "Unexpected or missing simulation evidence",
             )
-        if point["status"] == "completed":
+        if point["status"] in ("completed", "limited"):
             p.require(not stopped, "Capture continued after a stopped point")
         else:
             stopped = True

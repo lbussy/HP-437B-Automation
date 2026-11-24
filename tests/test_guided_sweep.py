@@ -169,6 +169,8 @@ def test_automatic_combined_pdf_and_partial_evidence(
     reports.publish(source, pdf_output, plot=False, include_pdf=True)
     pages = pypdf.PdfReader(pdf_output / "report.pdf").pages
     assert len(pages) > 1
+    assert "Coverage:" in pages[0].extract_text() and "P001" not in pages[0].extract_text()
+    assert "P001" in pages[1].extract_text()
     body = "\n".join(page.extract_text() for page in pages)
     assert "5366200" in body and f"P{total:03}" in body
     assert "SIMULATED" in body and ("skipped" in body) == partial
@@ -556,6 +558,20 @@ def test_plot_report_handles_partial_and_both_axes(tmp_path):
     for axis in ("frequency", "drive"):
         assert (tmp_path / "report" / (axis + ".svg")).is_file()
         assert (tmp_path / "report" / (axis + ".png")).is_file()
+
+
+def test_complete_pdf_has_chart_on_summary_page(tmp_path):
+    pytest.importorskip("matplotlib")
+    pytest.importorskip("reportlab")
+    pypdf = pytest.importorskip("pypdf")
+    plan = {**quick_plan(), "frequencies": ["2200m", "630m"]}
+    source, _ = run(tmp_path, plan, gate=Gate(stop_after=3))
+    output = tmp_path / "report"
+    reports.publish(source, output, plot=True, include_pdf=True)
+    pages = pypdf.PdfReader(output / "report.pdf").pages
+    assert len(pages[0].images) == 1 and "Coverage:" in pages[0].extract_text()
+    assert "P001" not in pages[0].extract_text()
+    assert len(pages[1].images) == 0 and "P001" in pages[1].extract_text()
 
 
 def test_physical_job_pins_launch_configuration_and_requires_new_preparation(tmp_path, monkeypatch):

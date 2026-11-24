@@ -72,7 +72,15 @@ def _write(
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.pdfgen.canvas import Canvas
-    from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import (
+        Image,
+        PageBreak,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
 
     license_text = (root / "bitstream-vera-license.txt").read_text(encoding="utf-8")
     style = ParagraphStyle(
@@ -107,6 +115,35 @@ def _write(
     ]
     content.extend(paragraph(line) for line in lines)
     content.append(Spacer(1, 8))
+    plot_block = []
+    if plot is not None:
+        from PIL import Image as PILImage
+
+        plot_bytes = plot.read_bytes()
+        p.require(len(plot_bytes) <= p.MAX_FILE, "PDF plot exceeds import budget")
+        with PILImage.open(BytesIO(plot_bytes)) as image:
+            width, height = image.size
+            p.require(
+                0 < width <= 10000 and 0 < height <= 10000, "Invalid generated PDF plot dimensions"
+            )
+        plot_height = 260 if multipage else 120
+        plot_block = [
+            Image(
+                BytesIO(plot_bytes),
+                width=min(520, plot_height * width / height),
+                height=min(plot_height, 520 * height / width),
+            ),
+            Spacer(1, 7),
+        ]
+    details = Paragraph(
+        'Details: <link href="appendix.html" color="#135c91">HTML appendix</link>; provenance.json; results.json.',
+        small,
+    )
+    if multipage:
+        content.extend(plot_block)
+        if suite is None:
+            content.append(details)
+        content.append(PageBreak())
     grid = [[paragraph(value, bold) for value in columns]]
     grid += [[paragraph(value, cell) for value in row] for row in rows]
     widths = [width * 540 / sum(widths) for width in widths]
@@ -125,27 +162,8 @@ def _write(
         )
     )
     content.extend([table, Spacer(1, 9)])
-    if plot is not None:
-        from PIL import Image as PILImage
-
-        plot_bytes = plot.read_bytes()
-        p.require(len(plot_bytes) <= p.MAX_FILE, "PDF plot exceeds import budget")
-        with PILImage.open(BytesIO(plot_bytes)) as image:
-            width, height = image.size
-            p.require(
-                0 < width <= 10000 and 0 < height <= 10000, "Invalid generated PDF plot dimensions"
-            )
-        plot_height = 260 if multipage else 120
-        content.extend(
-            [
-                Image(
-                    BytesIO(plot_bytes),
-                    width=min(520, plot_height * width / height),
-                    height=min(plot_height, 520 * height / width),
-                ),
-                Spacer(1, 7),
-            ]
-        )
+    if not multipage:
+        content.extend(plot_block)
     content.extend(paragraph(note, small) for note in notes)
     if suite is not None:
         links = "Details: " + " | ".join(
@@ -160,13 +178,8 @@ def _write(
                 small,
             )
         )
-    else:
-        content.append(
-            Paragraph(
-                'Details: <link href="appendix.html" color="#135c91">HTML appendix</link>; provenance.json; results.json.',
-                small,
-            )
-        )
+    elif not multipage:
+        content.append(details)
     pages = []
 
     def footer(canvas, doc):

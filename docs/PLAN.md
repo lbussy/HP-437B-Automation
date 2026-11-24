@@ -13,7 +13,7 @@ Updated: November 23, 2026. The [project scope](PROJECT-SCOPE.md) governs develo
 | Equipment | Meter SN 3125U22346 and sensor SN MY41094127; [current records](EQUIPMENT.md) |
 | Hardware scope | Relevant checks when equipment/operations are used; no blanket software-development gate |
 | Reporting | Traceable saved evidence, descriptive statistics, optional attributed criteria, PDF/portable delivery |
-| DUT control | Human-guided operation supported. The combined sweep has an automatic simulation and an optional full PDF. Live Pico/Pi tuning remains open. Supply control remains optional |
+| DUT control | Human-guided operation, automatic simulation, and optional combined PDF are available. The conducted Pico direct-GPIO campaign captured all 52 points and verified restoration to 12 mA. Pi control remains open. Supply control remains optional |
 
 ## Implemented capabilities
 
@@ -23,9 +23,9 @@ Serial-specific Mac-controlled 8482A MY41094127 factor correction is implemented
 
 ## Remaining work
 
-- Implement live transmitter control and qualified measurement timing from the [automatic frequency × drive sweep plan](workflows/AUTOMATIC-FREQUENCY-DRIVE-PLAN.md) for the selected Pico, Pi, and Si5351 output profiles.
+- Finish the Pi and Si5351 owner integrations in the [automatic frequency × drive sweep plan](workflows/AUTOMATIC-FREQUENCY-DRIVE-PLAN.md).
 - Confirm fresh setup for subsequent selected use and perform relevant additional checks when selected. Firmware 2.0/resource and the owner-supplied sensor setup were observed in the Mac bench run; laboratory address 13 remains unverified.
-- Extend physical transmitter measurements beyond the recorded 30 m point, or exercise the full guided sweep path, when selected.
+- Extend conducted transmitter measurements to additional source profiles when selected.
 - Perform physical setting, frequency, or voltage experiments when selected; supply control is needed only for voltage experiments.
 - Fix demonstrated defects. No further mandatory POWER REF feature is identified.
 

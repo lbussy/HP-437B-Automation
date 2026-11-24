@@ -8,10 +8,11 @@ import subprocess
 import sys
 import threading
 import uuid
+from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
-from . import guided_sweep, reference_profiles, sweep_matrix
+from . import guided_sweep, live_sweep_review, reference_profiles, sweep_matrix
 from . import provenance as p
 from . import report_delivery as delivery
 from . import reporting as r
@@ -54,6 +55,7 @@ class Jobs:
         sweep_config=None,
         preparation_config=None,
         workflow_lock_root=None,
+        live_review_targets=None,
     ):
         from . import operator_preparation as prep
 
@@ -72,6 +74,7 @@ class Jobs:
             )
         self.reference_config = reference_config
         self.sweep_config = sweep_config
+        self.live_review_targets = dict(live_review_targets or {})
         self.workflow_lock_root = Path(
             workflow_lock_root or Path(__file__).resolve().parents[2] / "tmp/workflow-locks"
         ).resolve()
@@ -320,7 +323,46 @@ class Jobs:
                 raise
             return self.get(job_id)
 
-    def start_guided(self, plan, operator, meter_mode, prepared, *, include_pdf=None):
+    def review_live_guided(self, target_id, selected_ids, include_pdf):
+        """Review configured targets without reserving a run or contacting the meter."""
+        p.require(isinstance(target_id, str), "Select a configured live review target")
+        with self.mutex:
+            self._reap()
+            p.require(
+                self.process is None, "Wait for the current run before reviewing live settings"
+            )
+            target = self.live_review_targets.get(target_id)
+        p.require(target is not None, "Live review is unavailable for the selected target")
+        config = guided_sweep.configuration(self.sweep_config)
+        p.require(
+            not guided_sweep.reference_source(config), "Live review needs an external RF fixture"
+        )
+        p.require(
+            config["sensor_serial"] == live_sweep_review.SENSOR_SERIAL,
+            "Live review requires the prepared 8482A MY41094127 fixture",
+        )
+        proposed = live_sweep_review.review(
+            target.reader,
+            target_id,
+            fixture_digest=r.digest(r.encoded(config)),
+            timing=target.timing,
+            tolerance_hz=target.tolerance_hz,
+            include_pdf=include_pdf,
+            selected_ids=selected_ids,
+        )
+        return proposed.public()
+
+    def start_guided(
+        self,
+        plan,
+        operator,
+        meter_mode,
+        prepared,
+        *,
+        include_pdf=None,
+        pico_review_digest=None,
+        pico_previous_job_id=None,
+    ):
         from . import guided_sweep as guided
 
         with self.mutex:
@@ -328,14 +370,19 @@ class Jobs:
             p.require(self.process is None, "A run is already active")
             p.require(self.pending_reference() is None, "Confirm the prior reference run first")
             plan = guided.validate(plan)
-            if plan["schema"] == sweep_matrix.SCHEMA and include_pdf is None:
+            live_pico = plan["schema"] == sweep_matrix.PICO_SCHEMA
+            if plan["schema"] in sweep_matrix.MATRIX_SCHEMAS and include_pdf is None:
                 include_pdf = False
             p.require(
                 include_pdf is None or (type(include_pdf) is bool and plan["series"] == "combined"),
                 "PDF selection requires the combined sweep and a boolean",
             )
             operator = r.report_context.validate_operator(operator)
-            guided.check_mode(plan, meter_mode)
+            guided.check_mode(plan, meter_mode, live_pico=live_pico)
+            p.require(
+                live_pico or (pico_review_digest is None and pico_previous_job_id is None),
+                "Pico review only applies to a live Pico sweep",
+            )
             config = None
             lock_root = self.workflow_lock_root
             if meter_mode == "physical":
@@ -354,12 +401,40 @@ class Jobs:
                     and config["resource"] == self.preparation_config["resource"]
                 ):
                     lock_root = Path(self.preparation_config["workflow_lock_root"]).resolve()
+                from . import pico_sweep
+
                 p.require(
-                    isinstance(prepared, dict)
-                    and set(prepared) == set(guided.PREPARED)
-                    and all(value is True for value in prepared.values()),
-                    "Confirm the prepared RF path and meter before starting",
+                    not pico_sweep.pending_meter(lock_root, config["resource"]).exists(),
+                    "The configured meter has unresolved Pico capture state",
                 )
+                if live_pico:
+                    from .pico_tone import PicoTone
+
+                    source = self.live_review_targets.get("pico-gpio")
+                    p.require(
+                        source is not None and isinstance(source.reader, PicoTone),
+                        "Configure the installed Pico USB bridge before Start",
+                    )
+                    p.require(
+                        isinstance(pico_review_digest, str)
+                        and re.fullmatch(r"[0-9a-f]{64}", pico_review_digest),
+                        "Review all 52 Pico points before Start",
+                    )
+                    pico_sweep.configuration(config)
+                    pico_sweep.prepared_check(prepared)
+                    if pico_previous_job_id is not None:
+                        prior = self.get(pico_previous_job_id)
+                        p.require(
+                            prior["phase"] not in ACTIVE and prior["sweep_plan"] == plan,
+                            "Select a sealed earlier run of this exact Pico plan",
+                        )
+                else:
+                    p.require(
+                        isinstance(prepared, dict)
+                        and set(prepared) == set(guided.PREPARED)
+                        and all(value is True for value in prepared.values()),
+                        "Confirm the prepared RF path and meter before starting",
+                    )
             else:
                 p.require(prepared == {}, "Simulated sweeps do not use bench attestations")
             job_id = uuid.uuid4().hex
@@ -390,6 +465,11 @@ class Jobs:
                 request["include_pdf"] = include_pdf
             if config is not None:
                 request["workflow_lock_root"] = str(lock_root)
+            if live_pico:
+                request["pico_usb"] = asdict(source.reader.link.config)
+                request["pico_review_digest"] = pico_review_digest
+                if pico_previous_job_id is not None:
+                    request["pico_previous_job_id"] = pico_previous_job_id
             path.mkdir(mode=0o700)
             atomic(path / "request.json", request)
             atomic(
@@ -1022,6 +1102,10 @@ class Jobs:
                     default_plan=guided_sweep.example(),
                     meter=self.sweep_config,
                     automatic_simulation=sweep_matrix.catalog(),
+                    live_review_targets=sorted(self.live_review_targets),
+                    live_pico_schema=sweep_matrix.PICO_SCHEMA
+                    if "pico-gpio" in self.live_review_targets
+                    else None,
                 ),
                 reference=(
                     dict(
@@ -1282,6 +1366,16 @@ def worker(path, *, lock_fd=None):
         expected += ("mode", "sweep_plan", "meter_mode", "sweep_config", "prepared")
         if "workflow_lock_root" in request:
             expected += ("workflow_lock_root",)
+        if request["sweep_plan"].get("schema") == sweep_matrix.PICO_SCHEMA:
+            expected += ("pico_usb", "pico_review_digest")
+            if "pico_previous_job_id" in request:
+                p.require(
+                    isinstance(request["pico_previous_job_id"], str)
+                    and ID.fullmatch(request["pico_previous_job_id"])
+                    and request["pico_previous_job_id"] != path.name,
+                    "Invalid prior Pico job ID",
+                )
+                expected += ("pico_previous_job_id",)
     if "test_profile" in request:
         p.require(
             request.get("mode") in ("reference_suite", "acceptance_review"),
@@ -1414,10 +1508,11 @@ def worker(path, *, lock_fd=None):
             from . import guided_report, reconciliation
 
             plan = guided_sweep.validate(request["sweep_plan"])
-            guided_sweep.check_mode(plan, request["meter_mode"])
+            live_pico = plan["schema"] == sweep_matrix.PICO_SCHEMA
+            guided_sweep.check_mode(plan, request["meter_mode"], live_pico=live_pico)
             with ExitStack() as leases:
                 leases.enter_context(reconciliation._lease(path / ".capture.lock"))
-                if request["meter_mode"] == "physical":
+                if request["meter_mode"] == "physical" and not live_pico:
                     folder = Path(request["workflow_lock_root"])
                     p.require(folder.is_absolute(), "Guided meter requires the shared lock root")
                     folder.mkdir(parents=True, exist_ok=True)
@@ -1428,16 +1523,38 @@ def worker(path, *, lock_fd=None):
                         raise ValueError(
                             "Another workflow owns the configured sweep meter"
                         ) from None
-                result = guided_sweep.run(
-                    path / "capture",
-                    plan,
-                    guided_sweep.FileGate(path, emit),
-                    mode=request["meter_mode"],
-                    config=request["sweep_config"],
-                    operator=request["operator"],
-                    prepared=request["prepared"],
-                    emit=emit,
-                )
+                gate = guided_sweep.FileGate(path, emit)
+                if live_pico:
+                    from . import pico_sweep
+                    from .pico_tone import PicoTone, UsbHost, UsbLink
+
+                    source = PicoTone(UsbLink(UsbHost(**request["pico_usb"])), "pico-gpio")
+                    previous = request.get("pico_previous_job_id")
+                    result = pico_sweep.run(
+                        source,
+                        path / "capture",
+                        plan,
+                        request["sweep_config"],
+                        request["workflow_lock_root"],
+                        request["prepared"],
+                        request["pico_review_digest"],
+                        operator=request["operator"],
+                        include_pdf=request["include_pdf"],
+                        continue_from=path.parent / previous / "capture" if previous else None,
+                        cancelled=gate.cancelled,
+                        emit=emit,
+                    )
+                else:
+                    result = guided_sweep.run(
+                        path / "capture",
+                        plan,
+                        gate,
+                        mode=request["meter_mode"],
+                        config=request["sweep_config"],
+                        operator=request["operator"],
+                        prepared=request["prepared"],
+                        emit=emit,
+                    )
             emit(
                 phase="reporting",
                 prompt=None,

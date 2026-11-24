@@ -213,10 +213,16 @@ def package(source, report, target=None):
     if report_schema == "hp437b.guided-combined-report.v2":
         readme = readme.replace(b"the one-page answer", b"the complete guided sweep report")
     if manifest["mode"] == "physical":
+        live_pico = (
+            p._json(evidence.read("artifacts.json")).get("schema")
+            == "hp437b.automatic-pico-sweep.v1"
+        )
         readme = readme.replace(
             b"All included measurements are synthetic.",
             (
-                b"Recorded operator-guided radio measurements; operator-confirmed labels and equipment/setup limits apply."
+                b"Recorded Pico direct-GPIO measurements. Control/1 source and equipment records are included."
+                if live_pico
+                else b"Recorded operator-guided radio measurements; operator-confirmed labels and equipment/setup limits apply."
                 if report_schema
                 in ("hp437b.guided-sweep-report.v1", "hp437b.guided-combined-report.v2")
                 else b"Recorded POWER REF measurements; equipment/setup limits and separate front-panel confirmation apply."

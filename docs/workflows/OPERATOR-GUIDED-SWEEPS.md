@@ -31,12 +31,28 @@ python -m hp437b.guided_client --url http://127.0.0.1:8765 export --job-id JOB_I
 
 ### Live control prerequisites
 
-The automatic mode currently accepts only the simulated meter. Source inspection covered WsprryPico `05cc90d67442` and the WsprryPi worktree at `617831423808`, which also contains unrelated local edits.
+Select **Frequency × drive setting → Automatic Pico direct GPIO** for a configured conducted Pico. Choose **Include PDF** and select **Review 52 Pico points**. Review checks the exact frequencies, drives, finite duration, and 8482A correction. It leaves the Pico and meter idle. After reviewing the result, confirm the current bench setup and select **Start guided sweep**.
 
-- WsprryPico has authenticated Control/1 finite jobs and GPIO pad observation. A read-only finite-job admission operation and the Mac client for authenticated job control, revision-aware restart, and restoration remain open.
+Launch `hp437b.operator_ui` with `--sweep-setup` for the prepared 8482A fixture and `--pico-review-setup` for a trusted local JSON file. The Pico file supplies `host` (existing SSH alias for its USB host), `installer_path` (absolute path to its installed WsprryPico `usb_installer.py`), `installer_sha256`, `serial` (Pico USB serial), and `device_id` (Control/1 member ID). The adapter checks device, boot, and revision through the existing installed UMP1 client.
+
+The equivalent local client commands use a freshly confirmed bench setup file with every `hp437b.pico_sweep.PREPARED` key set to true. Keep the setup and review files in ignored local storage.
+
+```bash
+python -m hp437b.guided_client pico-plan > tmp/pico-plan.json
+python -m hp437b.guided_client --url http://127.0.0.1:8765 live-review \
+  --target-id pico-gpio --pdf > tmp/pico-review.json
+python -m hp437b.guided_client --url http://127.0.0.1:8765 start \
+  --plan tmp/pico-plan.json --meter-mode physical --prepared tmp/pico-prepared.json \
+  --pdf --pico-review-digest "$REVIEW_DIGEST"
+```
+
+Use `review_digest` from the full review. The worker checks that digest against a fresh review before ZERO and any drive or RF changes. It uses a fresh supervised ZERO, exact-frequency CAL FAC, settling comparisons, two retained meter readings per point, and verified early Stop. It sweeps the four drive groups in order, verifies the drive after each Pico reboot, and restores its initial saved and active drive. Stop requests halt the exact active tone and retain completed measurements. If output, drive, or meter closure cannot be verified, preserve the local capture and pending marker for supervised reconciliation. The PDF includes the chart on page one and starts the data table on page two. Use the saved capture to generate another PDF without keying the Pico.
+
+Use `python -m hp437b.pico_pilot --help` for the separate 30 m, 12 mA bench command. `review` only checks that point. `run` requires the shared meter lock root, a new output directory, the explicit USB target and meter resource, and fresh confirmation of every `hp437b.pico_pilot.PREPARED` item for that single tone. Keep those confirmations and the native capture in ignored local storage. Creating `<output>.cancel` requests cooperative cancellation and exact-job Stop. Preserve an unresolved pending job for supervised reconciliation before a new run.
+
+- The installed Pico passed read-only review of all 52 points. The [conducted 30 m pilot](../validation/30M-POWER-20261123.md#native-test-tone-pilot) and the full hardware-free capture exercise provide different levels of evidence. The [supervised 52-point campaign](../validation/PICO-52-20261123.md) captured every planned combination and verified restoration to 12 mA.
 - WsprryPi accepts an absolute custom RF frequency over its bounded-tone command. Transient drive, generation-bound early stop, and read-only point admission remain open.
 - The ordinary Pico Si5351 profile admits 8 mA. Extending that profile to 2, 4, and 6 mA requires qualification. RP1 drive masks and all hardware-policy refusals must come from the live owning controller.
-- The constructed 52- and 104-point matrices exercise formatting and capture progression. Live ownership, fresh ZERO, RF-off baselines, timed acquisitions inside the active job, and verified device stop and restoration remain prerequisites for the conducted sweep.
 
 ## Meter setup
 
@@ -76,7 +92,7 @@ One active worker owns the operator run directory, including while waiting for c
 
 A sealed capture includes `workflow.json` and each started point's `confirmation.json`, production `samples.csv`, and `samples.csv.session.json`, with a root artifact inventory. The capture binds exact labels/order, plan hash, confirmation timestamp/operator/token, physical or simulated mode, and equipment metadata. Saved-run import checks inventories, native raw values, session/sequence joins, settings, requested coverage, confirmation-before-capture chronology, cross-point closure order, and stop progression. Hashes detect modifications; they do not authenticate operators or equipment.
 
-Reports include mean W/mW and dBm where positive, minimum/maximum, population standard deviation, sample count, and largest recorded receipt gap per point. The full HTML report and CSV retain every requested point. Optional plots show frequency versus power per drive label and drive versus power per frequency label, with categorical label axes and gaps for uncaptured points. The combined workflow defaults **Include PDF** off. Selecting it produces a complete, paginated point table and a portable ZIP. Older callers that omit the PDF choice retain the one-page summary and portable ZIP. HTML, CSV, and JSON are available with either choice. Acceptance remains **NOT EVALUATED** because no acceptance-limit contract is added here.
+Reports include mean W/mW and dBm where positive, minimum/maximum, population standard deviation, sample count, and largest recorded receipt gap per point. The full HTML report and CSV retain every requested point. Optional plots show frequency versus power per drive label and drive versus power per frequency label, with categorical label axes and gaps for uncaptured points. The combined workflow defaults **Include PDF** off. Selecting it produces a complete PDF and portable ZIP. Page one shows the run summary and, when enabled, the frequency comparison chart. The values table starts on page two. Older callers that omit the PDF choice retain the one-page summary and portable ZIP. HTML, CSV, and JSON are available with either choice. Acceptance remains **NOT EVALUATED** because no acceptance-limit contract is added here.
 
 Regenerate reports from sealed capture without acquiring again:
 

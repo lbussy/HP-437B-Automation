@@ -187,11 +187,19 @@ def server(manager, port=8765):
                     result = manager.start(body["profile_key"], body["workflows"], body["operator"])
                     self._send(202, r.encoded(result))
                     return
+                if path == "/api/guided-live-review":
+                    p._keys(body, ("target_id", "selected_ids", "include_pdf"))
+                    self._send(200, r.encoded(manager.review_live_guided(**body)))
+                    return
                 if path == "/api/guided":
                     p._keys(
                         body,
                         ("plan", "operator", "meter_mode", "prepared")
-                        + (("include_pdf",) if "include_pdf" in body else ()),
+                        + tuple(
+                            key
+                            for key in ("include_pdf", "pico_review_digest", "pico_previous_job_id")
+                            if key in body
+                        ),
                     )
                     p.require(
                         "include_pdf" not in body or type(body["include_pdf"]) is bool,
@@ -206,6 +214,8 @@ def server(manager, port=8765):
                                 body["meter_mode"],
                                 body["prepared"],
                                 include_pdf=body.get("include_pdf"),
+                                pico_review_digest=body.get("pico_review_digest"),
+                                pico_previous_job_id=body.get("pico_previous_job_id"),
                             )
                         ),
                     )
@@ -346,6 +356,11 @@ def main(argv=None):
         type=Path,
         help="Explicit local meter target and established shared lock root for ZERO/CAL",
     )
+    parser.add_argument(
+        "--pico-review-setup",
+        type=Path,
+        help="Explicit local USB target JSON for read-only Pico matrix review",
+    )
     parser.add_argument("--power-ref-setup", type=Path)
     parser.add_argument("--resource")
     parser.add_argument("--bench-python", type=Path)
@@ -373,6 +388,18 @@ def main(argv=None):
 
             p.require(args.sweep_setup.stat().st_size <= 32 * 1024, "Sweep setup exceeds limit")
             sweep_config = configuration(p._json(args.sweep_setup.read_bytes()))
+        live_review_targets = {}
+        if args.pico_review_setup:
+            from . import pico_sweep
+            from .live_sweep_review import ReviewTarget
+            from .pico_pilot import MATRIX_REVIEW_TIMING
+            from .pico_tone import PicoTone, UsbHost, UsbLink
+
+            p.require(sweep_config is not None, "Pico review requires --sweep-setup")
+            pico_sweep.configuration(sweep_config)
+            target_id = "pico-gpio"
+            source = PicoTone(UsbLink(UsbHost.from_file(args.pico_review_setup)), target_id)
+            live_review_targets[target_id] = ReviewTarget(source, MATRIX_REVIEW_TIMING, 1)
         preparation_config = None
         if args.meter_prep_setup:
             from .operator_preparation import configuration
@@ -389,6 +416,7 @@ def main(argv=None):
             reference_config=reference_config,
             sweep_config=sweep_config,
             workflow_lock_root=args.reference_root.resolve() / "tmp/workflow-locks",
+            live_review_targets=live_review_targets,
         )
         app = server(manager, args.port)
         print(f"Operator interface: http://127.0.0.1:{app.server_port}", flush=True)

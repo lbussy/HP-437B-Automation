@@ -49,6 +49,8 @@ def provenance(record, bundle):
         prepared=record["prepared"],
         label_basis="Simulated setpoints; no transmitter control or RF evidence"
         if record["schema"] == sweep_matrix.SCHEMA
+        else "Control/1 requested carrier and job-bound Pico GPIO drive"
+        if record["schema"] == sweep_matrix.PICO_SCHEMA
         else "Operator-confirmed declarations; not independently measured",
         evidence={
             name: dict(sha256=item["sha256"], bytes=item["bytes"])
@@ -111,6 +113,8 @@ def plots(output, record, result):
         basis = (
             "simulated setpoint"
             if record["schema"] == sweep_matrix.SCHEMA
+            else "Pico job setting"
+            if record["schema"] == sweep_matrix.PICO_SCHEMA
             else "operator confirmed"
         )
         ax.set_xlabel(("Frequency" if axis == "frequency" else "Drive") + f" label ({basis})")
@@ -130,8 +134,15 @@ def _milliwatts(value):
     return pdf._number(D(value) * 1000 if value is not None else None)
 
 
-def _point_factor(bundle, row):
-    key = row["point_id"] + "/samples.csv.session.json"
+def _point_factor(bundle, row, record):
+    prefix = ""
+    while (
+        "continuation" in record
+        and int(row["point_id"][1:]) <= record["continuation"]["carried_points"]
+    ):
+        prefix += "prior/"
+        record = bundle.json(prefix + "workflow.json")
+    key = prefix + row["point_id"] + "/samples.csv.session.json"
     if key not in bundle.entries:
         return "—"
     correction = bundle.json(key).get("sensor_correction")
@@ -145,7 +156,9 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
 
     source, output = preflight(source, output, plots=plot)
     record, result, bundle = sweep.load(source)
-    automatic = record["schema"] == sweep_matrix.SCHEMA
+    simulated = record["schema"] == sweep_matrix.SCHEMA
+    live_pico = record["schema"] == sweep_matrix.PICO_SCHEMA
+    automatic = simulated or live_pico
     if automatic and include_pdf is None:
         include_pdf = False
     p.require(include_pdf is None or type(include_pdf) is bool, "Invalid PDF option")
@@ -190,7 +203,9 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
     )
     notes = [
         "Dial, carrier, drive, and power shown here are synthetic. No transmitter or meter was contacted."
-        if record["schema"] == sweep_matrix.SCHEMA
+        if simulated
+        else "Pico Control/1 verifies the job and GPIO setting. The carrier is the requested setpoint."
+        if live_pico
         else "Frequency and drive labels are operator-confirmed declarations.",
         "Power is the meter indication at sensor input. Configured sensor correction, when selected, is applied before each capture and retained in native session receipts. No new fixture correction, uncertainty, or automatic baseline subtraction is added.",
         "Measurement notes: " + record["plan"]["measurement_notes"],
@@ -216,8 +231,19 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
         "When: " + record["started_utc"],
         "Execution: " + result["execution"] + "; acceptance: NOT EVALUATED",
     ]
-    if automatic:
+    if simulated:
         lines.append("Simulated output: " + sweep_matrix.PROFILES[record["plan"]["profile"]][0])
+    if live_pico:
+        lines.append("RF output: Pico direct GPIO (GP2)")
+        notes.append("Initial drive restoration: " + record["restoration"] + ".")
+        if record.get("continuation"):
+            count = record["continuation"]["carried_points"]
+            notes.append(
+                f"Includes {count} points carried forward from the sealed prior capture, with a fresh ZERO before the remaining points."
+            )
+        if result["limited_points"]:
+            lines.append(f"Limited indications: {result['limited_points']}")
+            notes.append(f"Limited points at the RF-off threshold: {result['limited_points']}.")
     observed = [
         D(row["mean_W"])
         for row in result["points"]
@@ -264,7 +290,7 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
                     _milliwatts(point["min_W"]),
                     _milliwatts(point["max_W"]),
                     _milliwatts(point["stddev_W"]),
-                    _point_factor(bundle, point),
+                    _point_factor(bundle, point, record),
                 ]
             )
         table_rows.append(row)
@@ -339,6 +365,10 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
                 0.95,
             ]
             pdf_rows = [[f"{row[0]} {row[1]}", *row[2:]] for row in table_rows]
+            for cells, point in zip(pdf_rows, result["points"], strict=True):
+                value = point["mean_dBm"]
+                if value is not None:
+                    cells[pdf_columns.index("dBm")] = format(D(value), ".2f")
             equipment = record["equipment"]
             lines += [
                 f"Coverage: {result['completed_points']} of {result['requested_points']} points captured.",
