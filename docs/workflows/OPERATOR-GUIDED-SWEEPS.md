@@ -2,6 +2,16 @@
 
 The software path is implemented. Physical interaction checks on the current meter, SN 3125U22346, remain pending. Configure the actual setup and obtain fresh operator confirmations before selected hardware use; simulation remains separate from physical evidence.
 
+## Report presentation
+
+Charts use solid lines throughout. When the color cycle repeats, change the point marker (circles, then squares, triangles, and diamonds) so series remain distinguishable without dashed lines.
+
+Guided reports use a single title without a redundant recorded-measurements subtitle. Simulation reports retain their simulation label. PDFs refer readers to the report folder or portable ZIP for supporting files rather than offering a viewer-dependent relative appendix link. Execution values use sentence case, and the summary labels use consistent capitalization. With no supplied acceptance criteria, reports display `Acceptance: N/A`; the native statistics retain `NOT EVALUATED`, which does not imply a pass.
+
+HTML reports focus on results rather than routine acquisition bookkeeping. Omit the unfiltered-harmonics caveat, an empty equipment-issues declaration, successful initial-drive restoration, and continuation/carry-forward history. Show actual equipment issues, unsuccessful restoration, stop reasons, and limited indications. The PDF notes and sealed evidence retain their existing detail.
+
+Record a meaningful radio/model description and the actual operator in the run inputs rather than leaving generic placeholders. Describe the actual fixture as a concise physical signal path, including relevant amplification or attenuation. Operational conditions such as POWER REF state belong in acquisition evidence and controls rather than repeated fixture prose. These are writing conventions, not fixed equipment names, operator identities, or assumptions about later setups. Re-reporting preserves the sealed capture and uses its recorded identities and fixture; correcting missing metadata in an existing report requires explicit, attributed presentation edits.
+
 ## Test series
 
 Choose **Operator-guided radio sweep** in the local interface. Name the radio/DUT, choose a meter source, and select:

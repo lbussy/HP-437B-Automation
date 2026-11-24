@@ -101,18 +101,19 @@ def _write(
     def paragraph(value, which=style):
         return Paragraph(_text(value), which)
 
-    content = [
-        paragraph("RF Output Power Test", heading),
-        paragraph(
-            source_label
-            or (
-                "POWER REF - recorded measurement"
-                if physical
-                else "SYNTHETIC - fictional measurements; no physical RF"
-            ),
-            bold,
-        ),
-    ]
+    content = [paragraph("RF Output Power Test", heading)]
+    if source_label != "":
+        content.append(
+            paragraph(
+                source_label
+                or (
+                    "POWER REF - recorded measurement"
+                    if physical
+                    else "SYNTHETIC - fictional measurements; no physical RF"
+                ),
+                bold,
+            )
+        )
     content.extend(paragraph(line) for line in lines)
     content.append(Spacer(1, 8))
     plot_block = []
@@ -136,7 +137,7 @@ def _write(
             Spacer(1, 7),
         ]
     details = Paragraph(
-        'Details: <link href="appendix.html" color="#135c91">HTML appendix</link>; provenance.json; results.json.',
+        "Supporting files: see the report folder or portable ZIP.",
         small,
     )
     if multipage:

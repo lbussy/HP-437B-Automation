@@ -95,7 +95,10 @@ def plots(output, record, result):
         if len(labels) < 2:
             continue
         fig, ax = plt.subplots(figsize=(10, 5), layout="constrained")
-        for label in groups:
+        colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+        markers = ("o", "s", "^", "D")
+        for index, label in enumerate(groups):
+            marker = markers[(index // len(colors)) % len(markers)]
             data = {
                 row[axis]: float(D(row["mean_W"]) * 1000)
                 for row in result["points"]
@@ -106,7 +109,9 @@ def plots(output, record, result):
             ax.plot(
                 range(len(labels)),
                 [data.get(x, float("nan")) for x in labels],
-                marker="o",
+                color=colors[index % len(colors)],
+                linestyle="-",
+                marker=marker,
                 label=label,
             )
         ax.set_xticks(range(len(labels)), labels, rotation=45, ha="right")
@@ -209,7 +214,7 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
         else "Frequency and drive labels are operator-confirmed declarations.",
         "Power is the meter indication at sensor input. Configured sensor correction, when selected, is applied before each capture and retained in native session receipts. No new fixture correction, uncertainty, or automatic baseline subtraction is added.",
         "Measurement notes: " + record["plan"]["measurement_notes"],
-        "Acceptance: NOT EVALUATED. No acceptance limits were supplied.",
+        "Acceptance: N/A. No acceptance limits were supplied.",
     ]
     if complete:
         notes.append("Unfiltered GPIO harmonics can contribute to the sensor-input indication.")
@@ -229,7 +234,7 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
         ("Source: " if reference else "Radio: ") + record["plan"]["name"],
         "Operator: " + (record["operator"] or "Not recorded"),
         "When: " + record["started_utc"],
-        "Execution: " + result["execution"] + "; acceptance: NOT EVALUATED",
+        "Execution: " + result["execution"].capitalize() + "; Acceptance: N/A",
     ]
     if simulated:
         lines.append("Simulated output: " + sweep_matrix.PROFILES[record["plan"]["profile"]][0])
@@ -302,12 +307,22 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
     for row in table_rows:
         table += "<tr>" + "".join("<td>" + esc(x) + "</td>" for x in row) + "</tr>"
     table += "</tbody></table>"
+    html_notes = [
+        note
+        for note in notes
+        if note
+        not in (
+            "Unfiltered GPIO harmonics can contribute to the sensor-input indication.",
+            "Known equipment issues: None reported",
+            "Initial drive restoration: verified.",
+        )
+        and not (live_pico and record.get("continuation") and note.startswith("Includes "))
+    ]
     page = (
         "<!doctype html><html lang='en'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>RF Output Power Test</title>"
-        "<style>body{font:16px/1.5 system-ui;color:#18242b;max-width:1100px;margin:auto;padding:24px}td,th{padding:8px;text-align:left;border-bottom:1px solid #cbd6dc}img{max-width:100%}.table{overflow-x:auto}footer{margin-top:28px}</style><h1>RF Output Power Test</h1><p>"
-        + esc(description)
-        + "</p>"
-        + "".join("<p>" + esc(line) + "</p>" for line in lines + notes)
+        "<style>body{font:16px/1.5 system-ui;color:#18242b;max-width:1100px;margin:auto;padding:24px}td,th{padding:8px;text-align:left;border-bottom:1px solid #cbd6dc}img{max-width:100%}.table{overflow-x:auto}footer{margin-top:28px}</style><h1>RF Output Power Test</h1>"
+        + ("<p>" + esc(description) + "</p>" if record["mode"] == "synthetic" else "")
+        + "".join("<p>" + esc(line) + "</p>" for line in lines + html_notes)
         + "".join(
             "<img src='"
             + name
@@ -391,7 +406,9 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
             producer=producer,
             run_id=record["run_id"],
             physical=record["mode"] == "physical",
-            source_label=description + " · operator-guided radio sweep",
+            source_label=description + " · operator-guided radio sweep"
+            if record["mode"] == "synthetic"
+            else "",
             multipage=complete,
             plot=output / "frequency.png" if complete and "frequency.png" in images else None,
         )

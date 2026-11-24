@@ -301,6 +301,21 @@ def test_pico_matrix_52_real_request_sequences_and_traceable_report(tmp_path, mo
     guided_report.publish(tmp_path / "capture", report, include_pdf=True)
     assert (report / "report.pdf").is_file()
     assert guided_report.validate_pair(tmp_path / "capture", report)
+    from pypdf import PdfReader
+
+    text = " ".join(page.extract_text() for page in PdfReader(report / "report.pdf").pages)
+    assert "Execution: Completed; Acceptance: N/A" in text
+    assert "Recorded measurements" not in text
+    assert "Supporting files: see the report folder or portable ZIP." in text
+    assert "Details: HTML appendix" not in text
+    assert "Acceptance: NOT EVALUATED" not in text
+    page = (report / "report.html").read_text()
+    assert "Unfiltered GPIO harmonics" not in page
+    assert "Known equipment issues: None reported" not in page
+    assert "Initial drive restoration: verified." not in page
+    assert "Unfiltered GPIO harmonics" in text
+    assert "Initial drive restoration: verified." in text
+    assert json.loads((report / "results.json").read_text())["acceptance"] == "NOT EVALUATED"
 
 
 def test_limited_and_interrupted_rows_restore_original_drive(tmp_path, monkeypatch):

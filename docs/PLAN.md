@@ -1,6 +1,6 @@
 # Current plan
 
-Updated: November 23, 2026. The [project scope](PROJECT-SCOPE.md) governs development.
+Updated: November 24, 2026. The [project scope](PROJECT-SCOPE.md) governs development.
 
 ## Decision register
 
@@ -12,7 +12,7 @@ Updated: November 23, 2026. The [project scope](PROJECT-SCOPE.md) governs develo
 | Measurement profile | Supervised internal-reference/readback profile in the [measurement policy](validation/MEASUREMENT-POLICY.md); explicit options preserve logger defaults |
 | Equipment | Meter SN 3125U22346 and sensor SN MY41094127; [current records](EQUIPMENT.md) |
 | Hardware scope | Relevant checks when equipment/operations are used; no blanket software-development gate |
-| Reporting | Traceable saved evidence, descriptive statistics, optional attributed criteria, PDF/portable delivery |
+| Reporting | Traceable saved evidence, descriptive statistics, optional attributed criteria, PDF/portable delivery; [guided report presentation conventions](workflows/OPERATOR-GUIDED-SWEEPS.md#report-presentation) use concise prose and actual per-run identities |
 | DUT control | Human-guided operation, automatic simulation, and optional combined PDF are available. The conducted Pico direct-GPIO campaign captured all 52 points and verified restoration to 12 mA. Pi control remains open. Supply control remains optional |
 
 ## Implemented capabilities

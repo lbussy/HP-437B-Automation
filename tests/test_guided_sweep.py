@@ -546,7 +546,8 @@ def test_physical_report_label_and_portable_readme(tmp_path):
     from pypdf import PdfReader
 
     text = PdfReader(tmp_path / "report/report.pdf").pages[0].extract_text()
-    assert "Recorded measurements" in text and "POWER REF - recorded" not in text
+    assert "Recorded measurements" not in text and "POWER REF - recorded" not in text
+    assert "Acceptance: N/A" in text
 
 
 def test_plot_report_handles_partial_and_both_axes(tmp_path):
@@ -709,3 +710,42 @@ def test_reference_report_identifies_fixed_source(tmp_path):
     reports.publish(folder, output, plot=False)
     assert reports.validate_pair(folder, output) == result["run_id"]
     assert "Operator-guided POWER REF repeats" in (output / "report.html").read_text()
+
+
+def test_drive_chart_differentiates_series_after_color_cycle(tmp_path, monkeypatch):
+    pytest.importorskip("matplotlib")
+    from matplotlib import axes
+
+    frequencies = [f"Band {i}" for i in range(13)]
+    record = dict(
+        schema=g.SCHEMA,
+        mode="physical",
+        plan=dict(frequencies=frequencies, drives=["2 mA", "4 mA"]),
+    )
+    result = dict(
+        points=[
+            dict(frequency=band, drive=drive, status="completed", mean_W="0.01")
+            for band in frequencies
+            for drive in record["plan"]["drives"]
+        ]
+    )
+    lines = []
+    original = axes.Axes.plot
+
+    def observe(self, *args, **kwargs):
+        plotted = original(self, *args, **kwargs)
+        lines.extend(plotted)
+        return plotted
+
+    monkeypatch.setattr(axes.Axes, "plot", observe)
+    reports.plots(tmp_path, record, result)
+    drive_lines = lines[-13:]
+    assert drive_lines[0].get_color() == drive_lines[10].get_color()
+    assert drive_lines[0].get_linestyle() == "-"
+    assert all(line.get_linestyle() == "-" for line in drive_lines)
+    assert drive_lines[0].get_marker() != drive_lines[10].get_marker()
+    assert (
+        len({(line.get_color(), line.get_linestyle(), line.get_marker()) for line in drive_lines})
+        == 13
+    )
+    assert "stroke-dasharray" not in (tmp_path / "drive.svg").read_text()
