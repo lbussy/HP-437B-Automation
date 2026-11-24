@@ -154,7 +154,7 @@ def test_si5351_client_plan_uses_exact_physical_matrix(capsys):
         50293000,
         144489000,
     ]
-    assert plan["schema"] == sweep_matrix.SI5351_PLAN_SCHEMA
+    assert plan["schema"] == sweep_matrix.SI5351_SCHEMA
     assert plan["samples"] == 2 and plan["interval_s"] == 1
     assert [p["point_id"] for p in points] == [f"P{i:03}" for i in range(1, 57)]
     assert [(p["drive_ma"], p["dial_hz"], p["carrier_hz"]) for p in points] == [
@@ -170,15 +170,17 @@ def test_si5351_client_plan_uses_exact_physical_matrix(capsys):
             g.validate({**plan, **changes})
 
 
-def test_si5351_review_start_and_worker_are_gated(tmp_path, local_http_server, monkeypatch):
+def test_si5351_requires_configured_transport_and_physical_mode(
+    tmp_path, local_http_server, monkeypatch
+):
     from hp437b.guided_client import Client
 
     def unexpected_io(*args, **kwargs):
-        pytest.fail("The plan-only schema reached a capture or transport boundary")
+        pytest.fail("An unconfigured run reached a capture or transport boundary")
 
     monkeypatch.setattr(jobs.subprocess, "Popen", unexpected_io)
     monkeypatch.setattr(g, "run", unexpected_io)
-    manager = jobs.Jobs(tmp_path / "jobs", plots=False)
+    manager = jobs.Jobs(tmp_path / "jobs", plots=False, sweep_config=config())
     plan = sweep_matrix.si5351_plan(g.example())
     try:
         server, *_ = local_http_server(manager)
@@ -186,15 +188,24 @@ def test_si5351_review_start_and_worker_are_gated(tmp_path, local_http_server, m
         state = client.state()
         assert sweep_matrix.SI5351_TARGET not in state["guided"]["live_review_targets"]
         assert state["guided"]["si5351_unavailable"] == sweep_matrix.SI5351_UNAVAILABLE
-        for action in (
-            lambda: client.review_live(sweep_matrix.SI5351_TARGET),
-            lambda: client.start(plan, meter_mode="physical", prepared={}, include_pdf=False),
-            lambda: client.start(plan, meter_mode="synthetic", prepared={}, include_pdf=False),
+        for action, expected in (
+            (
+                lambda: client.review_live(sweep_matrix.SI5351_TARGET),
+                sweep_matrix.SI5351_UNAVAILABLE,
+            ),
+            (
+                lambda: client.start(plan, meter_mode="physical", prepared={}, include_pdf=False),
+                sweep_matrix.SI5351_UNAVAILABLE,
+            ),
+            (
+                lambda: client.start(plan, meter_mode="synthetic", prepared={}, include_pdf=False),
+                "Live Pico sweep requires the reviewed bridge",
+            ),
         ):
             with pytest.raises(urllib.error.HTTPError) as error:
                 action()
             assert error.value.code == 400
-            assert json.load(error.value)["error"] == sweep_matrix.SI5351_UNAVAILABLE
+            assert json.load(error.value)["error"] == expected
         assert client.state()["jobs"] == []
     finally:
         manager.close()
@@ -213,13 +224,16 @@ def test_si5351_review_start_and_worker_are_gated(tmp_path, local_http_server, m
             started_utc="",
             mode="guided",
             sweep_plan=plan,
-            meter_mode="physical",
+            meter_mode="synthetic",
             sweep_config=config(),
             prepared={},
+            pico_usb={},
+            pico_review_digest="0" * 64,
+            include_pdf=False,
         ),
     )
     jobs.atomic(path / "state.json", {})
-    with pytest.raises(ValueError, match="paired Control/1 contract"):
+    with pytest.raises(ValueError, match="Live Pico sweep requires the reviewed bridge"):
         jobs.worker(path)
     assert jobs.read(path / "state.json")["phase"] == "failed"
     assert not (path / "capture").exists()

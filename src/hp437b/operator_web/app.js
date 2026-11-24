@@ -45,7 +45,7 @@ function modeChanged(reset=true){
   selectionChanged();return;
  }
  $("reference-workflow").parentElement.hidden=false;
- if(guided){$("page-title").textContent="Measure a radio sweep";$("intro-text").textContent="Choose manual confirmation, automatic simulation, or a configured Pico sweep.";$("reference-setup").hidden=true;$("environment").textContent=$("guided-meter").value==="physical"?"Operator-guided · bench meter":"Operator-guided · simulated meter";$("scope").textContent=guidedAutomatic()?"The automatic matrix uses simulated readings.":"Confirm each point before capturing its meter reading.";$("mode-note").textContent="Choose frequency, drive setting, or a combined series.";guidedPlanChanged();selectionChanged();return;}
+ if(guided){$("page-title").textContent="Measure a radio sweep";$("intro-text").textContent="Choose manual confirmation, automatic simulation, or a configured Pico sweep.";$("reference-setup").hidden=true;$("environment").textContent=$("guided-meter").value==="physical"?"Operator-guided · bench meter":"Operator-guided · simulated meter";$("scope").textContent=guidedAutomatic()?"The automatic matrix uses simulated readings.":guidedPico()?"The configured Pico controls each point.":"Confirm each point before capturing its meter reading.";$("mode-note").textContent="Choose frequency, drive setting, or a combined series.";guidedPlanChanged();selectionChanged();return;}
  $("page-title").textContent=physical?"Measure POWER REF":"Run an RF test suite";$("intro-text").textContent=physical?"Exercise the current meter and sensor with its internal reference.":"Choose a DUT profile and tests. Collect a traceable report.";$("fake-setup").hidden=physical;$("fake-tests").hidden=physical;$("reference-setup").hidden=!physical;
  if(reset)for(const input of document.querySelectorAll('#prepared input'))input.checked=false;
  $("environment").textContent=physical?"POWER REF · current meter":"Simulation · local session";
@@ -175,7 +175,8 @@ async function refresh(force=false) {
     $("reference-suite-source").querySelector('option[value="physical"]').disabled=!model.reference;
     if(model.reference){$("reference-identity").textContent=`Meter ${model.reference.meter_serial}; sensor ${model.reference.sensor_serial}. ${model.reference.resource}`;$("reference-issues").textContent="Known issues: "+(model.reference.known_issues.join("; ")||"None reported");}
     $("guided-execution").querySelector('option[value="pico"]').disabled=!model.guided?.live_pico_schema;
-    setText("guided-si5351-note",model.guided?.si5351_unavailable||"");
+    $("guided-execution").querySelector('option[value="pico-si5351"]').disabled=!model.guided?.live_si5351_schema;
+    setText("guided-si5351-note",model.guided?.live_si5351_schema?"":model.guided?.si5351_unavailable||"");
     $("guided-meter").querySelector('option[value="physical"]').disabled=!model.guided?.meter;
     $("guided-meter-note").textContent=model.guided?.meter?`Meter ${model.guided.meter.meter_serial}; sensor ${model.guided.meter.sensor_serial}. ${model.guided.meter.fixture}${model.guided.meter.signal_source==="power_ref"?" POWER REF repeats only: start with reference off; switch it on before capture and off after finishing or stopping.":""}`:"Configure the bench meter at service launch to enable measured captures.";
     const previous=$("profile").value;
@@ -191,7 +192,7 @@ async function refresh(force=false) {
     if(activeRefSuite&&hydratedReferenceSuite!==activeRefSuite.job_id){hydratedReferenceSuite=activeRefSuite.job_id;$("mode").value="reference_suite";$("reference-suite-source").value=activeRefSuite.meter_mode;for(const input of document.querySelectorAll('#reference-suite-tests input'))input.checked=activeRefSuite.workflows.includes(input.value);$("operator").value=activeRefSuite.operator||"";}
     renderGuidedCatalog();
     const activeGuided=model.jobs.find(job=>job.job_id===model.active_id&&job.mode==="guided");
-    if(activeGuided&&hydratedGuided!==activeGuided.job_id){const p=activeGuided.sweep_plan;$("guided-pdf").checked=activeGuided.include_pdf===true;$("guided-execution").value=p.schema===model.guided?.live_pico_schema?"pico":p.profile?"simulation":"manual";if(p.profile)$("guided-profile").value=p.profile;hydratedGuided=activeGuided.job_id;$("mode").value="guided";for(const [id,value] of Object.entries({"guided-name":p.name,"guided-series":p.series,"guided-frequencies":p.frequencies.join(", "),"guided-drives":p.drives.join(", "),"guided-order":p.order,"guided-samples":p.samples,"guided-interval":p.interval_s,"guided-settling":p.settling_s,"guided-notes":p.measurement_notes,"guided-meter":activeGuided.meter_mode,"operator":activeGuided.operator||""}))$(id).value=value;}
+    if(activeGuided&&hydratedGuided!==activeGuided.job_id){const p=activeGuided.sweep_plan;$("guided-pdf").checked=activeGuided.include_pdf===true;$("guided-execution").value=picoExecution(p.schema)||(p.profile?"simulation":"manual");if(p.profile)$("guided-profile").value=p.profile;hydratedGuided=activeGuided.job_id;$("mode").value="guided";for(const [id,value] of Object.entries({"guided-name":p.name,"guided-series":p.series,"guided-frequencies":p.frequencies.join(", "),"guided-drives":p.drives.join(", "),"guided-order":p.order,"guided-samples":p.samples,"guided-interval":p.interval_s,"guided-settling":p.settling_s,"guided-notes":p.measurement_notes,"guided-meter":activeGuided.meter_mode,"operator":activeGuided.operator||""}))$(id).value=value;}
     renderReferenceProfiles();modeChanged(false);renderRun(model.jobs.find(job=>job.job_id===model.active_id)||model.jobs.find(job=>job.job_id===model.pending_reference)||model.jobs[0]||null);renderHistory();renderRecoveryControls();renderAssessmentControls();
   }catch(exc){$("connection").textContent="Connection to the local operator service was lost. Existing worker runs are not restarted. Reload this page to reconnect and view their status.";$("connection").hidden=false;$("start").disabled=true;$("cancel").disabled=true;$("guided-capture").disabled=true;$("guided-stop").disabled=true;}
   })();inflight=task;try{await task;}finally{if(inflight===task)inflight=null;}
@@ -211,11 +212,13 @@ for(const [key,labelText] of Object.entries(guidedSetup)){const label=node("labe
 function guidedPrepared(){return Object.fromEntries([...document.querySelectorAll('#guided-prepared input')].map(input=>[input.value,input.checked]));}
 const picoSetup = {
  pico_gp2_direct_to_sensor: "GP2 coax goes directly to the 8482A MY41094127 with no amplifier",
+ pico_si5351_clk0_direct_to_sensor: "Si5351 CLK0 coax goes directly to the 8482A MY41094127 with no amplifier or attenuator",
+ independent_si5351_shutdown_ready: "I can independently disconnect or disable the Si5351 output if software shutdown fails",
  "8482a_my41094127_on_sensor": "The 8482A sensor cable is on the 437B",
  meter_warmed_and_prepared_cal: "The meter is warmed and CAL is complete",
  power_ref_off: "POWER REF is off",
  other_control_apps_closed: "Other meter and radio control apps are closed",
- operator_at_bench: "I am at the bench for this 52-tone run"
+ operator_at_bench: "I am at the bench for this run"
 };
 for (const [key, labelText] of Object.entries(picoSetup)) {
  const label = node("label", undefined, "test-option");
@@ -227,13 +230,18 @@ for (const [key, labelText] of Object.entries(picoSetup)) {
  $("guided-pico-prepared").append(label);
 }
 const picoPrepared = () => Object.fromEntries(
- [...$("guided-pico-prepared").querySelectorAll("input")].map(input => [input.value, input.checked])
+ [...$("guided-pico-prepared").querySelectorAll("input")].filter(input => !input.parentElement.hidden)
+  .map(input => [input.value, input.checked])
 );
 let picoReview = null;
 let picoReviewBusy = false;
 function guidedPico() {
- return $("guided-series").value === "combined" && $("guided-execution").value === "pico";
+ return $("guided-series").value === "combined" && ["pico", "pico-si5351"].includes($("guided-execution").value);
 }
+const guidedSi5351 = () => guidedPico() && $("guided-execution").value === "pico-si5351";
+const picoExecution = schema => schema === "hp437b.automatic-pico-sweep.v1" ? "pico"
+ : schema === "hp437b.automatic-pico-si5351.v1" ? "pico-si5351" : null;
+const liveSchema = schema => Boolean(picoExecution(schema));
 function guidedReady() {
  if (guidedPico()) {
   return Boolean(picoReview?.review_digest) && !picoReviewBusy && Object.values(picoPrepared()).every(Boolean);
@@ -242,7 +250,7 @@ function guidedReady() {
   || Boolean(model.guided?.meter) && Object.values(guidedPrepared()).every(Boolean);
 }
 async function startGuided() {
- if ($("guided-execution").value === "pico-si5351") {
+ if (guidedSi5351() && !model.guided?.live_si5351_schema) {
   throw new Error(model.guided?.si5351_unavailable || "Pico Si5351 is unavailable.");
  }
  const live = guidedPico();
@@ -260,16 +268,18 @@ async function startGuided() {
 $("guided-pico-review").addEventListener("click", async () => {
  if (picoReviewBusy || model.active_id || !guidedPico()) return;
  const includePdf = $("guided-pdf").checked;
+ const target = guidedSi5351() ? "pico-si5351" : "pico-gpio";
+ const expectedCount = guidedPlan().frequencies.length * guidedPlan().drives.length;
  picoReview = null;
  picoReviewBusy = true;
  guidedPlanChanged();
  selectionChanged();
- setText("guided-pico-review-status", "Waiting for the Pico to review all 52 points.");
+ setText("guided-pico-review-status", `Waiting for the Pico to review all ${expectedCount} points.`);
  try {
   const result = await api("/api/guided-live-review", {
-   target_id: "pico-gpio", selected_ids: null, include_pdf: includePdf
+   target_id: target, selected_ids: null, include_pdf: includePdf
   });
-  if (!guidedPico() || $("guided-pdf").checked !== includePdf) return;
+  if (!guidedPico() || (target === "pico-si5351") !== guidedSi5351() || $("guided-pdf").checked !== includePdf) return;
   const refused = result.dispositions.filter(row => row.reason);
   if (refused.length) {
    const reasons = refused.map(row => `${row.point.band} / ${row.point.drive_ma} mA: ${row.reason}`);
@@ -277,7 +287,7 @@ $("guided-pico-review").addEventListener("click", async () => {
   } else {
    picoReview = result;
    const minutes = Math.ceil(result.max_run_ms / 60000);
-   setText("guided-pico-review-status", `All 52 points admitted. Drive changes restart the Pico. Plan ceiling: ${minutes} minutes.`);
+   setText("guided-pico-review-status", `All ${expectedCount} points admitted. Drive changes restart the Pico. Plan ceiling: ${minutes} minutes.`);
   }
  } catch (exc) {
   setText("guided-pico-review-status", exc.message);
@@ -289,6 +299,7 @@ $("guided-pico-review").addEventListener("click", async () => {
 });
 const guidedLabels=id=>$(id).value.split(',').map(x=>x.trim()).filter(Boolean);
 function guidedAutomatic(){return $("guided-series").value==="combined"&&$("guided-execution").value==="simulation";}
+const guidedBands = () => (guidedSi5351() ? model.guided?.live_si5351_bands : model.guided?.automatic_simulation?.bands) || [];
 function renderGuidedCatalog(){
  const catalog=model.guided?.automatic_simulation;
  if(!catalog||$("guided-profile").options.length)return;
@@ -296,31 +307,41 @@ function renderGuidedCatalog(){
   const option=node("option",`${profile.label} · ${profile.drives_ma.join(", ")} mA`);
   option.value=profile.id;$("guided-profile").append(option);
  }
- for(const band of catalog.bands){
+}
+function renderGuidedBands(){
+ const bands = guidedBands(), table = $("guided-carriers");
+ if(table.children.length === bands.length) return;
+ table.replaceChildren();
+ for(const band of bands){
   const row=node("tr"), label=node("th",band.label);label.scope="row";
   row.append(label,node("td",String(band.dial_hz)),node("td",String(band.carrier_hz)));
-  $("guided-carriers").append(row);
+  table.append(row);
  }
 }
 function guidedPlan(){
  const series=$("guided-series").value, live=guidedPico(), auto=guidedAutomatic()||live;
  const catalog=model.guided?.automatic_simulation;
- const profile=catalog?.profiles.find(item=>item.id===(live?"pico-gpio":$("guided-profile").value));
- let frequencies=auto?(catalog?.bands||[]).map(band=>band.label):guidedLabels("guided-frequencies");
+ const profile=catalog?.profiles.find(item=>item.id===(live?(guidedSi5351()?"si5351":"pico-gpio"):$("guided-profile").value));
+ let frequencies=auto?guidedBands().map(band=>band.label):guidedLabels("guided-frequencies");
  let drives=auto?(profile?.drives_ma||[]).map(ma=>`${ma} mA`):guidedLabels("guided-drives");
  if(series==="drive")frequencies=frequencies.slice(0,1);
  if(series==="frequency")drives=drives.slice(0,1);
  return {
-  schema:live?model.guided?.live_pico_schema:auto?catalog?.schema:"hp437b.guided-sweep.v1",name:$("guided-name").value.trim(),
+  schema:live?(guidedSi5351()?model.guided?.live_si5351_schema:model.guided?.live_pico_schema):auto?catalog?.schema:"hp437b.guided-sweep.v1",name:$("guided-name").value.trim(),
   series,order:auto?"drive":$("guided-order").value,frequencies,drives,
   samples:live?2:auto?Math.min(Number($("guided-samples").value),3):Number($("guided-samples").value),
   interval_s:live?1:Number($("guided-interval").value),settling_s:auto?0:Number($("guided-settling").value),
   timeout_s:live?30:10,measurement_notes:$("guided-notes").value.trim(),...(auto?{profile:profile?.id}:{})
  };
 }
-function guidedValid(){if($("guided-execution").value==="pico-si5351")return false;const p=guidedPlan();return p.name.length>0&&p.measurement_notes.length>0&&p.frequencies.length>0&&p.frequencies.length<=32&&p.drives.length>0&&p.drives.length<=16&&new Set(p.frequencies).size===p.frequencies.length&&new Set(p.drives).size===p.drives.length&&[...p.frequencies,...p.drives].every(x=>x.length<=60)&&Number.isInteger(p.samples)&&p.samples>=1&&p.samples<=1000&&p.interval_s>=.1&&p.interval_s<=60&&p.settling_s>=0&&p.settling_s<=120&&p.samples*p.interval_s<=3600;}
+function guidedValid(){const p=guidedPlan();return Boolean(p.schema)&&p.name.length>0&&p.measurement_notes.length>0&&p.frequencies.length>0&&p.frequencies.length<=32&&p.drives.length>0&&p.drives.length<=16&&new Set(p.frequencies).size===p.frequencies.length&&new Set(p.drives).size===p.drives.length&&[...p.frequencies,...p.drives].every(x=>x.length<=60)&&Number.isInteger(p.samples)&&p.samples>=1&&p.samples<=1000&&p.interval_s>=.1&&p.interval_s<=60&&p.settling_s>=0&&p.settling_s<=120&&p.samples*p.interval_s<=3600;}
 function guidedPlanChanged(){
  const p=guidedPlan(), live=guidedPico(), auto=guidedAutomatic()||live, active=Boolean(model.active_id);
+ renderGuidedBands();
+ for(const input of $("guided-pico-prepared").querySelectorAll("input")){
+  const sourceSpecific = ["pico_si5351_clk0_direct_to_sensor","independent_si5351_shutdown_ready"].includes(input.value);
+  input.parentElement.hidden = sourceSpecific ? !guidedSi5351() : input.value === "pico_gp2_direct_to_sensor" && guidedSi5351();
+ }
  const points=p.frequencies.length*p.drives.length;
  $("guided-plan").textContent=guidedValid()
   ?`${p.frequencies.length} frequencies × ${p.drives.length} drive settings = ${points} points. ${auto?`Drive setting first, ${p.samples} readings per point.`:"Confirmation is required before every capture."}`
@@ -329,7 +350,8 @@ function guidedPlanChanged(){
  $("guided-simulation").hidden=!auto;
  $("guided-profile-field").hidden=live;
  $("guided-pico").hidden=!live;
- $("guided-pico-review").disabled=active||picoReviewBusy;
+ setText("guided-pico-review", `Review ${points} Pico points`);
+ $("guided-pico-review").disabled=active||picoReviewBusy||!liveSchema(p.schema);
  $("guided-interval").parentElement.hidden=live;
  $("guided-pdf-field").hidden=p.series!=="combined";
  for(const id of ["guided-frequencies","guided-drives","guided-order","guided-meter","guided-settling","guided-samples"]){
@@ -346,10 +368,10 @@ function renderGuided(job){
  const active=Boolean(model.active_id),p=job?.sweep_plan||guidedPlan(),prompt=job?.prompt,phase=job?.phase||"ready",rows=job?.point_results||[],completed=rows.filter(x=>x.status==="completed").length;
  setText("run-title","Point capture");setText("run-state",({ready:"Ready",starting:"Starting",waiting:"Waiting for you",running:"Settling / capturing",reporting:"Preparing reports",finished:"Finished",failed:"Needs attention"})[phase]||phase);$("run-state").className="state "+phase;
  setText("run-headline",phase==="waiting"?"Confirm the next point":phase==="running"?(job?.stage||"Capturing measured power"):phase==="finished"?(job.outcome==="completed"?"Series complete":"Series stopped"):phase==="failed"?"The run needs attention":phase==="reporting"?"Capture saved. Preparing reports.":"Prepare the sweep and start when ready.");
- setText("run-description",job?.error||`${p.name}. ${completed} of ${p.frequencies.length*p.drives.length} points captured. ${p.schema!==model.guided?.live_pico_schema&&(p.profile||job?.meter_mode==="synthetic"||(!job&&$("guided-meter").value==="synthetic"))?"Simulated measurements.":"Meter-indicated power at sensor input."}`);
+ setText("run-description",job?.error||`${p.name}. ${completed} of ${p.frequencies.length*p.drives.length} points captured. ${!liveSchema(p.schema)&&(p.profile||job?.meter_mode==="synthetic"||(!job&&$("guided-meter").value==="synthetic"))?"Simulated measurements.":"Meter-indicated power at sensor input."}`);
  $("guided-point").hidden=!prompt||phase!=="waiting";const key=job?.job_id+":"+prompt?.token;
  if(key!==guidedPromptKey){guidedPromptKey=key;$("guided-frequency-confirm").checked=false;$("guided-drive-confirm").checked=false;guidedSubmit=false;}
- const live=p.schema===model.guided?.live_pico_schema,auto=Boolean(p.profile)&&!live,ref=guidedReference(job);
+ const live=liveSchema(p.schema),auto=Boolean(p.profile)&&!live,ref=guidedReference(job);
  setText("environment",live?"Automatic Pico · bench meter":auto?"Automatic sweep · simulation":ref?"Operator-guided · POWER REF":(job?.meter_mode||$("guided-meter").value)==="physical"?"Operator-guided · bench meter":"Operator-guided · simulated meter");
  if(prompt){setText("guided-target",`${prompt.point_id} · ${prompt.frequency} / ${prompt.drive}`);setText("guided-frequency-label",ref?`I confirm the fixed reference label: ${prompt.frequency}`:`I set the frequency to ${prompt.frequency}`);setText("guided-drive-label",ref?`I confirm capture ${prompt.drive} with POWER REF on`:`I set the drive to ${prompt.drive}`);}
  setText("guided-instruction",ref?"Fixed POWER REF bench exercise. Turn POWER REF on and allow 20 seconds to settle before the first capture. Repeat labels do not change frequency or drive. Turn POWER REF off when finished or stopped.":"Set the radio to these labels and enable the test signal. Confirm both labels to begin settling and capture.");
@@ -365,7 +387,7 @@ function renderGuided(job){
  if(job){$("pdf").href=`/artifacts/${job.job_id}/report.pdf`;$("html-report").href=`/artifacts/${job.job_id}/report.html`;$("package").href=`/artifacts/${job.job_id}/package.zip`;}
  $("report-note").textContent=job?.report_ready?"The report includes all requested points and the original capture remains saved.":"Reports and original point evidence appear when the series finishes or stops.";$("start").textContent=active?"Sweep in progress…":preparationMode()?`Run ${preparationBench()?"":"simulated "}${$("preparation-action").value}`:referenceSuiteMode()?"Start POWER REF suite":guidedMode()?"Start guided sweep":physicalMode()?"Start POWER REF workflow":"Start suite";$("start").disabled=!canStart();
 }
-for(const el of document.querySelectorAll('#guided-setup input,#guided-setup select,#guided-setup textarea'))el.addEventListener("input",()=>{if(["guided-execution","guided-series","guided-pdf"].includes(el.id)){picoReview=null;setText("guided-pico-review-status","");}if(el.id==="guided-execution"||el.id==="guided-series")modeChanged(false);if(el.id==="guided-meter")for(const input of document.querySelectorAll('#guided-prepared input'))input.checked=false;guidedPlanChanged();selectionChanged();if(!model.jobs.length)renderRun(null);});
+for(const el of document.querySelectorAll('#guided-setup input,#guided-setup select,#guided-setup textarea'))el.addEventListener("input",()=>{if(["guided-execution","guided-series","guided-pdf"].includes(el.id)){picoReview=null;setText("guided-pico-review-status","");}if(el.id==="guided-execution"){for(const input of $("guided-pico-prepared").querySelectorAll("input"))input.checked=false;}if(el.id==="guided-execution"||el.id==="guided-series")modeChanged(false);if(el.id==="guided-meter")for(const input of document.querySelectorAll('#guided-prepared input'))input.checked=false;guidedPlanChanged();selectionChanged();if(!model.jobs.length)renderRun(null);});
 $("guided-stop").addEventListener("click",()=>$("cancel").click());
 for(const id of ["guided-frequency-confirm","guided-drive-confirm"])$(id).addEventListener("change",()=>{const job=model.jobs.find(x=>x.job_id===model.active_id);if(job)renderGuided(job);});
 $("guided-capture").addEventListener("click",async()=>{const job=model.jobs.find(x=>x.job_id===model.active_id);if(!job?.prompt||guidedSubmit||$("guided-capture").disabled)return;guidedSubmit=true;$("guided-capture").disabled=true;generation++;try{await api("/api/guided-confirm",{job_id:job.job_id,confirmation:{...job.prompt,operator:$("operator").value.trim()||null,frequency_confirmed:$("guided-frequency-confirm").checked,drive_confirmed:$("guided-drive-confirm").checked}});await refresh(true);}catch(exc){error(exc.message);guidedSubmit=false;await refresh(true);}});

@@ -52,7 +52,7 @@ def example():
 
 
 def validate(plan):
-    automatic = isinstance(plan, dict) and plan.get("schema") in sweep_matrix.MATRIX_SCHEMAS
+    automatic = isinstance(plan, dict) and plan.get("schema") in sweep_matrix.PLAN_SCHEMAS
     p._keys(
         plan,
         (
@@ -116,13 +116,16 @@ def points(plan):
 
 def check_mode(plan, mode, *, live_pico=False):
     p.require(mode in ("synthetic", "physical"), "Invalid meter mode")
-    p.require(plan["schema"] != sweep_matrix.SI5351_PLAN_SCHEMA, sweep_matrix.SI5351_UNAVAILABLE)
+    p.require(
+        plan["schema"] != sweep_matrix.SI5351_PLAN_SCHEMA,
+        "Generate the physical Si5351 plan with the current si5351-plan command",
+    )
     if plan["schema"] == sweep_matrix.SCHEMA:
         p.require(
             mode == "synthetic",
             "Automatic sweep requires a verified device bridge. Select simulated meter or use manual confirmation.",
         )
-    if plan["schema"] == sweep_matrix.PICO_SCHEMA:
+    if plan["schema"] in sweep_matrix.PICO_SCHEMAS:
         p.require(mode == "physical" and live_pico, "Live Pico sweep requires the reviewed bridge")
 
 
@@ -441,7 +444,7 @@ def analyze_unsealed(source, record):
     results = []
     plan_hash = r.digest(r.encoded(record["plan"]))
     automatic = record["schema"] == sweep_matrix.SCHEMA
-    live_pico = record["schema"] == sweep_matrix.PICO_SCHEMA
+    live_pico = record["schema"] in sweep_matrix.PICO_SCHEMAS
     if live_pico:
         from . import pico_sweep
 
@@ -586,6 +589,12 @@ def analyze_unsealed(source, record):
             point["status"] not in ("completed", "limited") or session is not None,
             "Completed point has no native evidence",
         )
+        if record["schema"] == sweep_matrix.SI5351_SCHEMA and point["status"] not in (
+            "completed",
+            "limited",
+        ):
+            values.clear()
+            elapsed.clear()
         mean = sum(values, D(0)) / len(values) if values else None
         variance = (
             sum(((value - mean) ** 2 for value in values), D(0)) / len(values) if values else None
@@ -642,7 +651,7 @@ def load(source):
     bundle = p.Bundle(source)
     inventory = p._json(bundle.read("artifacts.json"))
     p.require(
-        inventory.get("schema") in (SCHEMA, *sweep_matrix.CAPTURE_SCHEMAS)
+        inventory.get("schema") in (SCHEMA, *sweep_matrix.MATRIX_SCHEMAS)
         and inventory.get("mode") in ("physical", "synthetic"),
         "Invalid sweep inventory",
     )
@@ -655,7 +664,7 @@ def load(source):
         and record["status"] in ("completed", "failed", "interrupted"),
         "Invalid sweep identity/status",
     )
-    live_pico = record["schema"] == sweep_matrix.PICO_SCHEMA
+    live_pico = record["schema"] in sweep_matrix.PICO_SCHEMAS
     check_mode(record["plan"], record["mode"], live_pico=live_pico)
     report_context.validate_operator(record["operator"])
     if record["mode"] == "physical":
@@ -664,7 +673,7 @@ def load(source):
         if live_pico:
             from . import pico_sweep
 
-            pico_sweep.prepared_check(record["prepared"])
+            pico_sweep.prepared_check(record["prepared"], schema=record["schema"])
             pico_sweep.validate_run(record, bundle)
         else:
             p.require(

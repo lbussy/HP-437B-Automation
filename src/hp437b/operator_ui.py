@@ -359,7 +359,12 @@ def main(argv=None):
     parser.add_argument(
         "--pico-review-setup",
         type=Path,
-        help="Explicit local USB target JSON for read-only Pico matrix review",
+        help="Explicit local USB target JSON for direct GPIO Pico sweeps",
+    )
+    parser.add_argument(
+        "--pico-si5351-setup",
+        type=Path,
+        help="Explicit local USB target JSON for Si5351 Pico sweeps",
     )
     parser.add_argument("--power-ref-setup", type=Path)
     parser.add_argument("--resource")
@@ -389,17 +394,22 @@ def main(argv=None):
             p.require(args.sweep_setup.stat().st_size <= 32 * 1024, "Sweep setup exceeds limit")
             sweep_config = configuration(p._json(args.sweep_setup.read_bytes()))
         live_review_targets = {}
-        if args.pico_review_setup:
-            from . import pico_sweep
+        if args.pico_review_setup or args.pico_si5351_setup:
+            from . import pico_sweep, sweep_matrix
             from .live_sweep_review import ReviewTarget
             from .pico_pilot import MATRIX_REVIEW_TIMING
             from .pico_tone import PicoTone, UsbHost, UsbLink
+            from .si5351_tone import Si5351Tone
 
             p.require(sweep_config is not None, "Pico review requires --sweep-setup")
             pico_sweep.configuration(sweep_config)
-            target_id = "pico-gpio"
-            source = PicoTone(UsbLink(UsbHost.from_file(args.pico_review_setup)), target_id)
-            live_review_targets[target_id] = ReviewTarget(source, MATRIX_REVIEW_TIMING, 1)
+            for target_id, adapter, setup in (
+                ("pico-gpio", PicoTone, args.pico_review_setup),
+                (sweep_matrix.SI5351_TARGET, Si5351Tone, args.pico_si5351_setup),
+            ):
+                if setup is not None:
+                    source = adapter(UsbLink(UsbHost.from_file(setup)), target_id)
+                    live_review_targets[target_id] = ReviewTarget(source, MATRIX_REVIEW_TIMING, 1)
         preparation_config = None
         if args.meter_prep_setup:
             from .operator_preparation import configuration

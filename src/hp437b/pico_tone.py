@@ -21,9 +21,18 @@ DRIVES = (2, 4, 8, 12)
 # The USB host runs the original owner's already-installed UMP1 implementation.
 # The helper is sent over stdin/argv, so nothing is installed on the USB host.
 _USB_CALL = r"""
-import hashlib, importlib.util, json, sys
+import hashlib, importlib.util, json, signal, sys
 from pathlib import Path
 path, digest, serial, device = sys.argv[1:]
+payload = json.load(sys.stdin)
+if payload.get('short_status'):
+    # An SSH client timeout alone can leave the remote process holding the USB
+    # lock. Bound read-only RF status on the USB host as well.
+    def status_timeout(*_):
+        raise TimeoutError('Pico USB tone status deadline expired')
+
+    signal.signal(signal.SIGALRM, status_timeout)
+    signal.setitimer(signal.ITIMER_REAL, 2.0)
 path = Path(path)
 if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
     raise RuntimeError('USB helper digest changed')
@@ -31,7 +40,6 @@ spec = importlib.util.spec_from_file_location('owner_usb', path)
 installer = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = installer
 spec.loader.exec_module(installer)
-payload = json.load(sys.stdin)
 with installer.device_lock(serial):
     with installer.Management(installer.selected(serial, 'application')) as wire:
         target = wire.hello['target']
@@ -131,9 +139,6 @@ class UsbLink:
         if remaining <= 0 or not self._lock.acquire(timeout=remaining):
             raise TimeoutError("Pico USB access deadline expired")
         try:
-            remaining = (deadline_ns - time.monotonic_ns()) / 1_000_000_000
-            if remaining <= 0:
-                raise TimeoutError("Pico USB access deadline expired")
             remote = shlex.join(
                 [
                     "python3",
@@ -147,7 +152,22 @@ class UsbLink:
                 ]
             )
             command = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=4", config.host, remote]
-            payload = json.dumps(dict(target=target, requests=requests)).encode()
+            remaining = (deadline_ns - time.monotonic_ns()) / 1_000_000_000
+            if remaining <= 0:
+                raise TimeoutError("Pico USB access deadline expired")
+            short_status = (
+                remaining <= 3
+                and len(requests) == 1
+                and requests[0]["method"] == "GET"
+                and requests[0]["path"].startswith(TONE + "status?")
+            )
+            payload = json.dumps(
+                dict(
+                    target=target,
+                    requests=requests,
+                    **({"short_status": True} if short_status else {}),
+                )
+            ).encode()
             result = subprocess.run(
                 command, input=payload, capture_output=True, timeout=remaining, check=False
             )
@@ -192,11 +212,51 @@ class Tone:
     hard_end_ns: int
 
 
+def tone_descriptor(caps, engine, drives, minimum_ms):
+    """Check the advertised engine, routes, and duration limits."""
+    feature = caps.get("test_tone", {})
+    p.require(
+        feature.get("available") is True
+        and feature.get("schema") == "test-tone"
+        and feature.get("carrier_units") == "Hz"
+        and feature.get("carrier_reference") == "absolute"
+        and feature.get("duration_units") == "ms"
+        and all(feature.get(op) == TONE + op for op in ("review", "start", "status", "stop")),
+        "Pico Test Tone capability is unavailable",
+    )
+    engines = feature.get("engines")
+    if engines is None and engine == "pio-dma-gp2":
+        p.require(
+            feature.get("engine", engine) == engine and feature.get("drive_ma") == list(drives),
+            "Pico did not advertise the direct GP2 Test Tone",
+        )
+        return False
+    p.require(
+        isinstance(engines, dict)
+        and feature.get("active_engine") == engine
+        and isinstance(engines.get(engine), dict)
+        and engines[engine].get("drive_ma") == list(drives)
+        and type(feature.get("minimum_duration_ms")) is int
+        and feature["minimum_duration_ms"] == minimum_ms
+        and type(feature.get("maximum_duration_ms")) is int
+        and minimum_ms <= feature["maximum_duration_ms"] <= 120_000,
+        "Pico did not advertise the requested Test Tone engine and bounds",
+    )
+    return True
+
+
 class PicoTone:
+    engine = "pio-dma-gp2"
+    drives = DRIVES
+    minimum_ms = 1
+
     def __init__(self, link, target_id):
         self.link, self.target_id = link, target_id
         self.tone = None
         self.terminal_receipt = None
+        self.engine_assertion = False
+        self._pending_request = None
+        self._request_ids = set()
 
     def _binding(self, target):
         return dict(scope="member", device_id=target.device_id, boot_id=target.boot_id)
@@ -218,16 +278,9 @@ class PicoTone:
                 "Pico capability or state reply is unavailable",
             )
         caps, radio, messages, gpio = (row[2] for row in replies)
-        feature = caps.get("test_tone", {})
+        self.engine_assertion = tone_descriptor(caps, self.engine, self.drives, self.minimum_ms)
         p.require(
-            feature.get("available") is True
-            and feature.get("schema") == "test-tone"
-            and feature.get("drive_ma") == list(DRIVES)
-            and feature.get("carrier_units") == "Hz"
-            and feature.get("carrier_reference") == "absolute"
-            and feature.get("duration_units") == "ms"
-            and all(feature.get(op) == TONE + op for op in ("review", "start", "status", "stop"))
-            and gpio.get("execution_engine") == "pio-dma-gp2"
+            gpio.get("execution_engine") == self.engine
             and gpio.get("rf_gp") == 2
             and gpio.get("storage_healthy") is True
             and gpio.get("application_error") is None,
@@ -356,6 +409,28 @@ class PicoTone:
         p.require(response.get("target") == binding, "Pico operation target changed")
         return response
 
+    def _tone_fields(self, point, duration_ms, drive_key):
+        p.require(
+            type(point.drive_ma) is int
+            and point.drive_ma in self.drives
+            and type(point.carrier_hz) is int
+            and point.carrier_hz > 0
+            and type(duration_ms) is int
+            and self.minimum_ms <= duration_ms <= 120_000,
+            "Invalid Pico tone carrier, drive, or duration",
+        )
+        body = dict(carrier_hz=point.carrier_hz, duration_ms=duration_ms)
+        body[drive_key] = point.drive_ma
+        if self.engine_assertion:
+            body["engine"] = self.engine
+        return body
+
+    def _matches_engine(self, row, target):
+        return row.get("rf_pin") == 2 and (
+            not self.engine_assertion
+            or (row.get("engine") == self.engine and row.get("synthesis_readback") is None)
+        )
+
     def assess(self, target, point, duration_ms, *, deadline_ns=None):
         result = self._call(
             "POST",
@@ -364,11 +439,7 @@ class PicoTone:
             deadline_ns or time.monotonic_ns() + 8_000_000_000,
             body=dict(
                 schema="test-tone-review",
-                tone=dict(
-                    carrier_hz=point.carrier_hz,
-                    duration_ms=duration_ms,
-                    proposed_drive_ma=point.drive_ma,
-                ),
+                tone=self._tone_fields(point, duration_ms, "proposed_drive_ma"),
             ),
         )
         self._check_assessment(result, target, point)
@@ -386,11 +457,7 @@ class PicoTone:
                     contract=CONTRACT,
                     schema="test-tone-review",
                     target=binding,
-                    tone=dict(
-                        carrier_hz=point.carrier_hz,
-                        duration_ms=duration_ms,
-                        proposed_drive_ma=point.drive_ma,
-                    ),
+                    tone=self._tone_fields(point, duration_ms, "proposed_drive_ma"),
                 ),
             )
             for point in points
@@ -414,7 +481,7 @@ class PicoTone:
             and result.get("admission") in ("ready", "requires_restart", "refused")
             and result["assessment_revision"] == target.revision
             and result["proposed_drive_ma"] == point.drive_ma
-            and result["rf_pin"] == 2
+            and self._matches_engine(result, target)
             and result["boot_drive_ma"] == target.active_drive_ma
             and result["saved_drive_ma"] == target.saved_drive_ma,
             "Pico review does not match the recorded point and revision",
@@ -462,37 +529,65 @@ class PicoTone:
             deadline_ns,
         )
 
-    def start(self, target, point, duration_ms, request_id, assessed):
+    def _accepted_job(self, reply, target, point, duration_ms, request_id, revision):
+        row = reply.get("job")
         p.require(
-            _id(request_id) and (self.tone is None or self.terminal_receipt is not None),
+            reply.get("schema") == "test-tone-status"
+            and reply.get("receipt") == "known"
+            and isinstance(row, dict)
+            and row.get("request_id") == request_id
+            and _id(row.get("job_id"))
+            and row.get("carrier_hz") == point.carrier_hz
+            and row.get("duration_ms") == duration_ms
+            and row.get("boot_drive_ma") == point.drive_ma
+            and self._matches_engine(row, target)
+            and (not self.engine_assertion or row.get("admission_revision") == revision)
+            and row.get("phase") in ("accepted", "running", "terminal")
+            and isinstance(row.get("control_revision"), str)
+            and bool(row["control_revision"]),
+            "Pico started or reported a different tone",
+        )
+        return row
+
+    def start(self, target, point, duration_ms, request_id, assessed):
+        fields = self._tone_fields(point, duration_ms, "expected_drive_ma")
+        self._check_assessment(assessed, target, point)
+        p.require(
+            _id(request_id)
+            and request_id not in self._request_ids
+            and (self._pending_request is None or self.terminal_receipt is not None),
             "Require a fresh Pico tone request and positively closed prior job",
         )
         p.require(
             assessed["admission"] == "ready"
             and assessed["assessment_revision"] == target.revision
             and assessed["proposed_drive_ma"] == point.drive_ma
-            and assessed["boot_drive_ma"] == point.drive_ma,
+            and assessed["boot_drive_ma"] == point.drive_ma
+            and duration_ms <= assessed["maximum_duration_ms"],
             "Pico needs a fresh ready review for the current boot drive",
         )
         started = time.monotonic_ns()
         hard_end = started + duration_ms * 1_000_000
         self.tone = self.terminal_receipt = None
+        self.accepted_receipt = None
+        self._pending_request = request_id
+        self._request_ids.add(request_id)
+        self.last_stop_receipt = None
         try:
             reply = self._call(
                 "POST",
                 "start",
                 target,
-                min(hard_end, started + 8_000_000_000),
-                revision=target.revision,
+                started + 8_000_000_000,
+                revision=assessed["assessment_revision"],
                 body=dict(
                     schema="test-tone-start",
                     request_id=request_id,
-                    tone=dict(
-                        carrier_hz=point.carrier_hz,
-                        duration_ms=duration_ms,
-                        expected_drive_ma=point.drive_ma,
-                    ),
+                    tone=fields,
                 ),
+            )
+            row = self._accepted_job(
+                reply, target, point, duration_ms, request_id, assessed["assessment_revision"]
             )
         except (ValueError, OSError):
             # Resolve the original request only. An absent retained receipt is unknown.
@@ -500,23 +595,13 @@ class PicoTone:
                 target,
                 "request_id",
                 request_id,
-                min(
-                    hard_end,
-                    time.monotonic_ns() + 6_000_000_000,
-                ),
+                time.monotonic_ns() + 6_000_000_000,
             )
-        row = reply["job"]
-        p.require(
-            reply.get("schema") == "test-tone-status"
-            and reply.get("receipt") == "known"
-            and row["request_id"] == request_id
-            and _id(row["job_id"])
-            and row["carrier_hz"] == point.carrier_hz
-            and row["duration_ms"] == duration_ms
-            and row["boot_drive_ma"] == point.drive_ma
-            and row["rf_pin"] == 2,
-            "Pico started or reported a different tone",
-        )
+            row = self._accepted_job(
+                reply, target, point, duration_ms, request_id, assessed["assessment_revision"]
+            )
+        self._tone_target = target
+        self.accepted_receipt = reply
         self.tone = Tone(
             Job(target.target_id, target.device_id, target.boot_id, row["job_id"]),
             request_id,
@@ -540,7 +625,13 @@ class PicoTone:
             and row["carrier_hz"] == self.tone.carrier_hz
             and row["duration_ms"] == self.tone.duration_ms
             and row["boot_drive_ma"] == self.tone.drive_ma
-            and row["rf_pin"] == 2,
+            and self._matches_engine(row, self._tone_target)
+            and (
+                not self.engine_assertion
+                or row.get("admission_revision")
+                == self.accepted_receipt["job"]["admission_revision"]
+            )
+            and (row["phase"] == "terminal" or row["control_revision"] == self.tone.revision),
             "Pico status is not bound to the active tone",
         )
         return row
@@ -548,28 +639,38 @@ class PicoTone:
     def observe(self, job, deadline_ns):
         reply = self._status(job, "job_id", job.job_id, deadline_ns)
         row = self._check_job(reply, job)
-        pad = row["pad_readback"]
         running = row["phase"] == "running" and reply["current"]["output_active"] is True
         if running:
-            p.require(
-                pad["stage"] == "verified"
-                and reply["current"]["owned"] is True
-                and row["output_inactive_confirmed"] is False
-                and pad["rf_pin"] == 2
-                and pad["drive_ma"] == self.tone.drive_ma
-                and _decimal_string(pad["epoch"]) > 0
-                and _decimal_string(pad["observed_monotonic_ns"])
-                <= _decimal_string(reply["observation_monotonic_ns"]),
-                "Pico SDK pad readback does not verify this running tone",
-            )
+            self._check_running(reply, row)
+        return self._observation(job, reply, running, row["output_inactive_confirmed"])
+
+    def _check_running(self, reply, row):
+        pad = row["pad_readback"]
+        p.require(
+            pad["stage"] == "verified"
+            and reply["current"]["owned"] is True
+            and row["output_inactive_confirmed"] is False
+            and pad["rf_pin"] == 2
+            and pad["drive_ma"] == self.tone.drive_ma
+            and _decimal_string(pad["epoch"]) > 0
+            and _decimal_string(pad["observed_monotonic_ns"])
+            <= _decimal_string(reply["observation_monotonic_ns"]),
+            "Pico SDK pad readback does not verify this running tone",
+        )
+
+    def _observation(self, job, reply, active, inactive):
+        row = reply["job"]
         return Observation(
             job,
             time.monotonic_ns(),
-            running,
-            row["output_inactive_confirmed"],
-            row["carrier_hz"],
-            pad["drive_ma"] if running else None,
+            active,
+            inactive,
+            row["carrier_hz"] if row["phase"] != "terminal" else None,
+            row["boot_drive_ma"] if active and row["phase"] == "running" else None,
         )
+
+    def _stop_context_matches(self, reply):
+        return True
 
     def stop(self, job, deadline_ns):
         p.require(self.tone is not None and self.tone.job == job, "Refuse Stop for a foreign job")
@@ -586,9 +687,11 @@ class PicoTone:
             )
         except (ValueError, OSError):
             reply = self._status(job, "job_id", job.job_id, deadline_ns)
+        self.last_stop_receipt = reply
         row = self._check_job(reply, job)
         inactive = (
             row["phase"] == "terminal"
+            and self._stop_context_matches(reply)
             and row["output_inactive_confirmed"] is True
             and row["recovery_required"] is False
             and reply["current"]["output_active"] is False
@@ -596,4 +699,4 @@ class PicoTone:
         )
         if inactive:
             self.terminal_receipt = reply
-        return Observation(job, time.monotonic_ns(), not inactive, inactive, None, None)
+        return self._observation(job, reply, not inactive, inactive)

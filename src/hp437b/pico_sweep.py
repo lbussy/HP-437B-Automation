@@ -1,6 +1,7 @@
-"""Conducted direct-GPIO Pico matrix using the HP 437B and native Test Tone."""
+"""Conducted Pico matrix using the HP 437B and native Test Tone."""
 
 import csv
+import re
 import shutil
 import time
 import uuid
@@ -25,6 +26,20 @@ from .workflow_report import _seal
 SCHEMA = sweep_matrix.PICO_SCHEMA
 TIMING = pilot.MATRIX_REVIEW_TIMING
 PREPARED = pilot.PREPARED
+SI5351_INITIAL_DRIVE_MA = 8
+SI5351_PREPARED = (
+    "pico_si5351_clk0_direct_to_sensor",
+    *PREPARED[1:],
+    "independent_si5351_shutdown_ready",
+)
+
+
+def target_id(schema):
+    return sweep_matrix.SI5351_TARGET if schema == sweep_matrix.SI5351_SCHEMA else "pico-gpio"
+
+
+def expected_output(schema):
+    return ("si5351", "CLK0") if schema == sweep_matrix.SI5351_SCHEMA else ("pico-gpio", "GP2")
 
 
 def configuration(config):
@@ -36,8 +51,8 @@ def configuration(config):
     return config
 
 
-def prepared_check(prepared):
-    p._keys(prepared, PREPARED)
+def prepared_check(prepared, *, schema=SCHEMA):
+    p._keys(prepared, SI5351_PREPARED if schema == sweep_matrix.SI5351_SCHEMA else PREPARED)
     p.require(
         all(value is True for value in prepared.values()),
         "Confirm the complete current Pico bench setup",
@@ -63,7 +78,8 @@ def _current(source, expected, *, deadline_ns=None):
     current = source.snapshot(source.target_id, deadline_ns=deadline_ns)
     p.require(
         (current.device_id, current.boot_id, current.profile, current.output)
-        == (expected.device_id, expected.boot_id, "pico-gpio", "GP2")
+        == (expected.device_id, expected.boot_id, expected.profile, expected.output)
+        and getattr(current, "settings_sha256", None) == getattr(expected, "settings_sha256", None)
         and current.idle
         and current.output_inactive
         and current.schedules_inhibited
@@ -168,8 +184,12 @@ def run(
 ):
     """Join the frozen owner review to a single physical run and seal its native evidence."""
     plan = guided.validate(plan)
-    p.require(plan["schema"] == SCHEMA, "Use the exact direct-GPIO Pico matrix")
-    prepared_check(prepared)
+    schema = plan["schema"]
+    si5351 = schema == sweep_matrix.SI5351_SCHEMA
+    p.require(schema in sweep_matrix.PICO_SCHEMAS, "Use the exact physical Pico matrix")
+    p.require(source.target_id == target_id(schema), "Selected Pico source does not match the plan")
+    p.require(not si5351 or continue_from is None, "Si5351 continuation is unavailable")
+    prepared_check(prepared, schema=schema)
     fixture = configuration(fixture)
     review = live.review(
         source,
@@ -180,7 +200,18 @@ def run(
         include_pdf=include_pdf,
     )
     review.require_admitted_start(reviewed_digest)
-    p.require(review.target.profile == "pico-gpio", "Use the reviewed direct-GPIO Pico")
+    p.require(
+        (review.target.profile, review.target.output) == expected_output(schema),
+        "Pico engine and output do not match the reviewed plan",
+    )
+    if si5351:
+        from .si5351_tone import Si5351Target, applied_factor
+
+        p.require(
+            isinstance(review.target, Si5351Target)
+            and review.target.active_drive_ma == SI5351_INITIAL_DRIVE_MA,
+            "Prepare the Pico Si5351 at a saved and boot-active drive of 8 mA",
+        )
     target = original = review.target
     prior = (
         previous_capture(continue_from, plan, fixture, asdict(target)) if continue_from else None
@@ -190,7 +221,8 @@ def run(
         sensor_correction={
             "profile": PROFILE,
             "frequency_hz": {
-                band: dial + sweep_matrix.OFFSET_HZ for band, dial in sweep_matrix.DIALS.items()
+                band: dial + sweep_matrix.OFFSET_HZ
+                for band, dial in sweep_matrix.dials_for_schema(schema).items()
             },
         },
     )
@@ -208,7 +240,7 @@ def run(
     end = time.monotonic_ns() + review.max_run_ms * 1_000_000
     work_end = end - (TIMING.drive_change_ms + 30_000) * 1_000_000
     record = dict(
-        schema=SCHEMA,
+        schema=schema,
         mode="physical",
         run_id=uuid.uuid4().hex,
         plan=plan,
@@ -236,6 +268,7 @@ def run(
     _atomic_json(state_path, record)
     source_uncertain = False
     meter_uncertain = False
+    rf_uncertain = False
 
     def gate():
         return cancelled() or time.monotonic_ns() >= work_end
@@ -270,7 +303,7 @@ def run(
         return deadline
 
     def capture_point(point, disposition):
-        nonlocal target, source_uncertain, meter_uncertain
+        nonlocal target, source_uncertain, meter_uncertain, rf_uncertain
         folder = output / point["point_id"]
         folder.mkdir()
         planned = {key: value for key, value in point.items() if key != "status"}
@@ -303,10 +336,28 @@ def run(
                     source, target, disposition.point, tone.job, TIMING, tone.hard_end_ns, gate
                 )
             )
-            _atomic_json(folder / "tone.json", dict(tone=asdict(tone), review=assessed))
+            _atomic_json(
+                folder / "tone.json",
+                {
+                    "tone": asdict(tone),
+                    "review": assessed,
+                    **({"accepted": source.accepted_receipt} if si5351 else {}),
+                },
+            )
             journal(
                 source_pending, "tone-outcome-pending", request_id=request_id, job=asdict(tone.job)
             )
+            if si5351:
+                p.require(
+                    applied_factor(
+                        source.accepted_receipt["job"]["realization"],
+                        target,
+                        disposition.point,
+                        TIMING,
+                    )
+                    == disposition.correction_percent,
+                    "Si5351 LOAD changed the sensor correction",
+                )
             return pilot.wait_running(source, tone, window, launch_by, gate)
 
         try:
@@ -317,7 +368,7 @@ def run(
                 point=disposition.point,
                 timing=TIMING,
                 context=dict(
-                    workflow=SCHEMA,
+                    workflow=schema,
                     pico_authorization=auth,
                     plan_sha256=auth["plan_sha256"],
                     equipment=equipment,
@@ -326,6 +377,9 @@ def run(
             )
         finally:
             terminal = source.terminal_receipt if attempted else None
+            rf_uncertain = attempted and terminal is None
+            if si5351 and attempted and source.last_stop_receipt is not None and not terminal:
+                _atomic_json(folder / "shutdown-unconfirmed.json", source.last_stop_receipt)
             if terminal and terminal["job"]["request_id"] == request_id:
                 _atomic_json(folder / "terminal.json", terminal)
                 source_uncertain = False
@@ -416,13 +470,18 @@ def run(
     except (Exception, KeyboardInterrupt) as exc:
         record["status"] = "interrupted" if isinstance(exc, KeyboardInterrupt) else "failed"
         record["error"] = f"{type(exc).__name__}: {exc}"[:500]
+        if si5351 and rf_uncertain:
+            record["error"] = (
+                "Si5351 shutdown is unconfirmed. Use the prepared independent shutdown "
+                "and reconcile the Pico job before another Start. " + record["error"]
+            )[:500]
         for point in record["points"]:
             if point["status"] == "running":
                 point["status"] = record["status"]
     finally:
         record["finished_utc"] = datetime.now(UTC).isoformat()
         _atomic_json(state_path, record)
-        _seal(output, dict(schema=SCHEMA, mode="physical", run_id=record["run_id"]))
+        _seal(output, dict(schema=schema, mode="physical", run_id=record["run_id"]))
     return guided.load(output)[1]
 
 
@@ -433,6 +492,69 @@ def validate_window(folder, record, point, values, session):
     receipt = p._json((folder / "terminal.json").read_bytes())
     window = p._json((folder / "rf-window.json").read_bytes())
     job, terminal = tone["job"], receipt["job"]
+    si5351 = record["schema"] == sweep_matrix.SI5351_SCHEMA
+    if si5351:
+        from . import si5351_tone as si
+        from .pico_tone import _decimal_string
+
+        accepted_receipt = tone_record["accepted"]
+        initial = accepted_receipt["job"]
+
+        def check_binding(reply, *, stopped=False):
+            native = reply["job"]
+            p.require(
+                reply["target"] == assessed["target"] == receipt["target"]
+                and reply["contract"] == si.CONTRACT
+                and reply["schema"] == "test-tone-status"
+                and reply["receipt"] == "known"
+                and si.matches_synthesis(native)
+                and native["job_id"] == job["job_id"]
+                and native["request_id"] == tone["request_id"]
+                and native["carrier_hz"] == point["carrier_hz"]
+                and native["boot_drive_ma"] == point["drive_ma"]
+                and native["duration_ms"] == tone["duration_ms"]
+                and native["admission_revision"] == assessed["assessment_revision"]
+                and (stopped or native["control_revision"] == tone["revision"]),
+                "Si5351 receipt lost its assessed device, boot, or tone identity",
+            )
+
+        check_binding(accepted_receipt)
+        check_binding(receipt, stopped=True)
+        ended = _decimal_string(terminal["ended_monotonic_ns"])
+        remote_previous = _decimal_string(accepted_receipt["observation_monotonic_ns"])
+        terminal_evidence = si.check_readback(
+            terminal, point["drive_ma"], receipt["observation_monotonic_ns"]
+        )
+        drive_verified = (
+            si.matches_synthesis(assessed)
+            and assessed["proposed_drive_ma"] == assessed["boot_drive_ma"] == point["drive_ma"]
+            and initial["realization"] == terminal["realization"]
+            and si.applied_factor(
+                initial["realization"],
+                si.Si5351Target(**record["review"]["target"]),
+                live.Point(
+                    point["point_id"],
+                    point["frequency"],
+                    point["dial_hz"],
+                    point["carrier_hz"],
+                    point["drive_ma"],
+                ),
+                TIMING,
+            )
+            == session["sensor_correction"]["commanded_factor_percent"]
+            and initial["phase"] in ("accepted", "running")
+            and initial["accepted_monotonic_ns"] == terminal["accepted_monotonic_ns"]
+            and si.stop_context_matches(receipt, point["drive_ma"])
+            and ended <= _decimal_string(receipt["observation_monotonic_ns"])
+        )
+    else:
+        pad = terminal["pad_readback"]
+        drive_verified = (
+            pad["stage"] == "verified"
+            and pad["drive_ma"] == point["drive_ma"]
+            and pad["rf_pin"] == 2
+            and int(pad["epoch"]) > 0
+        )
     reviewed = record["review"]["target"]
     point_boots = {reviewed["active_drive_ma"]: reviewed["boot_id"]}
     for transition in record["drive_changes"]:
@@ -457,10 +579,7 @@ def validate_window(folder, record, point, values, session):
         and terminal["recovery_required"] is False
         and receipt["current"]["output_active"] is False
         and receipt["current"]["owned"] is False
-        and receipt["job"]["pad_readback"]["stage"] == "verified"
-        and receipt["job"]["pad_readback"]["drive_ma"] == point["drive_ma"]
-        and receipt["job"]["pad_readback"]["rf_pin"] == 2
-        and int(receipt["job"]["pad_readback"]["epoch"]) > 0
+        and drive_verified
         and 0
         < int(terminal["ended_monotonic_ns"]) - int(terminal["launch_monotonic_ns"])
         < tone["duration_ms"] * 1_000_000
@@ -472,6 +591,7 @@ def validate_window(folder, record, point, values, session):
         stop["job"] == job
         and stop["active"] is False
         and stop["output_inactive"] is True
+        and (not si5351 or stop["receipt"] == receipt)
         and stop["observed_ns"] <= tone["hard_end_ns"]
         and len(window["brackets"]) == len(values) == TIMING.samples
         and 2 <= len(window["settling"]) <= TIMING.settle_attempts,
@@ -516,6 +636,24 @@ def validate_window(folder, record, point, values, session):
                 and item["carrier_hz"] == point["carrier_hz"],
                 "A meter read was not bracketed by the matching running Pico job",
             )
+            if si5351:
+                source_receipt = item["receipt"]
+                check_binding(source_receipt)
+                observed = si.check_running(
+                    source_receipt,
+                    initial,
+                    point["drive_ma"],
+                    point["carrier_hz"],
+                    tone["duration_ms"],
+                )
+                p.require(
+                    remote_previous <= observed <= ended
+                    and source_receipt["job"]["synthesis_readback"] == terminal_evidence
+                    and source_receipt["job"]["launch_monotonic_ns"]
+                    == terminal["launch_monotonic_ns"],
+                    "Si5351 receipts disagree on the acquisition window or synthesis readback",
+                )
+                remote_previous = observed
         p.require(
             previous
             <= before["observed_ns"]
@@ -532,11 +670,75 @@ def validate_window(folder, record, point, values, session):
     )
 
 
+def _validate_si5351_review(record):
+    from .si5351_tone import DRIVES, PROFILE_ID, REFERENCE_HZ, Si5351Target
+
+    review = record["review"]
+    target = Si5351Target(**review["target"])
+    p.require(
+        target.owner == "pico"
+        and target.source_profile_id == PROFILE_ID
+        and target.reference_hz == REFERENCE_HZ
+        and target.active_drive_ma == target.saved_drive_ma == SI5351_INITIAL_DRIVE_MA
+        and target.idle is True
+        and target.output_inactive is True
+        and target.schedules_inhibited is True
+        and target.restart_pending is False
+        and re.fullmatch(r"[0-9a-f]{64}", target.settings_sha256)
+        and type(target.maximum_duration_ms) is int
+        and TIMING.tone_ms <= target.maximum_duration_ms <= 120_000
+        and review["tolerance_hz"] == 1
+        and type(review["include_pdf"]) is bool,
+        "Si5351 review lacks the prepared source and acquisition bounds",
+    )
+    matrix = live._matrix("pico", "si5351")
+    for point, row in zip(matrix, review["dispositions"], strict=True):
+        bound = row["maximum_tone_ms"]
+        expected = live._disposition(
+            live.Admission(point, target, None, bound, tuple(row["realization_hz"])), TIMING, 1
+        )
+        p.require(
+            bound <= target.maximum_duration_ms
+            and row["point"] == asdict(point)
+            and expected.reason is None
+            and expected.correction_percent == row["correction_percent"],
+            "Si5351 point differs from the admitted carrier and sensor correction",
+        )
+    changes = record["drive_changes"]
+    drives = [
+        change["current"]["active_drive_ma"] for change in changes if not change["restoration"]
+    ]
+    restored = [i for i, change in enumerate(changes) if change["restoration"]]
+    tokens = [point["token"] for point in record["points"] if "token" in point]
+    p.require(
+        drives == list(DRIVES[: len(drives)])
+        and (record["status"] != "completed" or drives == list(DRIVES))
+        and (
+            not restored
+            or (
+                restored == [len(changes) - 1]
+                and changes[-1]["current"]["active_drive_ma"] == SI5351_INITIAL_DRIVE_MA
+            )
+        )
+        and len(tokens) == len(set(tokens))
+        and all(isinstance(token, str) and re.fullmatch(r"[0-9a-f]{32}", token) for token in tokens)
+        and review["max_run_ms"]
+        == TIMING.preparation_ms
+        + len(matrix) * (TIMING.point_overhead_ms + TIMING.tone_ms)
+        + len(DRIVES) * TIMING.drive_change_ms,
+        "Si5351 drive order, restoration, tokens, or run budget do not match the matrix",
+    )
+
+
 def validate_run(record, bundle):
     review = record["review"]
     original = review["target"]
+    schema = record["schema"]
+    si5351 = schema == sweep_matrix.SI5351_SCHEMA
     p.require(
-        original["profile"] == "pico-gpio"
+        (original["profile"], original["output"]) == expected_output(schema)
+        and original["target_id"] == target_id(schema)
+        and (not si5351 or ("continuation" not in record and "settings_sha256" in original))
         and review["fixture_digest"] == r.digest(r.encoded(configuration(record["review_fixture"])))
         and review["review_digest"]
         == r.digest(
@@ -548,6 +750,8 @@ def validate_run(record, bundle):
         and all(row["reason"] is None for row in review["dispositions"]),
         "Pico Start does not match the frozen review",
     )
+    if si5351:
+        _validate_si5351_review(record)
     for field in ("rf_off_before_W", "rf_off_after_W"):
         if field in record:
             filename = field.removesuffix("_W").replace("_", "-") + ".csv"
@@ -569,6 +773,16 @@ def validate_run(record, bundle):
         p.require(
             change["previous"]["device_id"] == current["device_id"] == original["device_id"]
             and change["previous"]["boot_id"] == previous["boot_id"]
+            and (
+                not si5351
+                or all(
+                    row["settings_sha256"] == original["settings_sha256"]
+                    and row["source_profile_id"] == original["source_profile_id"]
+                    and row["reference_hz"] == original["reference_hz"]
+                    and (row["profile"], row["output"]) == expected_output(schema)
+                    for row in (change["previous"], current)
+                )
+            )
             and current["boot_id"] not in visited_boots
             and current["saved_drive_ma"]
             == current["active_drive_ma"]
@@ -588,6 +802,17 @@ def validate_run(record, bundle):
             record["restoration"] == "verified"
             and final.get("device_id") == original["device_id"]
             and final.get("boot_id") == previous["boot_id"]
+            and (
+                not si5351
+                or (
+                    final.get("settings_sha256") == original["settings_sha256"]
+                    and final.get("source_profile_id") == original["source_profile_id"]
+                    and final.get("reference_hz") == original["reference_hz"]
+                    and (final.get("profile"), final.get("output")) == expected_output(schema)
+                    and final.get("idle") is True
+                    and final.get("restart_pending") is False
+                )
+            )
             and final.get("saved_drive_ma")
             == final.get("active_drive_ma")
             == original["active_drive_ma"]

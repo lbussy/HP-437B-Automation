@@ -70,6 +70,8 @@ def provenance(record, bundle):
         prepared=record["prepared"],
         label_basis="Simulated setpoints; no transmitter control or RF evidence"
         if record["schema"] == sweep_matrix.SCHEMA
+        else "Control/1 requested carrier and job-bound Si5351 CLK0 synthesis readback"
+        if record["schema"] == sweep_matrix.SI5351_SCHEMA
         else "Control/1 requested carrier and job-bound Pico GPIO drive"
         if record["schema"] == sweep_matrix.PICO_SCHEMA
         else "Operator-confirmed declarations; not independently measured",
@@ -77,6 +79,11 @@ def provenance(record, bundle):
             name: dict(sha256=item["sha256"], bytes=item["bytes"])
             for name, item in bundle.entries.items()
         },
+        **(
+            {"source_review": record["review"]}
+            if record["schema"] == sweep_matrix.SI5351_SCHEMA
+            else {}
+        ),
     )
 
 
@@ -139,8 +146,10 @@ def plots(output, record, result):
         basis = (
             "simulated setpoint"
             if record["schema"] == sweep_matrix.SCHEMA
+            else "Si5351 CLK0 job setting"
+            if record["schema"] == sweep_matrix.SI5351_SCHEMA
             else "Pico job setting"
-            if record["schema"] == sweep_matrix.PICO_SCHEMA
+            if record["schema"] in sweep_matrix.PICO_SCHEMAS
             else "operator confirmed"
         )
         ax.set_xlabel(("Frequency" if axis == "frequency" else "Drive") + f" label ({basis})")
@@ -183,7 +192,8 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
     source, output = preflight(source, output, plots=plot)
     record, result, bundle = sweep.load(source)
     simulated = record["schema"] == sweep_matrix.SCHEMA
-    live_pico = record["schema"] == sweep_matrix.PICO_SCHEMA
+    live_pico = record["schema"] in sweep_matrix.PICO_SCHEMAS
+    si5351 = record["schema"] == sweep_matrix.SI5351_SCHEMA
     automatic = simulated or live_pico
     if automatic and include_pdf is None:
         include_pdf = False
@@ -230,7 +240,7 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
     notes = [
         "Dial, carrier, drive, and power shown here are synthetic. No transmitter or meter was contacted."
         if simulated
-        else "Pico Control/1 verifies the job and GPIO setting. The carrier is the requested setpoint."
+        else "The displayed carrier is the requested setpoint."
         if live_pico
         else "Frequency and drive labels are operator-confirmed declarations.",
         "Power is the meter indication at sensor input. Configured sensor correction, when selected, is applied before each capture and retained in native session receipts. No new fixture correction, uncertainty, or automatic baseline subtraction is added.",
@@ -238,7 +248,11 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
         "Acceptance: N/A. No acceptance limits were supplied.",
     ]
     if complete:
-        notes.append("Unfiltered GPIO harmonics can contribute to the sensor-input indication.")
+        notes.append(
+            "Si5351 clock harmonics can contribute to the sensor-input indication."
+            if si5351
+            else "Unfiltered GPIO harmonics can contribute to the sensor-input indication."
+        )
     if reference:
         notes.insert(
             0,
@@ -260,7 +274,11 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
     if simulated:
         lines.append("Simulated output: " + sweep_matrix.PROFILES[record["plan"]["profile"]][0])
     if live_pico:
-        lines.append("RF output: Pico direct GPIO (GP2)")
+        lines.append(
+            "RF output: QRP Labs Si5351A Synthesizer and 25MHz TCXO module"
+            if si5351
+            else "RF output: Pico direct GPIO (GP2)"
+        )
         notes.append("Initial drive restoration: " + record["restoration"] + ".")
         if record.get("continuation"):
             count = record["continuation"]["carried_points"]
@@ -333,7 +351,7 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
         for note in notes
         if note
         not in (
-            "Pico Control/1 verifies the job and GPIO setting. The carrier is the requested setpoint.",
+            "The displayed carrier is the requested setpoint.",
             "Known equipment issues: None reported",
             "Initial drive restoration: verified.",
         )
@@ -345,6 +363,7 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
         if note
         not in (
             "Unfiltered GPIO harmonics can contribute to the sensor-input indication.",
+            "Si5351 clock harmonics can contribute to the sensor-input indication.",
             "Measurement notes: Meter-indicated power at sensor input; record the RF path and meter corrections here.",
             "Acceptance: N/A. No acceptance limits were supplied.",
         )
@@ -364,6 +383,7 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
         "<style>body{font:16px/1.5 system-ui;color:#18242b;max-width:1100px;margin:auto;padding:24px}td,th{padding:8px;text-align:left;border-bottom:1px solid #cbd6dc}img{max-width:100%}.table{overflow-x:auto}.summary{width:100%;border-collapse:collapse;margin-bottom:24px}.summary th{width:10rem;vertical-align:top}.summary td{overflow-wrap:anywhere}</style><h1>RF Output Power Test</h1>"
         + ("<p>" + esc(description) + "</p>" if record["mode"] == "synthetic" else "")
         + html_summary(lines + identity_lines)
+        + ("<p>Fixture: " + esc(record["equipment"]["fixture"]) + "</p>" if si5351 else "")
         + "".join("<p>" + esc(line) + "</p>" for line in html_notes)
         + "".join(
             "<img src='"
@@ -400,9 +420,10 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
         ]
         if complete:
             pdf_columns = ["Point / band", *columns[2:]]
+            frequency_width = 1.25 if si5351 else 1.05
             widths = [
                 1.35,
-                *([1.05, 1.05] if automatic else []),
+                *([frequency_width, frequency_width] if automatic else []),
                 0.8,
                 1.2,
                 0.5,
@@ -424,6 +445,8 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
             ]
             if equipment:
                 pdf_lines.append("Fixture: " + equipment["fixture"])
+            if si5351 and record["error"]:
+                pdf_lines.append("Stop reason: " + record["error"])
             pdf_notes = [
                 note
                 for note in report_notes
@@ -432,6 +455,7 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
                     "Measurement notes: Meter-indicated power at sensor input; record the RF path and meter corrections here.",
                     "Acceptance: N/A. No acceptance limits were supplied.",
                 )
+                and not (si5351 and note.startswith("Stop reason: "))
             ]
         pdf._write(
             output,

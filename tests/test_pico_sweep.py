@@ -205,7 +205,7 @@ def setup_injected(monkeypatch, wire, *, limited=False):
         def write(self, data, deadline):
             if data == b"TR3":
                 # Healthy closure follows source Stop. Unknown-stop tests deliberately fail.
-                if wire.lose_stop_at is None:
+                if wire.lose_stop_at is None and not getattr(wire, "shutdown_failed", False):
                     assert not wire.running
             elif data.startswith(b"KB"):
                 assert not wire.running

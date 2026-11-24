@@ -5,10 +5,14 @@ from . import provenance as p
 SCHEMA = "hp437b.automatic-sweep-simulation.v1"
 PICO_SCHEMA = "hp437b.automatic-pico-sweep.v1"
 SI5351_PLAN_SCHEMA = "hp437b.automatic-pico-si5351-plan.v1"
-CAPTURE_SCHEMAS = (SCHEMA, PICO_SCHEMA)
-MATRIX_SCHEMAS = (*CAPTURE_SCHEMAS, SI5351_PLAN_SCHEMA)
+SI5351_SCHEMA = "hp437b.automatic-pico-si5351.v1"
+PICO_SCHEMAS = (PICO_SCHEMA, SI5351_SCHEMA)
+MATRIX_SCHEMAS = (SCHEMA, *PICO_SCHEMAS)
+PLAN_SCHEMAS = (*MATRIX_SCHEMAS, SI5351_PLAN_SCHEMA)
 SI5351_TARGET = "pico-si5351"
-SI5351_UNAVAILABLE = "Pico Si5351 requires the paired Control/1 contract and RF-free fixtures"
+SI5351_UNAVAILABLE = (
+    "Configure the authenticated Pico Si5351 USB target before live review or Start"
+)
 OFFSET_HZ = 1500
 DIALS = {
     "2200m": 136000,
@@ -60,10 +64,10 @@ def pico_plan(base):
     }
 
 
-def si5351_plan(base):
+def si5351_plan(base, *, schema=SI5351_SCHEMA):
     return {
         **simulation_plan(base, "si5351"),
-        "schema": SI5351_PLAN_SCHEMA,
+        "schema": schema,
         "frequencies": list(SI5351_DIALS),
         "samples": 2,
         "interval_s": 1.0,
@@ -74,15 +78,18 @@ def si5351_plan(base):
 def catalog():
     return {
         "schema": SCHEMA,
-        "bands": [
-            {"label": name, "dial_hz": hz, "carrier_hz": hz + OFFSET_HZ}
-            for name, hz in DIALS.items()
-        ],
+        "bands": bands(DIALS),
         "profiles": [
             {"id": key, "label": label, "drives_ma": list(drives)}
             for key, (label, drives) in PROFILES.items()
         ],
     }
+
+
+def bands(dials):
+    return [
+        {"label": name, "dial_hz": hz, "carrier_hz": hz + OFFSET_HZ} for name, hz in dials.items()
+    ]
 
 
 def validate(plan):
@@ -97,8 +104,11 @@ def validate(plan):
     )
     if plan["schema"] == PICO_SCHEMA:
         p.require(plan == pico_plan(plan), "Use the reviewed direct-GPIO Pico capture settings")
-    elif plan["schema"] == SI5351_PLAN_SCHEMA:
-        p.require(plan == si5351_plan(plan), "Use the exact Pico Si5351 capture settings")
+    elif plan["schema"] in (SI5351_SCHEMA, SI5351_PLAN_SCHEMA):
+        p.require(
+            plan == si5351_plan(plan, schema=plan["schema"]),
+            "Use the exact Pico Si5351 capture settings",
+        )
     else:
         p.require(
             plan["samples"] <= 3 and plan["settling_s"] == 0,
@@ -107,11 +117,11 @@ def validate(plan):
 
 
 def dials_for_schema(schema):
-    return SI5351_DIALS if schema == SI5351_PLAN_SCHEMA else DIALS
+    return SI5351_DIALS if schema in (SI5351_SCHEMA, SI5351_PLAN_SCHEMA) else DIALS
 
 
 def point_data(plan, point):
-    if plan["schema"] not in MATRIX_SCHEMAS:
+    if plan["schema"] not in PLAN_SCHEMAS:
         return {}
     dial = dials_for_schema(plan["schema"])[point["frequency"]]
     return {

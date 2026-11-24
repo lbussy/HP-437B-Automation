@@ -66,7 +66,25 @@ Use `python -m hp437b.pico_pilot --help` for the separate 30 m, 12 mA bench comm
 
 - The installed Pico passed read-only review of all 52 points. The [conducted 30 m pilot](../validation/30M-POWER-20261123.md#native-test-tone-pilot) and the full hardware-free capture exercise provide different levels of evidence. The [supervised 52-point campaign](../validation/PICO-52-20261123.md) captured every planned combination and verified restoration to 12 mA.
 - WsprryPi accepts an absolute custom RF frequency over its bounded-tone command. Transient drive, generation-bound early stop, and read-only point admission remain open.
-- The [56-point Pico Si5351 plan](SI5351-PHYSICAL-SWEEP-PLAN.md) is available offline through `python -m hp437b.guided_client si5351-plan`. It includes 2 m at 144.490500 MHz and two retained readings per point. The operator page shows physical Si5351 as unavailable. Live review and Start require the paired Si5351 Control/1 schema, conformance fixtures, and HP adapter.
+
+#### Pico Si5351
+
+Launch the operator service with `--sweep-setup` and `--pico-si5351-setup`. Use the same USB target JSON format as for direct GPIO. Select **Frequency × drive setting → Automatic Pico Si5351**, choose the report format, and select **Review 56 Pico points**.
+
+Prepare the ordinary QRP Labs Si5351A Synthesizer and 25MHz TCXO profile on CLK0, a saved and boot-active drive of 8 mA, and both Pico schedules disabled. Confirm the direct CLK0-to-8482A fixture and an independent way to shut down or disconnect RF if the synth bus fails. The runner changes only the Si5351 drive through normal configuration and verifies the new boot before using it. It restores the initial 8 mA after verified shutdown.
+
+The [56-point matrix](SI5351-PHYSICAL-SWEEP-PLAN.md) uses 2, 4, 6, and 8 mA and includes 2 m at 144.490500 MHz. It retains two readings per point at the existing one-second logger interval with exact-carrier CAL FAC. The worker requires admission of every point and a fresh native Review before each Start. The [current Pico C admission](../VALIDATION.md#pico-si5351-test-tone) blocks the full run at 2 m.
+
+```bash
+python -m hp437b.guided_client si5351-plan > tmp/si5351-plan.json
+python -m hp437b.guided_client --url http://127.0.0.1:8765 live-review \
+  --target-id pico-si5351 --pdf > tmp/si5351-review.json
+python -m hp437b.guided_client --url http://127.0.0.1:8765 start \
+  --plan tmp/si5351-plan.json --meter-mode physical --prepared tmp/si5351-prepared.json \
+  --pdf --pico-review-digest "$REVIEW_DIGEST"
+```
+
+Use every `hp437b.pico_sweep.SI5351_PREPARED` key for the prepared file. Obtain the digest from a current fully admitted review with the same PDF selection. Regenerate saved plan-only JSON with the current `si5351-plan` command before Start. The Si5351 runner requires a fresh full capture. An unconfirmed shutdown leaves a pending marker for supervised reconciliation.
 
 ## Meter setup
 

@@ -1,6 +1,6 @@
 # Si5351 physical sweep implementation plan
 
-The HP-side matrix and offline plan builder are available. The live adapter, runner, and evidence integration depend on the paired WsprryPico Control/1 contract and RF-free fixtures. This plan authorizes no hardware operation or firmware installation.
+The HP-side matrix, Control/1 adapter, runner, and sealed report path are available. The [current Pico C admission](../VALIDATION.md#pico-si5351-test-tone) gates physical execution.
 
 Use the [bounded implementation prompt](SI5351-PHYSICAL-SWEEP-IMPLEMENTATION-PROMPT.md) for HP-side implementation and RF-free validation.
 

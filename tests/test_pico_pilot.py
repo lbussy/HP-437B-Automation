@@ -175,7 +175,15 @@ def test_pico_reconciles_lost_start_and_stop_replies_using_only_exact_status():
     seen = []
     source = PicoTone(Link(), "pico")
     assessed = dict(
-        admission="ready", assessment_revision="revision", proposed_drive_ma=12, boot_drive_ma=12
+        schema="test-tone-review",
+        admission="ready",
+        assessment_revision="revision",
+        proposed_drive_ma=12,
+        saved_drive_ma=12,
+        boot_drive_ma=12,
+        rf_pin=2,
+        maximum_duration_ms=120_000,
+        realization={"requested_nhz": str(point.carrier_hz * 10**9)},
     )
     tone = source.start(target, point, duration, request_id, assessed)
     deadline = time.monotonic_ns() + 8_000_000_000
