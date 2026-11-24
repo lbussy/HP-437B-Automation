@@ -67,7 +67,7 @@ Finite profile: three signed source-off samples before/after, then 20 virtual se
 
 ## Sensor factor and fixture correction
 
-The [437B operating manual](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=40), printed page 3-10, distinguishes sensor-specific CAL FAC compensation and reference calibration. This synthetic model uses an explicitly defined indication convention; it does not qualify actual CAL FAC programming or a physical sensor calibration.
+The [437B operating manual](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=40), printed page 3-10, distinguishes sensor-specific CAL FAC compensation and reference calibration. This synthetic model uses an explicitly defined indication convention; it does not qualify actual CAL FAC programming or a physical sensor calibration.
 
 - Model truth creates incident sensor power from source power and `simulation_loss_dB`, then a unity-factor indication using `simulation_sensor_factor_percent / 100`. Truth fields never replace missing supplied correction data in analysis.
 - With `factor_applied_in: analysis`, the fake meter acknowledges unity factor (100%). Analysis computes `sensor_W = indicated_W × 100 / sensor_factor_percent`, once.

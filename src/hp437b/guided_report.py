@@ -17,6 +17,27 @@ SCHEMA = "hp437b.guided-sweep-report.v1"
 COMPLETE_SCHEMA = "hp437b.guided-combined-report.v2"
 
 
+def html_summary(lines):
+    """Render per-run report identity as an accessible two-column table."""
+    rows = []
+    for line in lines:
+        if line == "Test: Operator-guided radio sweep":
+            continue
+        label, _, value = line.partition(": ")
+        rows.append(
+            "<tr><th scope='row'>"
+            + html.escape(label)
+            + "</th><td>"
+            + html.escape(value)
+            + "</td></tr>"
+        )
+    return (
+        "<table class='summary' aria-label='Test summary'><tbody>"
+        + "".join(rows)
+        + "</tbody></table>"
+    )
+
+
 def check_complete_pdf(data, page_count):
     # ReportLab writes the generated page tree as plain PDF objects. Compare
     # its page-object count and tree count with the sealed renderer receipt.
@@ -307,22 +328,43 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
     for row in table_rows:
         table += "<tr>" + "".join("<td>" + esc(x) + "</td>" for x in row) + "</tr>"
     table += "</tbody></table>"
-    html_notes = [
+    report_notes = [
         note
         for note in notes
         if note
         not in (
-            "Unfiltered GPIO harmonics can contribute to the sensor-input indication.",
+            "Pico Control/1 verifies the job and GPIO setting. The carrier is the requested setpoint.",
             "Known equipment issues: None reported",
             "Initial drive restoration: verified.",
         )
         and not (live_pico and record.get("continuation") and note.startswith("Includes "))
     ]
+    html_notes = [
+        note
+        for note in report_notes
+        if note
+        not in (
+            "Unfiltered GPIO harmonics can contribute to the sensor-input indication.",
+            "Measurement notes: Meter-indicated power at sensor input; record the RF path and meter corrections here.",
+            "Acceptance: N/A. No acceptance limits were supplied.",
+        )
+    ]
+    identity_lines = [
+        "Equipment: "
+        + (
+            record["equipment"]["meter_serial"] + " / " + record["equipment"]["sensor_serial"]
+            if record["equipment"]
+            else "Simulated meter"
+        ),
+        report_sheet.producer_note(producer),
+        "Record: " + record["run_id"],
+    ]
     page = (
         "<!doctype html><html lang='en'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>RF Output Power Test</title>"
-        "<style>body{font:16px/1.5 system-ui;color:#18242b;max-width:1100px;margin:auto;padding:24px}td,th{padding:8px;text-align:left;border-bottom:1px solid #cbd6dc}img{max-width:100%}.table{overflow-x:auto}footer{margin-top:28px}</style><h1>RF Output Power Test</h1>"
+        "<style>body{font:16px/1.5 system-ui;color:#18242b;max-width:1100px;margin:auto;padding:24px}td,th{padding:8px;text-align:left;border-bottom:1px solid #cbd6dc}img{max-width:100%}.table{overflow-x:auto}.summary{width:100%;border-collapse:collapse;margin-bottom:24px}.summary th{width:10rem;vertical-align:top}.summary td{overflow-wrap:anywhere}</style><h1>RF Output Power Test</h1>"
         + ("<p>" + esc(description) + "</p>" if record["mode"] == "synthetic" else "")
-        + "".join("<p>" + esc(line) + "</p>" for line in lines + html_notes)
+        + html_summary(lines + identity_lines)
+        + "".join("<p>" + esc(line) + "</p>" for line in html_notes)
         + "".join(
             "<img src='"
             + name
@@ -340,28 +382,20 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
         + table
         + "</div><p><a href='points.csv'>Full point table (CSV)</a> · <a href='results.json'>Statistics (JSON)</a>"
         + (" · <a href='report.pdf'>PDF report</a>" if wants_pdf else "")
-        + "</p><footer>"
-        + esc(
-            "Equipment: "
-            + (
-                record["equipment"]["meter_serial"] + " / " + record["equipment"]["sensor_serial"]
-                if record["equipment"]
-                else "Simulated meter"
-            )
-        )
-        + "<br>"
-        + esc(report_sheet.producer_note(producer))
-        + "<br>Record: "
-        + esc(record["run_id"])
-        + "</footer></html>"
+        + "</p></html>"
     )
     (output / "report.html").write_text(page)
-    (output / "appendix.html").write_text(page)
     if wants_pdf:
+        summary_rows = [
+            (line.partition(": ")[0], line.partition(": ")[2])
+            for line in lines + identity_lines
+            if line != "Test: Operator-guided radio sweep"
+        ]
+        pdf_lines = []
         pdf_rows = rows
         pdf_columns = ["Observation", "Result"]
         widths = [1, 2]
-        pdf_notes = notes[:2] + [
+        pdf_notes = html_notes[:2] + [
             "Complete point table, plots, notes, and stop reasons are in the HTML report."
         ]
         if complete:
@@ -385,20 +419,24 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
                 if value is not None:
                     cells[pdf_columns.index("dBm")] = format(D(value), ".2f")
             equipment = record["equipment"]
-            lines += [
+            pdf_lines += [
                 f"Coverage: {result['completed_points']} of {result['requested_points']} points captured.",
             ]
             if equipment:
-                lines.extend(
-                    [
-                        f"Meter / sensor: {equipment['meter_serial']} / {equipment['sensor_serial']}",
-                        "Fixture: " + equipment["fixture"],
-                    ]
+                pdf_lines.append("Fixture: " + equipment["fixture"])
+            pdf_notes = [
+                note
+                for note in report_notes
+                if note
+                not in (
+                    "Measurement notes: Meter-indicated power at sensor input; record the RF path and meter corrections here.",
+                    "Acceptance: N/A. No acceptance limits were supplied.",
                 )
-            pdf_notes = notes
+            ]
         pdf._write(
             output,
-            lines=lines,
+            lines=pdf_lines,
+            summary_rows=summary_rows,
             columns=pdf_columns,
             rows=pdf_rows,
             widths=widths,
@@ -411,6 +449,7 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
             else "",
             multipage=complete,
             plot=output / "frequency.png" if complete and "frequency.png" in images else None,
+            additional_plots=[output / "drive.png"] if complete and "drive.png" in images else (),
         )
         if complete:
             check_complete_pdf(

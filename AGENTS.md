@@ -8,9 +8,11 @@ The Phase 2 Python interface/logger and software tests are implemented. See docs
 
 ## Equipment references
 
-Unmodified publisher manuals are in output/pdf/hp-437b-8482a/. Consult the operating manual for commands and procedures, service manual for service/performance work, and sensor manual plus the individual sensor label/certificate for limits and calibration factors. Do not assume modern SCPI syntax. Preserve publisher originals and original manifests. Annotations, OCR, and previews are derived files.
+Unmodified publisher manuals are in references/manuals/, and individual calibration records are in references/calibration/. Consult the operating manual for commands and procedures, service manual for service/performance work, and sensor manual plus the individual sensor label/certificate for limits and calibration factors. Do not assume modern SCPI syntax. Preserve publisher originals and original manifests. Annotations, OCR, and previews are derived files.
 
 ## Working practices
+
+Describe only current equipment, calibration, behavior, and limitations in maintained prose. Omit development chronology and accounts of earlier states. Preserve source manifests and provenance metadata.
 
 Use ignored tmp/ or temp/ for scratch files. Do not commit credentials, raw local measurements, or local tool state. Use Oxford commas. Keep plans and open tasks current, and check Markdown links and git diff --check after edits. Do not claim backend or host support until required hardware checks pass.
 

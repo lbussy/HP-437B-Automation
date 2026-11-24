@@ -2,13 +2,15 @@
 
 Updated: November 23, 2026. The current meter is **SN 3125U22346**, with laboratory software **2.0** and HPIB address **13** listed in its calibration record. A [supervised Mac ZERO and 30 m power capture](validation/30M-POWER-20261123.md), a [native Pico Test Tone pilot](validation/30M-POWER-20261123.md#native-test-tone-pilot), and a [complete 52-point Pico sweep](validation/PICO-52-20261123.md) are recorded. Broader interaction checks and meter control from a Pi remain **pending**. Laboratory certification and software tests do not establish current host/backend compatibility or absolute RF accuracy.
 
+The 8482H SN 3318A09219 [calibration review](validation/8482H-CALIBRATION-20261122.md) records laboratory evidence from the certificate and calibration chart dated November 15, 2026. Physical project qualification for this sensor remains pending.
+
 ## Record the environment
 
 Record the actual meter/sensor labels, firmware reply, USB resource, adapter model/firmware, cable, front-panel GPIB address, host/OS/architecture/Python/libusb, package versions/origin, sensor corrections, and full signal path. Distinguish supplied labels, laboratory records, observed protocol replies, and operator confirmations. See [equipment](EQUIPMENT.md).
 
 ## Required checks
 
-Choose only the checks relevant to the selected use, with explicit authorization, finite budgets, and fresh setup confirmation. The [prepared procedure](validation/REPLACEMENT-ACCEPTANCE.md) supplies bounded cases; it has not been executed on this meter.
+Choose only the checks relevant to the selected use, with explicit authorization, finite budgets, and fresh setup confirmation. The [prepared procedure](validation/BENCH-ACCEPTANCE.md) supplies bounded cases; it has not been executed on this meter.
 
 1. Verify intended USB identity/access and exclusive ownership before opening through the pinned backend.
 2. Check actual identification and source-off status, then one complete serialized acquisition and healthy closure.

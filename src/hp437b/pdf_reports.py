@@ -61,7 +61,9 @@ def _write(
     notes,
     producer,
     run_id,
+    summary_rows=None,
     plot=None,
+    additional_plots=(),
     suite=None,
     physical=False,
     source_label=None,
@@ -114,21 +116,51 @@ def _write(
                 bold,
             )
         )
+    if summary_rows is not None:
+        summary = Table(
+            [[paragraph(label + ":", bold), paragraph(value)] for label, value in summary_rows],
+            colWidths=[100, 428],
+            hAlign="LEFT",
+        )
+        summary.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LINEBELOW", (0, 0), (-1, -1), 0.3, colors.HexColor("#cbd6dc")),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ]
+            )
+        )
+        content.extend([summary, Spacer(1, 6)])
     content.extend(paragraph(line) for line in lines)
     content.append(Spacer(1, 8))
     plot_block = []
-    if plot is not None:
+    plot_paths = ([plot] if plot is not None else []) + list(additional_plots)
+    chart_height = 260 if multipage else 120
+    if multipage and len(plot_paths) > 1:
+        # Use the remaining summary-page space while leaving the footer clear.
+        header_height = sum(
+            item.wrap(528, 10000)[1] + item.getSpaceBefore() + item.getSpaceAfter()
+            for item in content
+        )
+        available = letter[1] - 30 - 82 - 12 - header_height
+        chart_height = min(235, available / len(plot_paths) - 7)
+        p.require(chart_height > 0, "No summary-page space remains for charts")
+    for plot_path in plot_paths:
         from PIL import Image as PILImage
 
-        plot_bytes = plot.read_bytes()
+        plot_bytes = plot_path.read_bytes()
         p.require(len(plot_bytes) <= p.MAX_FILE, "PDF plot exceeds import budget")
         with PILImage.open(BytesIO(plot_bytes)) as image:
             width, height = image.size
             p.require(
                 0 < width <= 10000 and 0 < height <= 10000, "Invalid generated PDF plot dimensions"
             )
-        plot_height = 260 if multipage else 120
-        plot_block = [
+        plot_height = chart_height
+        plot_block += [
             Image(
                 BytesIO(plot_bytes),
                 width=min(520, plot_height * width / height),
@@ -142,13 +174,12 @@ def _write(
     )
     if multipage:
         content.extend(plot_block)
-        if suite is None:
-            content.append(details)
         content.append(PageBreak())
     grid = [[paragraph(value, bold) for value in columns]]
     grid += [[paragraph(value, cell) for value in row] for row in rows]
     widths = [width * 540 / sum(widths) for width in widths]
     table = Table(grid, colWidths=widths, repeatRows=1, hAlign="LEFT")
+    row_padding = 5.5 if multipage and additional_plots else 6
     table.setStyle(
         TableStyle(
             [
@@ -157,8 +188,8 @@ def _write(
                 ("LINEBELOW", (0, 1), (-1, -1), 0.3, colors.HexColor("#ccd3d8")),
                 ("LEFTPADDING", (0, 0), (-1, -1), 4),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), row_padding),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), row_padding),
             ]
         )
     )
@@ -179,7 +210,7 @@ def _write(
                 small,
             )
         )
-    elif not multipage:
+    else:
         content.append(details)
     pages = []
 

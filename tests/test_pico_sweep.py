@@ -300,21 +300,47 @@ def test_pico_matrix_52_real_request_sequences_and_traceable_report(tmp_path, mo
     report = tmp_path / "report"
     guided_report.publish(tmp_path / "capture", report, include_pdf=True)
     assert (report / "report.pdf").is_file()
+    assert not (report / "appendix.html").exists()
+    assert "appendix.html" not in (report / "artifacts.json").read_text()
+    import zipfile
+
+    with zipfile.ZipFile(tmp_path / "report.zip") as package:
+        assert "report/report.html" in package.namelist()
+        assert "report/appendix.html" not in package.namelist()
+        assert b"report/report.html" in package.read("START-HERE.txt")
     assert guided_report.validate_pair(tmp_path / "capture", report)
     from pypdf import PdfReader
 
     text = " ".join(page.extract_text() for page in PdfReader(report / "report.pdf").pages)
-    assert "Execution: Completed; Acceptance: N/A" in text
+    assert "Execution: Completed; Acceptance: N/A" in " ".join(text.split())
     assert "Recorded measurements" not in text
     assert "Supporting files: see the report folder or portable ZIP." in text
     assert "Details: HTML appendix" not in text
     assert "Acceptance: NOT EVALUATED" not in text
     page = (report / "report.html").read_text()
+    for label in ("Equipment:", "Report Harness:", "Record:"):
+        assert page.count(label.removesuffix(":")) == 1
+        assert page.index(label.removesuffix(":")) < page.index("<img")
+    assert "<table class='summary'" in page
+    assert "<th scope='row'>Radio</th>" in page
+    assert (
+        "Measurement notes: Meter-indicated power at sensor input; record the RF path" not in page
+    )
+    assert "Acceptance: N/A. No acceptance limits were supplied." not in page
+    assert "<footer>" not in page
     assert "Unfiltered GPIO harmonics" not in page
     assert "Known equipment issues: None reported" not in page
     assert "Initial drive restoration: verified." not in page
     assert "Unfiltered GPIO harmonics" in text
-    assert "Initial drive restoration: verified." in text
+    assert "Initial drive restoration: verified." not in text
+    assert "Known equipment issues: None reported" not in text
+    assert (
+        "Measurement notes: Meter-indicated power at sensor input; record the RF path" not in text
+    )
+    assert "Acceptance: N/A. No acceptance limits were supplied." not in text
+    assert "Report Harness:" in PdfReader(report / "report.pdf").pages[0].extract_text()
+    assert "Pico Control/1 verifies" not in text
+    assert "points carried forward" not in text
     assert json.loads((report / "results.json").read_text())["acceptance"] == "NOT EVALUATED"
 
 

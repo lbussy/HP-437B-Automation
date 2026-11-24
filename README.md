@@ -4,9 +4,11 @@ Control, finite CSV logging, supervised test workflows, and traceable reports fo
 
 ## Current equipment
 
-Meter **SN 3125U22346**, certificate **DXC-2026-3340-001**, calibrated November 11, 2026, next due November 11, 2028. The laboratory reports Passed/In Tolerance; its +5 V result is **5.014 V**, within the printed tolerance. The repository stores the owner-selected four-page [calibration PDF](output/pdf/hp-437b-8482a/calibration/replacement-2026-11-19/HP-437B-SN-3125U22346-Calibration-2026-11-11.pdf). The lab lists software **2.0** and HPIB address **13**. The November 23 Mac bench run confirmed firmware 2.0; the front-panel address remains unverified.
+Meter **SN 3125U22346**, certificate **DXC-2026-3340-001**, calibrated November 11, 2026, next due November 11, 2028. The laboratory reports Passed/In Tolerance; its +5 V result is **5.014 V**, within the printed tolerance. The repository stores the owner-selected four-page [calibration PDF](references/calibration/hp-437b/3125U22346/2026-11-11/derived/HP-437B-SN-3125U22346-Calibration-2026-11-11.pdf). The lab lists software **2.0** and HPIB address **13**. The November 23 Mac bench run confirmed firmware 2.0; the front-panel address remains unverified.
 
-Sensor **SN MY41094127** has a recorded **99% reference calibration factor**. The meter sheet's 100% setting does not supersede that sensor factor. See [equipment and manuals](docs/EQUIPMENT.md) and [current calibration review](docs/validation/REPLACEMENT-CALIBRATION-20261119.md) for limits and remaining documentation ambiguities. A [supervised Mac ZERO and 30 m measurement](docs/validation/30M-POWER-20261123.md) recorded 24.500 mW at the sensor input; broader interaction checks remain pending, and laboratory certification does not establish Mac/Pi/backend compatibility.
+Sensor **SN MY41094127** has a recorded **99% reference calibration factor**. The applicable sensor reference factor is 99%. See [equipment and manuals](docs/EQUIPMENT.md) and [current calibration review](docs/validation/CALIBRATION-REVIEW.md) for limits and remaining documentation ambiguities. A [supervised Mac ZERO and 30 m measurement](docs/validation/30M-POWER-20261123.md) recorded 24.500 mW at the sensor input; broader interaction checks remain pending, and laboratory certification does not establish Mac/Pi/backend compatibility.
+
+An additional **8482H sensor, SN 3318A09219**, has a complete [calibration record and review](docs/validation/8482H-CALIBRATION-20261122.md): certificate dated November 15, 2026, due November 15, 2027, and reference factor 99%. Its calibration chart is dated November 15, 2026. The selected measurement sensor is the 8482A SN MY41094127.
 
 ## Software
 
@@ -26,6 +28,7 @@ Human-started tests and deterministic reports are the selected mode. AI/provider
 | [Command inventory](docs/inventory/README.md) | Syntax, software coverage, and guards |
 | [Reporting](docs/REPORTING.md) / [run provenance](docs/RUN-PROVENANCE.md) | Evidence-backed results and artifacts |
 | [Release checklist](docs/RELEASE-CHECKLIST.md) | Current readiness |
+| [Reference library](references/README.md) | Manuals, current calibration records, originals, and derived documents |
 | [Reference provenance](docs/PROVENANCE.md) | Current reference files and hashes |
 | [Contributing](CONTRIBUTING.md) | Repository conventions |
 
@@ -33,7 +36,7 @@ Human-started tests and deterministic reports are the selected mode. AI/provider
 
 - `src/hp437b/`, `tests/`, and `tools/`: package, software tests, and workflow/check tools.
 - `docs/`: current requirements, operation, references, and validation specifications.
-- `output/pdf/hp-437b-8482a/`: publisher manuals, current equipment calibration records, and manifests/checksums.
+- [`references/`](references/README.md): publisher manuals, calibration records by model/serial/date, manifests, checksums, and source attribution.
 - `tmp/` or `temp/`: ignored scratch files.
 - `data/`, `output/logs/`, and `output/reports/`: ignored local evidence and generated artifacts.
 

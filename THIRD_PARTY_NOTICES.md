@@ -8,15 +8,15 @@ The following publisher originals retain their embedded copyright and licensing 
 
 | File | Publisher source |
 | --- | --- |
-| [HP 437B Operating Manual 00437-90047](output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf) | [Keysight official manual](https://www.keysight.com/us/en/assets/9018-40507/user-manuals/9018-40507.pdf) |
-| [HP 437B Service Manual 00437-90076](output/pdf/hp-437b-8482a/HP-437B-Service-Manual-00437-90076.pdf) | [Keysight official manual](https://www.keysight.com/us/en/assets/9018-05110/service-manuals/9018-05110.pdf) |
-| [8480 Series Operating and Service Manual 08481-90173](output/pdf/hp-437b-8482a/HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf) | [Keysight official manual](https://www.keysight.com/us/en/assets/9018-04931/service-manuals/9018-04931.pdf) |
+| [HP 437B Operating Manual 00437-90047](references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf) | [Keysight official manual](https://www.keysight.com/us/en/assets/9018-40507/user-manuals/9018-40507.pdf) |
+| [HP 437B Service Manual 00437-90076](references/manuals/hp-437b/HP-437B-Service-Manual-00437-90076.pdf) | [Keysight official manual](https://www.keysight.com/us/en/assets/9018-05110/service-manuals/9018-05110.pdf) |
+| [8480 Series Operating and Service Manual 08481-90173](references/manuals/hp-8480-series/HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf) | [Keysight official manual](https://www.keysight.com/us/en/assets/9018-04931/service-manuals/9018-04931.pdf) |
 
-The [download manifest](output/pdf/hp-437b-8482a/download-manifest.json) records the original download locations, editions, sizes, and SHA-256 hashes. Preserve the original files and all embedded notices. Local possession and an official download URL do not establish a separate grant of redistribution rights; no separate redistribution permission is recorded in this collection.
+The [download manifest](references/manuals/download-manifest.json) records the original download locations, editions, sizes, and SHA-256 hashes. Preserve the original files and all embedded notices. Local possession and an official download URL do not establish a separate grant of redistribution rights; no separate redistribution permission is recorded in this collection.
 
 ## Individual calibration records
 
-The complete [437B and 8482A calibration records](docs/EQUIPMENT.md#individual-calibration-records), issued by DXCONNECTION / Valley Precision Instrument Calibration Services and supplied by the equipment owner, retain their embedded notices and are excluded from the MIT grant. Each certificate permits reproduction in full and requires prior written consent for partial reproduction. The PDFs are preserved in full without modification; the separate [import manifest](output/pdf/hp-437b-8482a/calibration/import-manifest.json) records their provenance and integrity.
+The [individual calibration records](docs/EQUIPMENT.md#individual-calibration-records), issued by DXCONNECTION / Valley Precision Instrument Calibration Services, retain their embedded notices and are excluded from the MIT grant. Each certificate permits reproduction in full and requires prior written consent for partial reproduction. The 8482A PDF and complete 8482H calibration chart are unmodified source documents. The four-page 437B record and two-page 8482H record are derived documents with source attribution in their manifests. No separate consent for partial reproduction is recorded here. See [reference provenance](docs/PROVENANCE.md) and the [8482H manifest](references/calibration/hp-8482h/3318A09219/2026-11-15/import-manifest.json).
 
 ## Software dependencies
 
@@ -24,7 +24,7 @@ The package uses ordinary dependencies; their source is obtained through their p
 
 Development pins and transitive versions are in [requirements-dev.lock](requirements-dev.lock). pytest, Ruff, build, setuptools, iniconfig, pluggy, and pyproject_hooks use MIT licenses; Pygments uses BSD-2-Clause; packaging uses Apache-2.0 OR BSD-2-Clause. Package distributions carry the authoritative license notices. R&S VISA is proprietary royalty-free software, not part of this project's MIT grant, and is not bundled here.
 
-Product names and trademarks remain those of their owners. The original copied download manifest describes the earlier download; migration details are recorded separately in [project provenance](docs/PROVENANCE.md).
+Product names and trademarks remain those of their owners. Source attribution is recorded in the manifests indexed by [reference provenance](docs/PROVENANCE.md).
 
 ## Optional PDF report rendering
 

@@ -1,10 +1,10 @@
 # Current-meter setup and interaction checks
 
-Current equipment: meter **SN 3125U22346**, sensor **SN MY41094127**, USBGpib V2/recorded adapter firmware V2.4. Laboratory records list meter software 2.0 and HPIB address 13. Records are [reviewed](REPLACEMENT-CALIBRATION-20261119.md); physical project setup/interaction checks remain pending.
+Current equipment: meter **SN 3125U22346**, sensor **SN MY41094127**, USBGpib V2/recorded adapter firmware V2.4. Laboratory records list meter software 2.0 and HPIB address 13. Records are [reviewed](CALIBRATION-REVIEW.md); physical project setup/interaction checks remain pending.
 
-## Arrival and shared setup gates
+## Shared setup gates
 
-Prepare the [measurement-policy](MEASUREMENT-POLICY.md) path, source initially off, automatic range/filter, absolute W, REL/offset/duty off, closed competing applications, and available operator recovery. Warm up at least thirty minutes before preparation/accuracy-dependent observations ([operating manual, PDF 16](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=16)). Use the source-backed [ZERO](ZERO-AUTOMATION.md) and [CAL](CAL-AUTOMATION.md) procedures only when selected and applicable; no adjustment is automatic.
+Prepare the [measurement-policy](MEASUREMENT-POLICY.md) path, source initially off, automatic range/filter, absolute W, REL/offset/duty off, closed competing applications, and available operator recovery. Warm up at least thirty minutes before preparation/accuracy-dependent observations ([operating manual, PDF 16](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=16)). Use the source-backed [ZERO](ZERO-AUTOMATION.md) and [CAL](CAL-AUTOMATION.md) procedures only when selected and applicable; no adjustment is automatic.
 
 ## Per-host cases and finite budgets
 

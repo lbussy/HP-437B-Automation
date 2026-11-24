@@ -561,7 +561,7 @@ def test_plot_report_handles_partial_and_both_axes(tmp_path):
         assert (tmp_path / "report" / (axis + ".png")).is_file()
 
 
-def test_complete_pdf_has_chart_on_summary_page(tmp_path):
+def test_complete_pdf_has_both_charts_on_summary_page(tmp_path):
     pytest.importorskip("matplotlib")
     pytest.importorskip("reportlab")
     pypdf = pytest.importorskip("pypdf")
@@ -570,8 +570,10 @@ def test_complete_pdf_has_chart_on_summary_page(tmp_path):
     output = tmp_path / "report"
     reports.publish(source, output, plot=True, include_pdf=True)
     pages = pypdf.PdfReader(output / "report.pdf").pages
-    assert len(pages[0].images) == 1 and "Coverage:" in pages[0].extract_text()
+    assert len(pages[0].images) == 2 and "Coverage:" in pages[0].extract_text()
     assert "P001" not in pages[0].extract_text()
+    assert "Supporting files:" not in pages[0].extract_text()
+    assert "Supporting files:" in pages[-1].extract_text()
     assert len(pages[1].images) == 0 and "P001" in pages[1].extract_text()
 
 

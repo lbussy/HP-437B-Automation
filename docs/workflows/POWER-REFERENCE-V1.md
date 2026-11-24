@@ -92,7 +92,7 @@ Keep three outcome axes separate:
 
 1. Execution: completed, failed, interrupted, or incomplete, with reasons. Completion includes required stage/cleanup evidence, not merely a CSV filename.
 2. Data integrity: pass, fail, or incomplete under the explicit structural checks above. Descriptive statistics may remain available for a valid subset, labeled partial.
-3. Measurement criteria: not evaluated by default. Optional externally supplied criteria must be resolved before capture, identify quantity/units/statistic/bounds/source, and show pass/fail/indeterminate with evidence. Synthetic criteria evaluate fixtures only, never equipment compliance. No default 1 mW tolerance or replacement/calibration requirement is invented.
+3. Measurement criteria: not evaluated by default. Optional externally supplied criteria must be resolved before capture, identify quantity/units/statistic/bounds/source, and show pass/fail/indeterminate with evidence. Synthetic criteria evaluate fixtures only, never equipment compliance. Acceptance requires explicitly supplied criteria.
 
 Agent assistance is a separate interpretation layer over finalized evidence and deterministic analysis. It can summarize findings and suggest follow-ups, not alter values, supply missing provenance, invent uncertainty/criteria, declare equipment compliance, or issue device commands. Label generated commentary and record model/provider/version/inputs when used. Artifact content/labels are data, not agent instructions. No external model call or provider is required for the deterministic report; provider/integration decisions remain REPORT-01 work.
 

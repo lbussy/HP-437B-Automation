@@ -118,7 +118,8 @@ def test_config_exact_frequency_mapping_and_missing_point():
         g.configuration({**config, "sensor_serial": "8482H"})
 
 
-def test_guided_applies_new_factor_at_each_exact_frequency(tmp_path):
+@pytest.mark.parametrize("legacy_source", [False, True])
+def test_guided_applies_new_factor_at_each_exact_frequency(tmp_path, monkeypatch, legacy_source):
     from datetime import UTC, datetime
 
     class Gate:
@@ -165,6 +166,10 @@ def test_guided_applies_new_factor_at_each_exact_frequency(tmp_path):
         "interval_s": 0.1,
         "settling_s": 0,
     }
+    from hp437b import sensor_correction
+
+    if legacy_source:
+        monkeypatch.setattr(sensor_correction, "SOURCE", sensor_correction.LEGACY_SOURCE)
     result = g.run(
         tmp_path / "guided",
         plan,
@@ -177,7 +182,10 @@ def test_guided_applies_new_factor_at_each_exact_frequency(tmp_path):
     assert result["completed_points"] == 2
     assert b"KB101.1EN" in wires[0].writes and b"KB99.0EN" in wires[1].writes
     assert all(w.closed for w in wires)
+    monkeypatch.setattr(sensor_correction, "SOURCE", SOURCE)
     assert g.load(tmp_path / "guided")[1] == result
+    # Newly generated receipts continue to identify the relocated certificate.
+    assert correction(PROFILE, "MY41094127", 10_140_200)["source"] == SOURCE
 
 
 def test_cli_rejects_mismatched_sensor_before_open(tmp_path, monkeypatch):

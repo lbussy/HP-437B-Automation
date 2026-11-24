@@ -1,0 +1,123 @@
+{
+  "schema": "hp437b.reference-relocation.v1",
+  "date": "2026-11-24",
+  "note": "Retained PDFs, manifests, and checksum lists keep their exact original bytes. Three superseded 8482H source files were removed at owner request; their paths, sizes, hashes, and source attribution are retained.",
+  "files": [
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf",
+      "path": "references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf",
+      "bytes": 9922829,
+      "sha256": "d9ec00559e5c98cc7bc84d60e0379205fd5fc32a53d2f3dc90dd3563235d1bac"
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/HP-437B-Service-Manual-00437-90076.pdf",
+      "path": "references/manuals/hp-437b/HP-437B-Service-Manual-00437-90076.pdf",
+      "bytes": 1776916,
+      "sha256": "effd9379bb874cf500d4b9ec08f4872096c4788c1c57d22a063e48fc32d3e99d"
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf",
+      "path": "references/manuals/hp-8480-series/HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf",
+      "bytes": 1850639,
+      "sha256": "2e30ab79ffaf90464e2202ef1f90770fb3a1b3ded8ad23cfa5c4ac43586b904d"
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/SHA256SUMS.txt",
+      "path": "references/manuals/SHA256SUMS.txt",
+      "bytes": 340,
+      "sha256": "67f988b947da102d85fb5b4285ee0f301c025acbe88a1c0f3b9231a0ee2e4bd3"
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/calibration/HP-8482A-SN-MY41094127-Calibration-2026-10-15.pdf",
+      "path": "references/calibration/hp-8482a/MY41094127/2026-10-15/originals/HP-8482A-SN-MY41094127-Calibration-2026-10-15.pdf",
+      "bytes": 737986,
+      "sha256": "99b12e373264a24de955b76a23a6403e9409cafce3861b0f6ea95ca7fb359199"
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/calibration/SHA256SUMS.txt",
+      "path": "references/calibration/hp-8482a/MY41094127/2026-10-15/originals/SHA256SUMS.txt",
+      "bytes": 116,
+      "sha256": "018a769d797171b238493024f41f00eb302437bad4795ba90ac818085235fa09"
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/calibration/import-manifest.json",
+      "path": "references/calibration/hp-8482a/MY41094127/2026-10-15/originals/import-manifest.json",
+      "bytes": 788,
+      "sha256": "ed158e79b359563633a7166b68145cb313f44d40332ba026cfc182a311e54c0b"
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/calibration/replacement-2026-11-19/HP-437B-SN-3125U22346-Calibration-2026-11-11.pdf",
+      "path": "references/calibration/hp-437b/3125U22346/2026-11-11/derived/HP-437B-SN-3125U22346-Calibration-2026-11-11.pdf",
+      "bytes": 1273794,
+      "sha256": "da20df01ea2c6f7d0bf74cd271964c19848b54703bff01cd34409c53001429c7"
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/calibration/replacement-2026-11-19/SHA256SUMS.txt",
+      "path": "references/calibration/hp-437b/3125U22346/2026-11-11/derived/SHA256SUMS.txt",
+      "bytes": 115,
+      "sha256": "b7e36403a518ebaaac21cd680b8f6710821a655bda2c2ecf3add4e71d73b71c4"
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/calibration/replacement-2026-11-19/import-manifest.json",
+      "path": "references/calibration/hp-437b/3125U22346/2026-11-11/derived/import-manifest.json",
+      "bytes": 1336,
+      "sha256": "52a9c043716c36b08d5a4700397a49a318158b67beb2ec092e5b7d24daa45b72"
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/calibration/sensor-8482h-2026-11-22/HP-8482H-SN-3318A09219-Calibration-2026-11-15.pdf",
+      "path": "references/calibration/hp-8482h/3318A09219/2026-11-15/derived/HP-8482H-SN-3318A09219-Calibration-2026-11-15.pdf",
+      "bytes": 479599,
+      "sha256": "39a195882380c243679945f84ed009cb7e8621b9eb5f5336f0b133c25d2c538a"
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/calibration/sensor-8482h-2026-11-22/HP-8482H-SN-3318A09219-Calibration-Chart-2026-11-15.pdf",
+      "path": "references/calibration/hp-8482h/3318A09219/2026-11-15/originals/HP-8482H-SN-3318A09219-Calibration-Chart-2026-11-15.pdf",
+      "bytes": 263790,
+      "sha256": "1e3dfe6ae27de66a4b24b9aef7f98175ffccabb5e41a89f50593f328046d004b"
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/calibration/sensor-8482h-2026-11-22/SHA256SUMS.txt",
+      "path": "references/calibration/hp-8482h/3318A09219/2026-11-15/SHA256SUMS.txt",
+      "bytes": 238,
+      "sha256": "191795eb7f2b398cab429718452b7d55a7983178e82aa780b918b4d431ae3b78"
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/calibration/sensor-8482h-2026-11-22/import-manifest.json",
+      "path": "references/calibration/hp-8482h/3318A09219/2026-11-15/import-manifest.json",
+      "bytes": 2820,
+      "sha256": "a231a50db555da525aba37069479bc3643f359009514c8cd551241b8a591f907"
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/download-manifest.json",
+      "path": "references/manuals/download-manifest.json",
+      "bytes": 2676,
+      "sha256": "92cd3b0ba2d95ca52f35ccb5506808c1e92a5141da32222207302944889d608a"
+    }
+  ],
+  "removed_files": [
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/calibration/sensor-8482h-2026-11-22/superseded-original/HP-8482H-SN-3318A09219-Calibration-2026-11-15.pdf",
+      "path": "references/calibration/hp-8482h/3318A09219/2026-11-15/superseded/HP-8482H-SN-3318A09219-Calibration-2026-11-15.pdf",
+      "bytes": 548832,
+      "sha256": "c87c296a45ed1b78077fadb5948df10f8b7be7f183173e341d42a7f1293445c7",
+      "removed_on": "2026-11-24",
+      "reason": "Owner requested only current calibration documents; retain source hashes and attribution in provenance."
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/calibration/sensor-8482h-2026-11-22/superseded-original/SHA256SUMS.txt",
+      "path": "references/calibration/hp-8482h/3318A09219/2026-11-15/superseded/SHA256SUMS.txt",
+      "bytes": 116,
+      "sha256": "6a341faceb77a1f3ba72a455cc21998b97e9ed39642d72071b3eea94783c5544",
+      "removed_on": "2026-11-24",
+      "reason": "Owner requested only current calibration documents; retain source hashes and attribution in provenance."
+    },
+    {
+      "previous_path": "output/pdf/hp-437b-8482a/calibration/sensor-8482h-2026-11-22/superseded-original/import-manifest.json",
+      "path": "references/calibration/hp-8482h/3318A09219/2026-11-15/superseded/import-manifest.json",
+      "bytes": 1123,
+      "sha256": "0b5f7e101ef1097ce1f490b122ebfd9512296c730ff927028504ca5c823c657d",
+      "removed_on": "2026-11-24",
+      "reason": "Owner requested only current calibration documents; retain source hashes and attribution in provenance."
+    }
+  ]
+}

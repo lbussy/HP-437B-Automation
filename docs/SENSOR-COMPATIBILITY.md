@@ -31,8 +31,8 @@ This is a reference for the listed standard legacy models and the stated 033 ext
 
 ## Sources
 
-- [HP 437B Operating Manual, 00437-90047](../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf), Table 1-3 (printed page 1-10), and Table 3-1 (printed page 3-3): named sensors, meter characteristics, and legacy power/frequency ranges.
-- [8480 Series Operating and Service Manual, 08481-90173](../output/pdf/hp-437b-8482a/HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf), printed page 15: coaxial sensor compatibility with the 437B and A/H/B/D measurement ranges; printed page 17: matched B-model attenuator; printed page 18: 8485A/D option 033.
+- [HP 437B Operating Manual, 00437-90047](../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf), Table 1-3 (printed page 1-10), and Table 3-1 (printed page 3-3): named sensors, meter characteristics, and legacy power/frequency ranges.
+- [8480 Series Operating and Service Manual, 08481-90173](../references/manuals/hp-8480-series/HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf), printed page 15: coaxial sensor compatibility with the 437B and A/H/B/D measurement ranges; printed page 17: matched B-model attenuator; printed page 18: 8485A/D option 033.
 - [Keysight sensor data sheet, 5990-4019](https://www.keysight.com/content/dam/keysight/en/doc/ungate/data-sheets/5990-4019.pdf), Table 26: high-sensitivity and waveguide sensor frequency/power specifications.
 - [Keysight V8486A product specifications](https://www.keysight.com/au/en/product/V8486A/waveguide-power-sensor-50-75-ghz.html): standard model range and 43x compatibility, with explicit H02 exclusion.
 - [Keysight thermocouple sensor compatibility notice](https://www.keysight.com/us/en/products/rf-power-meters/power-sensors/thermocouple-power-sensors.html): N8480-series exclusion for 43x meters, including CFT options.

@@ -1,0 +1,56 @@
+{
+  "updated_on": "2026-11-23",
+  "source": "Owner-supplied replacement calibration chart for Agilent 8482H SN 3318A09219.",
+  "issuer": "DXCONNECTION / Valley Precision Instrument Calibration Services",
+  "preservation": "Original two-page source, original import manifest, and original checksums archived unchanged under superseded-original/. Replacement chart copied byte for byte. Current two-page PDF is an owner-directed assembly, not an unchanged issuer-issued combined PDF.",
+  "files": [
+    {
+      "file": "HP-8482H-SN-3318A09219-Calibration-2026-11-15.pdf",
+      "bytes": 479599,
+      "sha256": "39a195882380c243679945f84ed009cb7e8621b9eb5f5336f0b133c25d2c538a",
+      "pages": 2,
+      "model": "8482H",
+      "serial_number": "3318A09219",
+      "certificate_number": "DXC-2026-3360-001",
+      "calibration_date": "2026-11-15",
+      "next_calibration_due": "2027-11-15",
+      "calibration_chart_date_as_printed": "2026-11-15",
+      "reference_calibration_factor_percent": 99,
+      "page_sources": [
+        {
+          "output_page": 1,
+          "source_file": "superseded-original/HP-8482H-SN-3318A09219-Calibration-2026-11-15.pdf",
+          "source_page": 1,
+          "source_sha256": "c87c296a45ed1b78077fadb5948df10f8b7be7f183173e341d42a7f1293445c7"
+        },
+        {
+          "output_page": 2,
+          "source_file": "HP-8482H-SN-3318A09219-Calibration-Chart-2026-11-15.pdf",
+          "source_page": 1,
+          "source_sha256": "1e3dfe6ae27de66a4b24b9aef7f98175ffccabb5e41a89f50593f328046d004b"
+        }
+      ],
+      "derivation": "PDFKit page assembly; original certificate page followed by supplied replacement chart. No annotations, OCR, or edits to page content. Both output pages visually checked; certificate rendering matches original."
+    },
+    {
+      "file": "HP-8482H-SN-3318A09219-Calibration-Chart-2026-11-15.pdf",
+      "bytes": 263790,
+      "sha256": "1e3dfe6ae27de66a4b24b9aef7f98175ffccabb5e41a89f50593f328046d004b",
+      "source_filename": "8482H Calibration Chart 3318A09219.pdf",
+      "pages": 1,
+      "preservation": "Unchanged complete replacement source, copied byte for byte.",
+      "calibration_chart_date_as_printed": "2026-11-15"
+    }
+  ],
+  "supersedes": {
+    "file": "superseded-original/HP-8482H-SN-3318A09219-Calibration-2026-11-15.pdf",
+    "manifest": "superseded-original/import-manifest.json",
+    "checksums": "superseded-original/SHA256SUMS.txt",
+    "sha256": "c87c296a45ed1b78077fadb5948df10f8b7be7f183173e341d42a7f1293445c7",
+    "old_chart_date_as_printed": "2025-11-15"
+  },
+  "review": {
+    "date_discrepancy": "Resolved by owner-supplied replacement chart dated 15-Nov-2026.",
+    "factors": "All 14 factors, 99% reference factor, 20.00 middle-column entries, and listed uncertainty values agree with the prior chart."
+  }
+}

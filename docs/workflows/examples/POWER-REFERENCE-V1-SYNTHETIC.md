@@ -53,7 +53,7 @@ The source-off mean change is **+0.01 µW**. Negative baseline readings are pres
 
 The example demonstrates the intended measurement-to-report structure: separate baselines and source-on captures, actual counts/timing, numerical summaries, nominal comparison, explicit provenance, and a clear separation between execution, data integrity, and measurement criteria. The two source-on stages share a mean; variation and endpoint changes remain visible rather than disappearing into a single pooled value.
 
-The useful next software result is an executable synthetic workflow producing the same evidence-linked analysis/report, including failed and interrupted cases. A supervised POWER REF run can later exercise the physical source path with the connected sensor. No radio or replacement meter is required to develop that pipeline.
+The useful next software result is an executable synthetic workflow producing the same evidence-linked analysis/report, including failed and interrupted cases. A supervised POWER REF run can later exercise the physical source path with the connected sensor. The synthetic pipeline runs without hardware.
 
 ## Evidence and calculation details
 

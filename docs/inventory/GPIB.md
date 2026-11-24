@@ -2,7 +2,7 @@
 
 Reviewed November 11, 2026. Table 3-2 declares twelve message classes: Data, Trigger, Clear, Remote, Local, Local Lockout, Clear Lockout/Set Local, Pass/Take Control (excluded), Require Service, Status Byte, Status Bit, and Abort. This reference expands them into20 operational entries, including addressing, EOI, transfer direction, poll lifecycle, and unaddressing. Numeric IDs are stable. One entry is an explicit instrument exclusion.
 
-The instrument declares SH1, AH1, T5, TE0, L3, LE0, SR1, RL1, PP1, DC1, DT1, C0 in [Table 3-2, printed 3-25–27/PDF 55–57](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=55). Adapter transport claims and backend implementation are separate evidence layers; see the profiles below.
+The instrument declares SH1, AH1, T5, TE0, L3, LE0, SR1, RL1, PP1, DC1, DT1, C0 in [Table 3-2, printed 3-25–27/PDF 55–57](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=55). Adapter transport claims and backend implementation are separate evidence layers; see the profiles below.
 
 ## Transport evidence profiles
 
@@ -38,7 +38,7 @@ Addressing / handshake — `ATN, device talk/listen address; SH1/AH1, T5/L3, TE0
 - Proposed API: open_resource USB…INSTR plus adapter discovery/configuration; GPIB-address API is not automatically applicable to a USB resource.
 - Transport evidence: T2 (profiles above).
 - Future qualification: Confirm actual address, adapter discovery and TLK/LSN; avoid assuming controller select code713 is a VISA address.
-- Source: [00437-90047, §§3-17–18; valid addresses3-99/PDF 129, printed 3-29/PDF 59](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=59).
+- Source: [00437-90047, §§3-17–18; valid addresses3-99/PDF 129, printed 3-29/PDF 59](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=59).
 - Open issue: A09.
 
 ### G002
@@ -49,7 +49,7 @@ Receive data — `Meter addressed to listen, ATN false, REN true`.
 - Proposed API: write()/write_raw(); viWrite
 - Transport evidence: T1 (profiles above).
 - Future qualification: Apply reversible setting, inspect state, preserve binary framing.
-- Source: [00437-90047, §§3-19–20, printed 3-30/PDF 60](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=60).
+- Source: [00437-90047, §§3-19–20, printed 3-30/PDF 60](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=60).
 - Open issue: —.
 
 ### G003
@@ -60,7 +60,7 @@ Send data / ordinary measurement read — `Meter addressed to talk, ATN false`.
 - Proposed API: read()/read_raw(); viRead; query() combines write plus read where appropriate.
 - Transport evidence: T1 (profiles above).
 - Future qualification: Compare raw ordinary read to display; distinguish TR0 held result and TR3 free-run.
-- Source: [00437-90047, §3-21, printed 3-31/PDF 61](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=61).
+- Source: [00437-90047, §3-21, printed 3-31/PDF 61](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=61).
 - Open issue: —.
 
 ### G004
@@ -71,7 +71,7 @@ End of message — `EOI on last byte; ASCII CR LF versus binary framing`.
 - Proposed API: read_raw(), read_bytes(), write_raw(); read_termination/write_termination and send_end require transport-specific validation.
 - Transport evidence: T3 (profiles above).
 - Future qualification: Verify ASCII CRLF/EOI and exact60-byte binary handling; test adapter termination configuration.
-- Source: [00437-90047, §3-21; learn3-32/PDF 62, printed 3-31/PDF 61](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=61).
+- Source: [00437-90047, §3-21; learn3-32/PDF 62, printed 3-31/PDF 61](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=61).
 - Open issue: A02.
 
 ### G005
@@ -82,7 +82,7 @@ Unlisten — `UNL or own talk address`.
 - Proposed API: Adapter-managed addressing; gpib_command() requires a supported GPIB resource path.
 - Transport evidence: T8 (profiles above).
 - Future qualification: Observe LSN/next transfer; establish whether adapter exposes explicit command.
-- Source: [00437-90047, §3-20, printed 3-30/PDF 60](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=60).
+- Source: [00437-90047, §3-20, printed 3-30/PDF 60](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=60).
 - Open issue: —.
 
 ### G006
@@ -93,7 +93,7 @@ Untalk — `UNT, another talk address, or own listen address`.
 - Proposed API: Adapter-managed addressing; gpib_command() on appropriate resource.
 - Transport evidence: T8 (profiles above).
 - Future qualification: Observe TLK and next transfer; verify complete response first.
-- Source: [00437-90047, §3-21, printed 3-31/PDF 61](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=61).
+- Source: [00437-90047, §3-21, printed 3-31/PDF 61](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=61).
 - Open issue: —.
 
 ### G007
@@ -104,7 +104,7 @@ Remote enable — `REN asserted then meter listen address; RL1 interface capabil
 - Proposed API: USBTMC initialization may assert REN automatically; explicit control_ren()/viGpibControlREN is a separate capability.
 - Transport evidence: T4 (profiles above).
 - Future qualification: Open/write and observe RMT; record capability flags and automatic behavior.
-- Source: [00437-90047, §3-15; §3-24 PDF 65, printed 3-28/PDF 58](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=58).
+- Source: [00437-90047, §3-15; §3-24 PDF 65, printed 3-28/PDF 58](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=58).
 - Open issue: A09.
 
 ### G008
@@ -119,7 +119,7 @@ Local lockout — `LLO`.
 - Proposed API: control_ren() lockout mode / USB488 LOCAL_LOCKOUT via supported backend.
 - Transport evidence: T5 (profiles above).
 - Future qualification: Verify LOCAL lockout only with a tested software restoration route.
-- Source: [00437-90047, §3-26, printed 3-36/PDF 66](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=66).
+- Source: [00437-90047, §3-26, printed 3-36/PDF 66](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=66).
 - Open issue: A09.
 
 ### G010
@@ -130,7 +130,7 @@ Clear lockout / set local — `REN deasserted`.
 - Proposed API: control_ren(deassert) / USB488 REN_CONTROL via supported backend.
 - Transport evidence: T5 (profiles above).
 - Future qualification: Verify clear lockout, local controls, and next remote transition.
-- Source: [00437-90047, §3-27, printed 3-36/PDF 66](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=66).
+- Source: [00437-90047, §3-27, printed 3-36/PDF 66](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=66).
 - Open issue: A09.
 
 ### G011
@@ -141,7 +141,7 @@ Selected device clear — `SDC to addressed listener; DC1`.
 - Proposed API: clear()/viClear (USBTMC clear translation requires adapter/backend support).
 - Transport evidence: T6 (profiles above).
 - Future qualification: Exercise pending I/O then SDC and successful next transfer; record preserved settings.
-- Source: [00437-90047, §3-22, printed 3-35/PDF 65](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
+- Source: [00437-90047, §3-22, printed 3-35/PDF 65](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
 - Open issue: —.
 
 ### G012
@@ -152,7 +152,7 @@ Universal device clear — `DCL addressed or unaddressed; DC1`.
 - Proposed API: gpib_command(DCL) on supported controller resource; USB clear mapping alone does not prove DCL exposure.
 - Transport evidence: T8 (profiles above).
 - Future qualification: Verify unaddressed behavior and distinguish clear scope.
-- Source: [00437-90047, §3-22, printed 3-35/PDF 65](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
+- Source: [00437-90047, §3-22, printed 3-35/PDF 65](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
 - Open issue: —.
 
 ### G013
@@ -163,7 +163,7 @@ Group execute trigger — `GET to remote addressed listener; DT1`.
 - Proposed API: assert_trigger()/viAssertTrigger with supported USB488 trigger translation.
 - Transport evidence: T7 (profiles above).
 - Future qualification: Test each GT policy and compare bus GET with ASCII trigger commands.
-- Source: [00437-90047, §3-23 Table 3-4; Triggering3-104/PDF 134, printed 3-35/PDF 65](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
+- Source: [00437-90047, §3-23 Table 3-4; Triggering3-104/PDF 134, printed 3-35/PDF 65](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
 - Open issue: A09.
 
 ### G014
@@ -174,7 +174,7 @@ Require service — `SRQ assertion; SR1`.
 - Proposed API: enable_event()/wait_on_event() for service_request; status polling via *STB? is a different strategy.
 - Transport evidence: T9 (profiles above).
 - Future qualification: Controlled source event; verify request notification, source decode, clearing, and masked behavior.
-- Source: [00437-90047, §3-29 and Fig 3-6/PDF 67, printed 3-36/PDF 66](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=66).
+- Source: [00437-90047, §3-29 and Fig 3-6/PDF 67, printed 3-36/PDF 66](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=66).
 - Open issue: A09.
 
 ### G015
@@ -185,7 +185,7 @@ Serial poll enable / status byte — `SPE then meter talk address`.
 - Proposed API: read_stb()/viReadSTB; USB488 READ_STATUS_BYTE adapter translation.
 - Transport evidence: T7 (profiles above).
 - Future qualification: Compare one-byte poll to *STB? and verify latch/buffer behavior.
-- Source: [00437-90047, §3-30, printed 3-38/PDF 68](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=68).
+- Source: [00437-90047, §3-30, printed 3-38/PDF 68](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=68).
 - Open issue: A06.
 
 ### G016
@@ -196,7 +196,7 @@ Serial poll disable — `SPD / unaddress talk / IFC`.
 - Proposed API: Normally internal to read_stb(); explicit SPD needs supported bus-controller path.
 - Transport evidence: T8 (profiles above).
 - Future qualification: Verify second event survives completion of first poll.
-- Source: [00437-90047, §3-30, printed 3-38/PDF 68](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=68).
+- Source: [00437-90047, §3-30, printed 3-38/PDF 68](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=68).
 - Open issue: —.
 
 ### G017
@@ -207,7 +207,7 @@ Parallel poll configure / enable — `PPC + PPE; PP1`.
 - Proposed API: Parallel-poll controller operations; VISA/PyVISA mapping remains an API-design question.
 - Transport evidence: T8 (profiles above).
 - Future qualification: Configure line/sense and verify service/nonservice response with suitable controller.
-- Source: [00437-90047, §3-32; Table 3-2/PDF 57, printed 3-39/PDF 69](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=69).
+- Source: [00437-90047, §3-32; Table 3-2/PDF 57, printed 3-39/PDF 69](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=69).
 - Open issue: A09.
 
 ### G018
@@ -218,7 +218,7 @@ Parallel poll disable / unconfigure — `PPD / PPU`.
 - Proposed API: Supported controller-specific poll API or raw bus commands; mapping uncertain.
 - Transport evidence: T8 (profiles above).
 - Future qualification: Verify PPD versus PPU scope and no response after unconfigure.
-- Source: [00437-90047, §3-32; Table 3-2/PDF 57, printed 3-40/PDF 70](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=70).
+- Source: [00437-90047, §3-32; Table 3-2/PDF 57, printed 3-40/PDF 70](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=70).
 - Open issue: A09.
 
 ### G019
@@ -229,7 +229,7 @@ Interface clear / abort — `IFC`.
 - Proposed API: send_ifc()/viGpibSendIFC on controller resource; USB abort bulk-in is not evidence of IFC.
 - Transport evidence: T8 (profiles above).
 - Future qualification: Observe TLK/LSN cleared; readdress and recover valid transfer.
-- Source: [00437-90047, §3-33, printed 3-40/PDF 70](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=70).
+- Source: [00437-90047, §3-33, printed 3-40/PDF 70](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=70).
 - Open issue: —.
 
 ### G020
@@ -240,5 +240,5 @@ Pass/take control exclusion — `TCT / controller capability C0`.
 - Proposed API: gpib_pass_control() excluded for this instrument.
 - Transport evidence: EX (profiles above).
 - Future qualification: Confirm documented C0 exclusion in capability model; hardware test unnecessary.
-- Source: [00437-90047, §3-28; Table 3-2/PDF 56, printed 3-36/PDF 66](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=66).
+- Source: [00437-90047, §3-28; Table 3-2/PDF 56, printed 3-36/PDF 66](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=66).
 - Open issue: —.

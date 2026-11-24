@@ -11,4 +11,5 @@ LICENSE text eol=lf
 *.png binary
 *.jpg binary
 *.zip binary
-output/pdf/** -text
+references/manuals/** -text
+references/calibration/** -text

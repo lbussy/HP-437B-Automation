@@ -4,7 +4,7 @@ Current meter **SN 3125U22346**, certificate **DXC-2026-3340-001**. This review 
 
 ## Source and identity
 
-[Four-page repository PDF](../../output/pdf/hp-437b-8482a/calibration/replacement-2026-11-19/HP-437B-SN-3125U22346-Calibration-2026-11-11.pdf), derived from the six-page source supplied as `20261119 HP-Agilent 437B Calibration.pdf`. The owner-selected repository copy omits duplicate source pages 5–6. Source pages 1–4 are retained in order, with page content unchanged. The supplied file outside the repository is untouched. All page references below use the original six-page source numbering; retained pages 1–4 have the same numbers in the stored PDF. The [import manifest](../../output/pdf/hp-437b-8482a/calibration/replacement-2026-11-19/import-manifest.json) records the source filename, separate source/stored-file page counts, byte counts, SHA-256 hashes, and page selection; the [checksum list](../../output/pdf/hp-437b-8482a/calibration/replacement-2026-11-19/SHA256SUMS.txt) verifies the stored file.
+The [four-page calibration record](../../references/calibration/hp-437b/3125U22346/2026-11-11/derived/HP-437B-SN-3125U22346-Calibration-2026-11-11.pdf) contains the signed certificate, supply checks, functional/HPIB checks, and performance results. Its [manifest](../../references/calibration/hp-437b/3125U22346/2026-11-11/derived/import-manifest.json) records document identity, page attribution, sizes, and SHA-256 hashes. The [checksum list](../../references/calibration/hp-437b/3125U22346/2026-11-11/derived/SHA256SUMS.txt) verifies the stored file. Page references below identify pages in the stored PDF.
 
 | Field | Laboratory record |
 | --- | --- |
@@ -27,7 +27,7 @@ The document's procedures, settings, and reproduction notice are source material
 | 3 | Signed and dated functional/HPIB checks and settings |
 | 4 | Signed performance test record |
 
-The stored PDF retains the owner-selected source pages 1–4. Its manifest records the page selection and distinct source/stored-file hashes.
+The stored PDF is a four-page derived document with source attribution in its manifest.
 
 ## Reported results
 
@@ -39,8 +39,8 @@ The stored PDF retains the owner-selected source pages 1–4. Its manifest recor
 | −15 V ripple | 0.79 mV RMS | 5 mV RMS maximum; within |
 | +15 V rail | +15.285 V | +15.0 ±0.5 V; within |
 | +15 V ripple | 0.75 mV RMS | 5 mV RMS maximum; within |
-| Rail-magnitude balance | 6 mV on retained page 2 | Within ±300 mV; removed source page 5 instead showed 57 mV using different operands |
-| RAM battery | 3.123 VDC | No numeric acceptance interval printed; replacement of BT1 recorded August 8, 2026 |
+| Rail-magnitude balance | 6 mV on retained page 2 | Within ±300 mV |
+| RAM battery | 3.123 VDC | No numeric acceptance interval printed |
 | Functional self-tests / HPIB function, page 3 | Pass | Laboratory-reported only; no project backend/host compatibility inference |
 | POWER REF output, page 4 | 1.001 mW | 0.988–1.012 mW; within |
 
@@ -70,7 +70,7 @@ These are document limitations. Apart from the ambiguous printed carryover inter
 
 ## Setup and project disposition
 
-**Current records:** reviewed. **HP-01:** remains in progress for relevant setup/interaction checks when used. The [prepared replacement procedure](REPLACEMENT-ACCEPTANCE.md) has not been executed on this unit; this review does not schedule a new hardware campaign or reopen completed software work.
+**Current records:** reviewed. **HP-01:** remains in progress for relevant setup/interaction checks when used. The [prepared bench procedure](BENCH-ACCEPTANCE.md) has not been executed on this unit; this review does not schedule a new hardware campaign or reopen completed software work.
 
 The sheets record **software 2.0**, **HPIB address 13**, and **REF CF 100.0%**, with a 100% table entry, limits off, and auto-filter 128. Confirm the physical meter identity, actual firmware/USB descriptor/resource, address, source state, and applicable setup before a selected run. An HPIB Pass on the laboratory sheet does not qualify this project's adapter, Mac, Pi, or recovery behavior on software 2.0.
 

@@ -4,7 +4,11 @@ from decimal import ROUND_HALF_UP, Decimal
 
 PROFILE = "8482a-MY41094127-20261015"
 SENSOR_SERIAL = "MY41094127"
-SOURCE = "output/pdf/hp-437b-8482a/calibration/HP-8482A-SN-MY41094127-Calibration-2026-10-15.pdf"
+SOURCE = "references/calibration/hp-8482a/MY41094127/2026-10-15/originals/HP-8482A-SN-MY41094127-Calibration-2026-10-15.pdf"
+# Historical sealed receipts retain this location and the same certificate hash.
+LEGACY_SOURCE = (
+    "output/pdf/hp-437b-8482a/calibration/HP-8482A-SN-MY41094127-Calibration-2026-10-15.pdf"
+)
 SOURCE_SHA256 = "99b12e373264a24de955b76a23a6403e9409cafce3861b0f6ea95ca7fb359199"
 # Certificate page 2, visually checked against both table and graph.
 TABLE = tuple(

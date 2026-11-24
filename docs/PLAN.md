@@ -12,12 +12,15 @@ Updated: November 24, 2026. The [project scope](PROJECT-SCOPE.md) governs develo
 | Measurement profile | Supervised internal-reference/readback profile in the [measurement policy](validation/MEASUREMENT-POLICY.md); explicit options preserve logger defaults |
 | Equipment | Meter SN 3125U22346 and sensor SN MY41094127; [current records](EQUIPMENT.md) |
 | Hardware scope | Relevant checks when equipment/operations are used; no blanket software-development gate |
+| Reference library | Permanent manuals and calibration records live under [references](../references/README.md); document bytes, checksums, and receipt provenance are verified |
 | Reporting | Traceable saved evidence, descriptive statistics, optional attributed criteria, PDF/portable delivery; [guided report presentation conventions](workflows/OPERATOR-GUIDED-SWEEPS.md#report-presentation) use concise prose and actual per-run identities |
 | DUT control | Human-guided operation, automatic simulation, and optional combined PDF are available. The conducted Pico direct-GPIO campaign captured all 52 points and verified restoration to 12 mA. Pi control remains open. Supply control remains optional |
 
 ## Implemented capabilities
 
 The typed command interface, bounded logger/transport, synthetic demos, provenance, analysis/reporting, WF-01–WF-03 reference runners, combined reference suites, saved-data reporting/history/comparison, supplied-limit assessments, profiles, guided captures, and explicit ZERO/CAL interface are implemented. WF-04–WF-06 and shared controls support synthetic/fake execution. Implementation is distinct from physical qualification of the current meter.
+
+The 8482H SN 3318A09219 [calibration record](validation/8482H-CALIBRATION-20261122.md) contains a certificate and chart dated November 15, 2026, with a 99% reference factor. The selected measurement sensor is the 8482A SN MY41094127.
 
 Serial-specific Mac-controlled 8482A MY41094127 factor correction is implemented for explicit-frequency logging and configured guided points. It uses certificate interpolation and records correction provenance; the [November 23 30 m bench record](validation/30M-POWER-20261123.md) reports one physical point at 24.500 mW indicated at sensor input, with stated limits.
 

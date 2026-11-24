@@ -8,7 +8,7 @@ Primary source: Operating Manual 00437-90047, January 1997. Table 3-5, printed 3
 
 ## Shared input and output rules
 
-All entries inherit these rules unless their entry specifies a different format or flags an ambiguity. Source: [§§3-19–21, printed 3-30–32/PDF 60–62](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=60).
+All entries inherit these rules unless their entry specifies a different format or flags an ambiguity. Source: [§§3-19–21, printed 3-30–32/PDF 60–62](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=60).
 
 - Program strings use ASCII command codes; alphabetic command codes are case-insensitive, while zero and letter O are distinct. Use uppercase command codes and labels in generated traffic. Fixed, floating-point, and exponential numeric input are documented.
 - Remote writes require REN asserted and the meter addressed to listen. Multiple commands may share a program string (manual example `PROC1LGCL100EN`). Respect message boundaries, and keep triggers last. Spaces appear in programming examples; arbitrary separator characters are not established.
@@ -20,13 +20,13 @@ All entries inherit these rules unless their entry specifies a different format 
 
 ## Shared state and persistence
 
-[§3-18, printed 3-29/PDF 59](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=59) sets turn-on interface state to local/unaddressed, cleared service mask/status, TR3, GT2, unassigned parallel-poll line, ESR128, and ESE0. Local/remote transitions preserve settings, with triggered operation returning to free-run on local operation as described in Triggering.
+[§3-18, printed 3-29/PDF 59](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=59) sets turn-on interface state to local/unaddressed, cleared service mask/status, TR3, GT2, unassigned parallel-poll line, ESR128, and ESE0. Local/remote transitions preserve settings, with triggered operation returning to free-run on local operation as described in Triggering.
 
-PRESET is defined by C entries for PR and [printed 3-73–74/PDF 103–104](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=103). ST/RC cover front-panel configurations, with RC0 at power-up. Zero data is retained through power-off separately from those registers. Sensor tables are RAM-backed; tables0/1 have ROM defaults, and error57 recovery can replace stored settings. For device clear, the manual guarantees aborting pending I/O; preservation beyond that guarantee is a qualification question. Persistence not expressly established for a command is uncertain, rather than inferred from its name.
+PRESET is defined by C entries for PR and [printed 3-73–74/PDF 103–104](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=103). ST/RC cover front-panel configurations, with RC0 at power-up. Zero data is retained through power-off separately from those registers. Sensor tables are RAM-backed; tables0/1 have ROM defaults, and error57 recovery can replace stored settings. For device clear, the manual guarantees aborting pending I/O; preservation beyond that guarantee is a qualification question. Persistence not expressly established for a command is uncertain, rather than inferred from its name.
 
 ## Status and error schemas
 
-[Fig 3-5/Table 3-3, printed 3-33–34/PDF 63–64](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=63) defines SM as `AAaaBBCCccDDddEFGHIJKLMNOP` (26 characters), CR LF/EOI:
+[Fig 3-5/Table 3-3, printed 3-33–34/PDF 63–64](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=63) defines SM as `AAaaBBCCccDDddEFGHIJKLMNOP` (26 characters), CR LF/EOI:
 
 | Field | Meaning |
 | --- | --- |
@@ -44,9 +44,9 @@ PRESET is defined by C entries for PR and [printed 3-73–74/PDF 103–104](../.
 
 SM updates after a measurement. Reserved-field widths require raw-frame validation; retain all26 characters rather than stripping zeros.
 
-[Fig 3-6 and §§3-29–31, printed 3-37–39/PDF 67–69](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=67): Status Byte weights1=data-ready,2=cal/zero complete,4=entry error,8=measurement error,16=limit violation,32=enabled ESR event,64=RQS,128=unused. Service mask gates RQS, not the existence of source bits. *STB? reads without clearing; serial poll has its own latched/buffered clearing sequence. CS clears Status Byte/SRQ; *CLS names all status registers. ESR uses128 power-on,32 command error,16 execution error,8 device-dependent error; ESE gates ESR contribution to bit5. Exact read-clear and mask-reset interactions are A06.
+[Fig 3-6 and §§3-29–31, printed 3-37–39/PDF 67–69](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=67): Status Byte weights1=data-ready,2=cal/zero complete,4=entry error,8=measurement error,16=limit violation,32=enabled ESR event,64=RQS,128=unused. Service mask gates RQS, not the existence of source bits. *STB? reads without clearing; serial poll has its own latched/buffered clearing sequence. CS clears Status Byte/SRQ; *CLS names all status registers. ESR uses128 power-on,32 command error,16 execution error,8 device-dependent error; ESE gates ESR contribution to bit5. Exact read-clear and mask-reset interactions are A06.
 
-[AppendixA, printedA-1–4/PDF 151–154](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=151): measurement errors1–49, entry errors50–59/80–99, service errors60–79. Documented examples:1 cannot zero,5 calibration error,11 overload,15 please zero,17 up-range,21 over limit,23 under limit,31 no sensor,33 dual sensor input;50 KB,51 OS,52 RM,54 RC,55 ST,56 CL,57 RAM recall failure;80 empty table,81 DY,82 FR,85 RE,86 RF,87 SE,88 label,90 missing prefix,91 invalid code,92 ESE,93 service mask. See TableA-1 for recovery conditions. The latest SM error need not represent every event: latch behavior depends on mask/SRQ and whether error sentinel data was transferred. Remove cause and read SM according to AppendixA; preserve evidence before clearing.
+[AppendixA, printedA-1–4/PDF 151–154](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=151): measurement errors1–49, entry errors50–59/80–99, service errors60–79. Documented examples:1 cannot zero,5 calibration error,11 overload,15 please zero,17 up-range,21 over limit,23 under limit,31 no sensor,33 dual sensor input;50 KB,51 OS,52 RM,54 RC,55 ST,56 CL,57 RAM recall failure;80 empty table,81 DY,82 FR,85 RE,86 RF,87 SE,88 label,90 missing prefix,91 invalid code,92 ESE,93 service mask. See TableA-1 for recovery conditions. The latest SM error need not represent every event: latch behavior depends on mask/SRQ and whether error sentinel data was transferred. Remove cause and read SM according to AppendixA; preserve evidence before clearing.
 
 ## Command entries
 
@@ -62,7 +62,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR selects table REF CF but preserves calibrated gain. Entry value is retained if aborted; an incoming command aborts calibration. Internal gain is separate from stored front-panel configurations. The manual calibration example uses serial polling for completion (bit1) and error (bit3), with a10-second example timeout. ASCII status queries are incoming program commands and can abort calibration; use a validated bus-status route.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Prepared reference path; monitor completion/error, then compare to the known reference.
-- Source: [00437-90047, CAL remote procedure; see also 3-46, 3-48–50, printed 3-47, PDF 77](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=77).
+- Source: [00437-90047, CAL remote procedure; see also 3-46, 3-48–50, printed 3-47, PDF 77](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=77).
 - Open issue: A04.
 
 ### C002
@@ -75,7 +75,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Scope beyond the named status registers and enable-mask persistence require confirmation; turn-on masks are zero.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Create controlled status conditions and verify clearing while recording masks.
-- Source: [00437-90047, Table 3-5; see 3-36, 3-38, printed 3-42, PDF 72](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=72).
+- Source: [00437-90047, Table 3-5; see 3-36, 3-38, printed 3-42, PDF 72](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=72).
 - Open issue: A06.
 
 ### C003
@@ -88,7 +88,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Clears status rather than changing measurement configuration; later conditions can set bits again.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Compare *STB? before/after controlled event; verify later events remain observable.
-- Source: [00437-90047, §3-30; see 3-69, 3-108, printed 3-38, PDF 68](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=68).
+- Source: [00437-90047, §3-30; see 3-69, 3-108, printed 3-38, PDF 68](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=68).
 - Open issue: —.
 
 ### C004
@@ -101,7 +101,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves tables; edited data persists in RAM. Factory tables 0/1 have ROM defaults; cleared 2–9 factory contents are not recoverable directly.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify intended table only is cleared and inspect REF CF.
-- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C005
@@ -114,7 +114,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves tables; edited data persists in RAM. Factory tables 0/1 have ROM defaults; cleared 2–9 factory contents are not recoverable directly.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify intended table only is cleared and inspect REF CF.
-- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C006
@@ -127,7 +127,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves tables; edited data persists in RAM. Factory tables 0/1 have ROM defaults; cleared 2–9 factory contents are not recoverable directly.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify intended table only is cleared and inspect REF CF.
-- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C007
@@ -140,7 +140,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves tables; edited data persists in RAM. Factory tables 0/1 have ROM defaults; cleared 2–9 factory contents are not recoverable directly.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify intended table only is cleared and inspect REF CF.
-- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C008
@@ -153,7 +153,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves tables; edited data persists in RAM. Factory tables 0/1 have ROM defaults; cleared 2–9 factory contents are not recoverable directly.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify intended table only is cleared and inspect REF CF.
-- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C009
@@ -166,7 +166,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves tables; edited data persists in RAM. Factory tables 0/1 have ROM defaults; cleared 2–9 factory contents are not recoverable directly.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify intended table only is cleared and inspect REF CF.
-- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C010
@@ -179,7 +179,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves tables; edited data persists in RAM. Factory tables 0/1 have ROM defaults; cleared 2–9 factory contents are not recoverable directly.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify intended table only is cleared and inspect REF CF.
-- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C011
@@ -192,7 +192,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves tables; edited data persists in RAM. Factory tables 0/1 have ROM defaults; cleared 2–9 factory contents are not recoverable directly.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify intended table only is cleared and inspect REF CF.
-- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C012
@@ -205,7 +205,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves tables; edited data persists in RAM. Factory tables 0/1 have ROM defaults; cleared 2–9 factory contents are not recoverable directly.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify intended table only is cleared and inspect REF CF.
-- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C013
@@ -218,7 +218,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves tables; edited data persists in RAM. Factory tables 0/1 have ROM defaults; cleared 2–9 factory contents are not recoverable directly.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify intended table only is cleared and inspect REF CF.
-- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; see 3-85, 3-92, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C014
@@ -231,7 +231,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: DE, another display function, PR, or local operation restores ordinary display.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Observe all segments and restore DE.
-- Source: [00437-90047, Display remote procedure, printed 3-53, PDF 83](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=83).
+- Source: [00437-90047, Display remote procedure, printed 3-53, PDF 83](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=83).
 - Open issue: —.
 
 ### C015
@@ -244,7 +244,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR sets off and duty value 1.000%; value/status can be stored and recalled.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Known average power; verify correction and DTY CY indication, then restore.
-- Source: [00437-90047, DUTY CYCLE remote procedure; see 3-56, printed 3-55, PDF 85](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=85).
+- Source: [00437-90047, DUTY CYCLE remote procedure; see 3-56, printed 3-55, PDF 85](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=85).
 - Open issue: —.
 
 ### C016
@@ -257,7 +257,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR sets off and duty value 1.000%; value/status can be stored and recalled.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Known average power; verify correction and DTY CY indication, then restore.
-- Source: [00437-90047, DUTY CYCLE remote procedure; see 3-56, printed 3-55, PDF 85](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=85).
+- Source: [00437-90047, DUTY CYCLE remote procedure; see 3-56, printed 3-55, PDF 85](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=85).
 - Open issue: —.
 
 ### C017
@@ -270,7 +270,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Another display function, PR, or local operation restores display.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Compare bus reading while blank, then restore DE.
-- Source: [00437-90047, Display; aliases in Table 3-5, printed 3-41/PDF 71, printed 3-53, PDF 83](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=83).
+- Source: [00437-90047, Display; aliases in Table 3-5, printed 3-41/PDF 71, printed 3-53, PDF 83](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=83).
 - Open issue: A07.
 
 ### C018
@@ -283,7 +283,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Another display function, PR, or local operation restores display.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Compare bus reading while blank, then restore DE.
-- Source: [00437-90047, Display; aliases in Table 3-5, printed 3-41/PDF 71, printed 3-53, PDF 83](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=83).
+- Source: [00437-90047, Display; aliases in Table 3-5, printed 3-41/PDF 71, printed 3-53, PDF 83](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=83).
 - Open issue: A07.
 
 ### C019
@@ -296,7 +296,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Turn-on, PR, and local mode use enabled display.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Restore display after DA/DD/DU and compare front panel.
-- Source: [00437-90047, Display remote procedure, printed 3-53, PDF 83](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=83).
+- Source: [00437-90047, Display remote procedure, printed 3-53, PDF 83](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=83).
 - Open issue: —.
 
 ### C020
@@ -309,7 +309,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Entry state changes until EN commits or EX cancels; shifted key functions are described locally, without a separate remote SHIFT code.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Use a reversible entry; compare cursor/value movement and cancel EX.
-- Source: [00437-90047, Arrows program codes, printed 3-44, PDF 74](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=74).
+- Source: [00437-90047, Arrows program codes, printed 3-44, PDF 74](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=74).
 - Open issue: —.
 
 ### C021
@@ -322,7 +322,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Entry state changes until EN commits or EX cancels; shifted key functions are described locally, without a separate remote SHIFT code.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Use a reversible entry; compare cursor/value movement and cancel EX.
-- Source: [00437-90047, Arrows program codes, printed 3-44, PDF 74](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=74).
+- Source: [00437-90047, Arrows program codes, printed 3-44, PDF 74](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=74).
 - Open issue: —.
 
 ### C022
@@ -335,7 +335,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Entry state changes until EN commits or EX cancels; shifted key functions are described locally, without a separate remote SHIFT code.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Use a reversible entry; compare cursor/value movement and cancel EX.
-- Source: [00437-90047, Arrows program codes, printed 3-44, PDF 74](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=74).
+- Source: [00437-90047, Arrows program codes, printed 3-44, PDF 74](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=74).
 - Open issue: —.
 
 ### C023
@@ -348,7 +348,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Entry state changes until EN commits or EX cancels; shifted key functions are described locally, without a separate remote SHIFT code.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Use a reversible entry; compare cursor/value movement and cancel EX.
-- Source: [00437-90047, Arrows program codes, printed 3-44, PDF 74](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=74).
+- Source: [00437-90047, Arrows program codes, printed 3-44, PDF 74](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=74).
 - Open issue: —.
 
 ### C024
@@ -361,7 +361,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Another display function, PR, or local operation restores display.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Send a bounded message, observe display, restore DE.
-- Source: [00437-90047, Display user message, printed 3-53, PDF 83](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=83).
+- Source: [00437-90047, Display user message, printed 3-53, PDF 83](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=83).
 - Open issue: A07.
 
 ### C025
@@ -374,7 +374,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR sets 1.000%, off; retained for DC1 and configuration store/recall.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Known duty/average input; confirm corrected reading and restore.
-- Source: [00437-90047, DUTY CYCLE; see 3-56, printed 3-55, PDF 85](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=85).
+- Source: [00437-90047, DUTY CYCLE; see 3-56, printed 3-55, PDF 85](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=85).
 - Open issue: —.
 
 ### C026
@@ -387,7 +387,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: State depends on active function. EX cancels uncommitted entry.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Reversible numeric edit and EX cancellation; test table traversal on a backed-up table.
-- Source: [00437-90047, ENTER remote procedure; see 3-87, 3-91, printed 3-58, PDF 88](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=88).
+- Source: [00437-90047, ENTER remote procedure; see 3-87, 3-91, printed 3-58, PDF 88](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=88).
 - Open issue: —.
 
 ### C027
@@ -400,7 +400,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Consumption/clearing behavior remains unspecified.
 - Response: XXX CR LF with EOI; common query summary gives ASCII 000–255. Exact error-selection/queue behavior is unresolved.
 - Future qualification: Controlled recoverable entry error; compare ERR?, SM, and *STB?; record side effects.
-- Source: [00437-90047, §3-34 output formats; Table 3-5 PDF 71, printed 3-40, PDF 70](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=70).
+- Source: [00437-90047, §3-34 output formats; Table 3-5 PDF 71, printed 3-40, PDF 70](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=70).
 - Open issue: A06.
 
 ### C028
@@ -413,7 +413,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Turn-on value 128; read-clear behavior is not explicitly established in the supplied description.
 - Response: ASCII register value 000–255, CR LF, EOI.
 - Future qualification: Read twice after a controlled event and determine clearing without assuming generic IEEE semantics.
-- Source: [00437-90047, §3-31; definitions Fig.3-7 printed 3-39/PDF 69, printed 3-38, PDF 68](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=68).
+- Source: [00437-90047, §3-31; definitions Fig.3-7 printed 3-39/PDF 69, printed 3-38, PDF 68](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=68).
 - Open issue: A06.
 
 ### C029
@@ -426,7 +426,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Turn-on mask 0; error 92 reports invalid entry. Exact framing and reset interactions require confirmation.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Set/read back an isolated mask; provoke a controlled event; restore mask.
-- Source: [00437-90047, §3-31 and Fig.3-7; error 92 in A-4/PDF 154, printed 3-39, PDF 69](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=69).
+- Source: [00437-90047, §3-31 and Fig.3-7; error 92 in A-4/PDF 154, printed 3-39, PDF 69](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=69).
 - Open issue: A06.
 
 ### C030
@@ -439,7 +439,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Read operation; clearing side effects not stated.
 - Response: ASCII mask 000–255, CR LF, EOI.
 - Future qualification: Read back each allowed mask and record unchanged measurement settings.
-- Source: [00437-90047, §3-31; output summary 3-40/PDF 70, printed 3-39, PDF 69](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=69).
+- Source: [00437-90047, §3-31; output summary 3-40/PDF 70, printed 3-39, PDF 69](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=69).
 - Open issue: —.
 
 ### C031
@@ -452,7 +452,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Numeric data is directed to the table until EX. PR preserves tables; keep backup. Remote deletion semantics need confirmation.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read one pair, verify table selection and EX.
-- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C032
@@ -465,7 +465,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Numeric data is directed to the table until EX. PR preserves tables; keep backup. Remote deletion semantics need confirmation.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read one pair, verify table selection and EX.
-- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C033
@@ -478,7 +478,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Numeric data is directed to the table until EX. PR preserves tables; keep backup. Remote deletion semantics need confirmation.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read one pair, verify table selection and EX.
-- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C034
@@ -491,7 +491,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Numeric data is directed to the table until EX. PR preserves tables; keep backup. Remote deletion semantics need confirmation.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read one pair, verify table selection and EX.
-- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C035
@@ -504,7 +504,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Numeric data is directed to the table until EX. PR preserves tables; keep backup. Remote deletion semantics need confirmation.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read one pair, verify table selection and EX.
-- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C036
@@ -517,7 +517,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Numeric data is directed to the table until EX. PR preserves tables; keep backup. Remote deletion semantics need confirmation.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read one pair, verify table selection and EX.
-- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C037
@@ -530,7 +530,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Numeric data is directed to the table until EX. PR preserves tables; keep backup. Remote deletion semantics need confirmation.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read one pair, verify table selection and EX.
-- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C038
@@ -543,7 +543,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Numeric data is directed to the table until EX. PR preserves tables; keep backup. Remote deletion semantics need confirmation.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read one pair, verify table selection and EX.
-- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C039
@@ -556,7 +556,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Numeric data is directed to the table until EX. PR preserves tables; keep backup. Remote deletion semantics need confirmation.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read one pair, verify table selection and EX.
-- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C040
@@ -569,7 +569,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Numeric data is directed to the table until EX. PR preserves tables; keep backup. Remote deletion semantics need confirmation.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read one pair, verify table selection and EX.
-- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data remote procedure; capacities 3-84/PDF 114; example 3-89/PDF 119, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C041
@@ -582,7 +582,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Required to leave ET entry mode; prior committed values remain.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Open a reversible entry, alter without EN, exit, and verify prior value.
-- Source: [00437-90047, EXIT; see 3-60, printed 3-59, PDF 89](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=89).
+- Source: [00437-90047, EXIT; see 3-60, printed 3-59, PDF 89](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=89).
 - Open issue: —.
 
 ### C042
@@ -595,7 +595,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR enables auto; changing resolution also enables auto filtering.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Verify SM filter field, change range/resolution, observe auto setting.
-- Source: [00437-90047, Filter remote procedure; see 3-61–64, printed 3-63, PDF 93](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=93).
+- Source: [00437-90047, Filter remote procedure; see 3-61–64, printed 3-63, PDF 93](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=93).
 - Open issue: —.
 
 ### C043
@@ -608,7 +608,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR returns auto; selected filter is a configuration value.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Start auto, issue FH, verify SM and fixed length across range change.
-- Source: [00437-90047, Filter hold comments, printed 3-64, PDF 94](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=94).
+- Source: [00437-90047, Filter hold comments, printed 3-64, PDF 94](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=94).
 - Open issue: —.
 
 ### C044
@@ -621,7 +621,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR returns auto; resolution changes enable auto. Store/recall preserves filter setting.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Verify each legal count via SM; test rounding cautiously and measure settling.
-- Source: [00437-90047, Filter remote procedure; see 3-61–64, printed 3-63, PDF 93](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=93).
+- Source: [00437-90047, Filter remote procedure; see 3-61–64, printed 3-63, PDF 93](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=93).
 - Open issue: A08.
 
 ### C045
@@ -634,7 +634,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR sets 50 MHz. Empty table gives error 80. Frequency is a correction lookup, not a sensor bandwidth extension.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Known sensor table; verify endpoints/interpolation and actual sensor range.
-- Source: [00437-90047, FREQ; see 3-66–67, printed 3-65, PDF 95](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=95).
+- Source: [00437-90047, FREQ; see 3-66–67, printed 3-65, PDF 95](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=95).
 - Open issue: A04.
 
 ### C046
@@ -647,7 +647,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Turn-on and PR select GT2.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Configure each policy then separately test bus GET with readback/status.
-- Source: [00437-90047, §3-23 Table 3-4; PRESET 3-73, printed 3-35, PDF 65](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
+- Source: [00437-90047, §3-23 Table 3-4; PRESET 3-73, printed 3-35, PDF 65](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
 - Open issue: —.
 
 ### C047
@@ -660,7 +660,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Turn-on and PR select GT2.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Configure each policy then separately test bus GET with readback/status.
-- Source: [00437-90047, §3-23 Table 3-4; PRESET 3-73, printed 3-35, PDF 65](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
+- Source: [00437-90047, §3-23 Table 3-4; PRESET 3-73, printed 3-35, PDF 65](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
 - Open issue: —.
 
 ### C048
@@ -673,7 +673,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Turn-on and PR select GT2.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Configure each policy then separately test bus GET with readback/status.
-- Source: [00437-90047, §3-23 Table 3-4; PRESET 3-73, printed 3-35, PDF 65](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
+- Source: [00437-90047, §3-23 Table 3-4; PRESET 3-73, printed 3-35, PDF 65](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=65).
 - Open issue: —.
 
 ### C049
@@ -686,7 +686,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Applies to the active entry; ET still requires factor plus EN.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Encode one equivalent frequency in all units; compare selected correction.
-- Source: [00437-90047, §3-20; FREQ 3-65/PDF 95 and Sensor Data 3-87/PDF 117, printed 3-31, PDF 61](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=61).
+- Source: [00437-90047, §3-20; FREQ 3-65/PDF 95 and Sensor Data 3-87/PDF 117, printed 3-31, PDF 61](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=61).
 - Open issue: —.
 
 ### C050
@@ -699,7 +699,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Applies to the active entry; ET still requires factor plus EN.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Encode one equivalent frequency in all units; compare selected correction.
-- Source: [00437-90047, §3-20; FREQ 3-65/PDF 95 and Sensor Data 3-87/PDF 117, printed 3-31, PDF 61](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=61).
+- Source: [00437-90047, §3-20; FREQ 3-65/PDF 95 and Sensor Data 3-87/PDF 117, printed 3-31, PDF 61](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=61).
 - Open issue: —.
 
 ### C051
@@ -712,7 +712,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Applies to the active entry; ET still requires factor plus EN.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Encode one equivalent frequency in all units; compare selected correction.
-- Source: [00437-90047, §3-20; FREQ 3-65/PDF 95 and Sensor Data 3-87/PDF 117, printed 3-31, PDF 61](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=61).
+- Source: [00437-90047, §3-20; FREQ 3-65/PDF 95 and Sensor Data 3-87/PDF 117, printed 3-31, PDF 61](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=61).
 - Open issue: —.
 
 ### C052
@@ -725,7 +725,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Applies to the active entry; ET still requires factor plus EN.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Encode one equivalent frequency in all units; compare selected correction.
-- Source: [00437-90047, §3-20; FREQ 3-65/PDF 95 and Sensor Data 3-87/PDF 117, printed 3-31, PDF 61](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=61).
+- Source: [00437-90047, §3-20; FREQ 3-65/PDF 95 and Sensor Data 3-87/PDF 117, printed 3-31, PDF 61](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=61).
 - Open issue: —.
 
 ### C053
@@ -738,7 +738,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Output-mode persistence after read is not specified.
 - Response: Detailed form: HEWLETT-PACKARD,437B,,X.X (spacing/termination to verify); empty serial field and firmware version. Preserve raw response.
 - Future qualification: Read all documented spellings, compare raw bytes, firmware, and next read behavior.
-- Source: [00437-90047, §3-21 Identification; Table 3-5 printed 3-41/PDF 71, printed 3-33, PDF 63](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=63).
+- Source: [00437-90047, §3-21 Identification; Table 3-5 printed 3-41/PDF 71, printed 3-33, PDF 63](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=63).
 - Open issue: A01.
 
 ### C054
@@ -751,7 +751,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Output-mode persistence after read is not specified.
 - Response: Detailed form: HEWLETT-PACKARD,437B,,X.X (spacing/termination to verify); empty serial field and firmware version. Preserve raw response.
 - Future qualification: Read all documented spellings, compare raw bytes, firmware, and next read behavior.
-- Source: [00437-90047, §3-21 Identification; Table 3-5 printed 3-41/PDF 71, printed 3-33, PDF 63](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=63).
+- Source: [00437-90047, §3-21 Identification; Table 3-5 printed 3-41/PDF 71, printed 3-33, PDF 63](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=63).
 - Open issue: A01.
 
 ### C055
@@ -764,7 +764,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Output-mode persistence after read is not specified.
 - Response: Detailed form: HEWLETT-PACKARD,437B,,X.X (spacing/termination to verify); empty serial field and firmware version. Preserve raw response.
 - Future qualification: Read all documented spellings, compare raw bytes, firmware, and next read behavior.
-- Source: [00437-90047, §3-21 Identification; Table 3-5 printed 3-41/PDF 71, printed 3-33, PDF 63](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=63).
+- Source: [00437-90047, §3-21 Identification; Table 3-5 printed 3-41/PDF 71, printed 3-33, PDF 63](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=63).
 - Open issue: A01.
 
 ### C056
@@ -777,7 +777,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR selects factor from current table. FR can select a table-derived factor.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Apply known factor and verify readback/display; use intended sensor-specific factor.
-- Source: [00437-90047, CAL FAC; see 3-52, printed 3-51, PDF 81](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=81).
+- Source: [00437-90047, CAL FAC; see 3-52, printed 3-51, PDF 81](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=81).
 - Open issue: A04.
 
 ### C057
@@ -790,7 +790,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR selects log dBm; configuration store/recall includes units.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Verify absolute and relative units alongside SM P field.
-- Source: [00437-90047, Table 3-5; REL 3-78/PDF 108, printed 3-41, PDF 71](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=71).
+- Source: [00437-90047, Table 3-5; REL 3-78/PDF 108, printed 3-41, PDF 71](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=71).
 - Open issue: —.
 
 ### C058
@@ -803,7 +803,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR selects log dBm; configuration store/recall includes units.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Verify absolute and relative units alongside SM P field.
-- Source: [00437-90047, Table 3-5; REL 3-78/PDF 108, printed 3-41, PDF 71](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=71).
+- Source: [00437-90047, Table 3-5; REL 3-78/PDF 108, printed 3-41, PDF 71](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=71).
 - Open issue: —.
 
 ### C059
@@ -816,7 +816,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR sets +90.000 dBm and disables checking; limits can be stored/recalled.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Known input and correction settings; compare threshold, error21, and status bit4.
-- Source: [00437-90047, Limits remote procedure; range 3-68/PDF 98, printed 3-69, PDF 99](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=99).
+- Source: [00437-90047, Limits remote procedure; range 3-68/PDF 98, printed 3-69, PDF 99](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=99).
 - Open issue: —.
 
 ### C060
@@ -829,7 +829,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR sets −90.000 dBm and disables checking; limits can be stored/recalled.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Known input and correction settings; compare threshold, error23, and status bit4.
-- Source: [00437-90047, Limits remote procedure; range 3-68/PDF 98, printed 3-69, PDF 99](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=99).
+- Source: [00437-90047, Limits remote procedure; range 3-68/PDF 98, printed 3-69, PDF 99](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=99).
 - Open issue: —.
 
 ### C061
@@ -842,7 +842,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR disables; local transition retains enable; limits/status can be stored/recalled.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Cross known high/low thresholds, verify indication and recovery.
-- Source: [00437-90047, Limits; see 3-70, printed 3-69, PDF 99](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=99).
+- Source: [00437-90047, Limits; see 3-70, printed 3-69, PDF 99](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=99).
 - Open issue: —.
 
 ### C062
@@ -855,7 +855,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR disables; local transition retains enable; limits/status can be stored/recalled.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Cross known high/low thresholds, verify indication and recovery.
-- Source: [00437-90047, Limits; see 3-70, printed 3-69, PDF 99](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=99).
+- Source: [00437-90047, Limits; see 3-70, printed 3-69, PDF 99](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=99).
 - Open issue: —.
 
 ### C063
@@ -868,7 +868,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Snapshot includes units, REL, oscillator, factors, offset, range/filter, sensor ID, duty, resolution, frequency, limits. Exact byte layout is undocumented.
 - Response: 60 bytes: ASCII @2 followed by 58 arbitrary binary bytes, EOI on final byte; preserve uninterpreted bytes.
 - Future qualification: Capture exact length without text termination; restore only a backed-up known snapshot.
-- Source: [00437-90047, §3-21 Learn Mode; summary 3-40–41, printed 3-32, PDF 62](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=62).
+- Source: [00437-90047, §3-21 Learn Mode; summary 3-40–41, printed 3-32, PDF 62](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=62).
 - Open issue: A02.
 
 ### C064
@@ -881,7 +881,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Snapshot includes units, REL, oscillator, factors, offset, range/filter, sensor ID, duty, resolution, frequency, limits. Exact byte layout is undocumented.
 - Response: 60 bytes: ASCII @2 followed by 58 arbitrary binary bytes, EOI on final byte; preserve uninterpreted bytes.
 - Future qualification: Capture exact length without text termination; restore only a backed-up known snapshot.
-- Source: [00437-90047, §3-21 Learn Mode; summary 3-40–41, printed 3-32, PDF 62](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=62).
+- Source: [00437-90047, §3-21 Learn Mode; summary 3-40–41, printed 3-32, PDF 62](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=62).
 - Open issue: A02.
 
 ### C065
@@ -894,7 +894,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR off; ZE temporarily off; CL temporarily on; both restore previous state. Store/recall includes oscillator state.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Observe output with suitable load/sensor; verify restore after authorized ZE/CL.
-- Source: [00437-90047, PWR REF, printed 3-75, PDF 105](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=105).
+- Source: [00437-90047, PWR REF, printed 3-75, PDF 105](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=105).
 - Open issue: —.
 
 ### C066
@@ -907,7 +907,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR off; ZE temporarily off; CL temporarily on; both restore previous state. Store/recall includes oscillator state.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Observe output with suitable load/sensor; verify restore after authorized ZE/CL.
-- Source: [00437-90047, PWR REF, printed 3-75, PDF 105](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=105).
+- Source: [00437-90047, PWR REF, printed 3-75, PDF 105](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=105).
 - Open issue: —.
 
 ### C067
@@ -920,7 +920,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: In table-reading example: RFnOD reads REF CF; ETn then OD/EN traverses pairs, and EX exits. EN commits/advances, so preserve table data.
 - Response: Display text; example allocates 14 characters. REF CF parsed positions8–12; pair frequency1–5, units6, factor9–13 (one-based). Exact framing is a qualification question.
 - Future qualification: Read known REF CF and table pairs, preserve raw output, verify traversal termination.
-- Source: [00437-90047, Sensor Data read-table example 3-90–92; Table 3-5 PDF 72, printed 3-91, PDF 121](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=121).
+- Source: [00437-90047, Sensor Data read-table example 3-90–92; Table 3-5 PDF 72, printed 3-91, PDF 121](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=121).
 - Open issue: A03.
 
 ### C068
@@ -933,7 +933,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR value0/off; store/recall preserves value/status.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Known signal; compare enabled/disabled reading and restore.
-- Source: [00437-90047, OFFSET; see 3-72, printed 3-71, PDF 101](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=101).
+- Source: [00437-90047, OFFSET; see 3-72, printed 3-71, PDF 101](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=101).
 - Open issue: —.
 
 ### C069
@@ -946,7 +946,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR value0/off; store/recall preserves value/status.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Known signal; compare enabled/disabled reading and restore.
-- Source: [00437-90047, OFFSET; see 3-72, printed 3-71, PDF 101](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=101).
+- Source: [00437-90047, OFFSET; see 3-72, printed 3-71, PDF 101](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=101).
 - Open issue: —.
 
 ### C070
@@ -959,7 +959,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR value0/off; store/recall preserves value/status.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: OS3.0EN is manual-supported example; verify correction then restore.
-- Source: [00437-90047, OFFSET remote procedure; see 3-72, printed 3-71, PDF 101](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=101).
+- Source: [00437-90047, OFFSET remote procedure; see 3-72, printed 3-71, PDF 101](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=101).
 - Open issue: —.
 
 ### C071
@@ -972,7 +972,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Parser-context effect only.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Equivalent percentage entries; verify %, PCT, and EN in documented contexts.
-- Source: [00437-90047, CAL; Table 3-5 PDF 72 and Sensor Data 3-87/PDF 117, printed 3-47, PDF 77](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=77).
+- Source: [00437-90047, CAL; Table 3-5 PDF 72 and Sensor Data 3-87/PDF 117, printed 3-47, PDF 77](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=77).
 - Open issue: A03.
 
 ### C072
@@ -985,7 +985,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Parser-context effect only.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Equivalent percentage entries; verify %, PCT, and EN in documented contexts.
-- Source: [00437-90047, CAL; Table 3-5 PDF 72 and Sensor Data 3-87/PDF 117, printed 3-47, PDF 77](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=77).
+- Source: [00437-90047, CAL; Table 3-5 PDF 72 and Sensor Data 3-87/PDF 117, printed 3-47, PDF 77](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=77).
 - Open issue: A03.
 
 ### C073
@@ -998,7 +998,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Preserves sensor tables, storage registers, zero/cal gain; previous configuration can be recalled through RC0EN. Factors reset from selected sensor table.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Record initial state and permitted snapshot; verify fields and documented retained data.
-- Source: [00437-90047, PRESET conditions; see 3-74, printed 3-73, PDF 103](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=103).
+- Source: [00437-90047, PRESET conditions; see 3-74, printed 3-73, PDF 103](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=103).
 - Open issue: —.
 
 ### C074
@@ -1011,7 +1011,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR auto; manual RM/RH exits auto. A repeated RA can change range rather than being fully idempotent.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Known borderline input; check range transitions and resolution.
-- Source: [00437-90047, AUTO RANGE, printed 3-45, PDF 75](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=75).
+- Source: [00437-90047, AUTO RANGE, printed 3-45, PDF 75](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=75).
 - Open issue: —.
 
 ### C075
@@ -1024,7 +1024,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Register0 provides previous configuration; power-up recalls0. Calibration gain and zero data are separate; error57 resets configurations.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up configuration; verify all restored fields and unchanged calibration identity.
-- Source: [00437-90047, RECALL; see 3-77, printed 3-76, PDF 106](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=106).
+- Source: [00437-90047, RECALL; see 3-77, printed 3-76, PDF 106](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=106).
 - Open issue: —.
 
 ### C076
@@ -1037,7 +1037,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR RES2; stored/recalled.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Select each resolution; check display precision and SM filter mode.
-- Source: [00437-90047, RESOLN; see Filter 3-62/PDF 92, printed 3-80, PDF 110](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=110).
+- Source: [00437-90047, RESOLN; see Filter 3-62/PDF 92, printed 3-80, PDF 110](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=110).
 - Open issue: A04.
 
 ### C077
@@ -1050,7 +1050,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Table data survives PR; invalid table clears to100% on INIT/power-on checksum failure. Snapshot before change.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read REF CF with OD and verify other tables.
-- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C078
@@ -1063,7 +1063,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Table data survives PR; invalid table clears to100% on INIT/power-on checksum failure. Snapshot before change.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read REF CF with OD and verify other tables.
-- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C079
@@ -1076,7 +1076,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Table data survives PR; invalid table clears to100% on INIT/power-on checksum failure. Snapshot before change.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read REF CF with OD and verify other tables.
-- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C080
@@ -1089,7 +1089,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Table data survives PR; invalid table clears to100% on INIT/power-on checksum failure. Snapshot before change.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read REF CF with OD and verify other tables.
-- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C081
@@ -1102,7 +1102,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Table data survives PR; invalid table clears to100% on INIT/power-on checksum failure. Snapshot before change.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read REF CF with OD and verify other tables.
-- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C082
@@ -1115,7 +1115,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Table data survives PR; invalid table clears to100% on INIT/power-on checksum failure. Snapshot before change.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read REF CF with OD and verify other tables.
-- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C083
@@ -1128,7 +1128,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Table data survives PR; invalid table clears to100% on INIT/power-on checksum failure. Snapshot before change.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read REF CF with OD and verify other tables.
-- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C084
@@ -1141,7 +1141,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Table data survives PR; invalid table clears to100% on INIT/power-on checksum failure. Snapshot before change.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read REF CF with OD and verify other tables.
-- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C085
@@ -1154,7 +1154,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Table data survives PR; invalid table clears to100% on INIT/power-on checksum failure. Snapshot before change.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read REF CF with OD and verify other tables.
-- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C086
@@ -1167,7 +1167,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Table data survives PR; invalid table clears to100% on INIT/power-on checksum failure. Snapshot before change.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; write/read REF CF with OD and verify other tables.
-- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data RF; error86 A-4/PDF 154, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C087
@@ -1180,7 +1180,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: RA or RM0EN returns auto; PR auto.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Known input; hold and vary within safe sensor limits; observe range/status.
-- Source: [00437-90047, SET RANGE program codes; see 3-95, printed 3-94, PDF 124](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=124).
+- Source: [00437-90047, SET RANGE program codes; see 3-95, printed 3-94, PDF 124](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=124).
 - Open issue: —.
 
 ### C088
@@ -1193,7 +1193,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR off/reference0; store/recall includes reference/status. Snapshot learn data also contains reference.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Stable reference input; verify RL1 baseline, changed input, RL0, and RL2.
-- Source: [00437-90047, REL; see 3-79, printed 3-78, PDF 108](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=108).
+- Source: [00437-90047, REL; see 3-79, printed 3-78, PDF 108](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=108).
 - Open issue: —.
 
 ### C089
@@ -1206,7 +1206,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR off/reference0; store/recall includes reference/status. Snapshot learn data also contains reference.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Stable reference input; verify RL1 baseline, changed input, RL0, and RL2.
-- Source: [00437-90047, REL; see 3-79, printed 3-78, PDF 108](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=108).
+- Source: [00437-90047, REL; see 3-79, printed 3-78, PDF 108](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=108).
 - Open issue: —.
 
 ### C090
@@ -1219,7 +1219,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR off/reference0; store/recall includes reference/status. Snapshot learn data also contains reference.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Stable reference input; verify RL1 baseline, changed input, RL0, and RL2.
-- Source: [00437-90047, REL; see 3-79, printed 3-78, PDF 108](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=108).
+- Source: [00437-90047, REL; see 3-79, printed 3-78, PDF 108](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=108).
 - Open issue: —.
 
 ### C091
@@ -1232,7 +1232,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR auto; RA returns auto; selected range stored/recalled.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Verify each legal range with suitable input and SM range encoding.
-- Source: [00437-90047, SET RANGE; error52 A-3/PDF 153, printed 3-94, PDF 124](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=124).
+- Source: [00437-90047, SET RANGE; error52 A-3/PDF 153, printed 3-94, PDF 124](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=124).
 - Open issue: —.
 
 ### C092
@@ -1245,7 +1245,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Capture state and backups before qualification; treat calibration/storage effects as uncertain.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Determine changed state against documented PR/INIT behavior on backed-up setup.
-- Source: [00437-90047, Table 3-5, printed 3-42, PDF 72](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=72).
+- Source: [00437-90047, Table 3-5, printed 3-42, PDF 72](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=72).
 - Open issue: A05.
 
 ### C093
@@ -1258,7 +1258,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Mask remains configured until altered/turn-on reset.
 - Response: Prose describes ASCII0–255; summary describes 1 byte with EOI for service mask. Capture raw bytes before choosing parser.
 - Future qualification: Set known mask, compare raw RV and *SRE? bytes.
-- Source: [00437-90047, §3-29; conflicting format §3-34 printed 3-40/PDF 70, printed 3-37, PDF 67](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=67).
+- Source: [00437-90047, §3-29; conflicting format §3-34 printed 3-40/PDF 70, printed 3-37, PDF 67](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=67).
 - Open issue: A02.
 
 ### C094
@@ -1271,7 +1271,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Last selected table used if selection omitted; empty table error80; configuration store/recall includes selection.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Verify table label and correction selection with actual sensor data.
-- Source: [00437-90047, SENSOR; see 3-83, printed 3-82, PDF 112](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=112).
+- Source: [00437-90047, SENSOR; see 3-83, printed 3-82, PDF 112](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=112).
 - Open issue: —.
 
 ### C095
@@ -1284,7 +1284,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Error-latch behavior depends on SRQ mask and whether sentinel output occurred.
 - Response: 26 ASCII characters + CR LF, EOI; see shared status schema.
 - Future qualification: Parse exact length, change reversible settings, and verify stale-versus-updated state.
-- Source: [00437-90047, §3-21 Fig 3-5/Table 3-3; Appendix A-1/PDF 151, printed 3-33, PDF 63](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=63).
+- Source: [00437-90047, §3-21 Fig 3-5/Table 3-3; Appendix A-1/PDF 151, printed 3-33, PDF 63](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=63).
 - Open issue: —.
 
 ### C096
@@ -1297,7 +1297,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves table data; backup before editing labels.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify six/seven/short-label framing with raw OD readback.
-- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C097
@@ -1310,7 +1310,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves table data; backup before editing labels.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify six/seven/short-label framing with raw OD readback.
-- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C098
@@ -1323,7 +1323,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves table data; backup before editing labels.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify six/seven/short-label framing with raw OD readback.
-- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C099
@@ -1336,7 +1336,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves table data; backup before editing labels.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify six/seven/short-label framing with raw OD readback.
-- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C100
@@ -1349,7 +1349,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves table data; backup before editing labels.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify six/seven/short-label framing with raw OD readback.
-- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C101
@@ -1362,7 +1362,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves table data; backup before editing labels.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify six/seven/short-label framing with raw OD readback.
-- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C102
@@ -1375,7 +1375,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves table data; backup before editing labels.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify six/seven/short-label framing with raw OD readback.
-- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C103
@@ -1388,7 +1388,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves table data; backup before editing labels.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify six/seven/short-label framing with raw OD readback.
-- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C104
@@ -1401,7 +1401,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves table data; backup before editing labels.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify six/seven/short-label framing with raw OD readback.
-- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C105
@@ -1414,7 +1414,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: PR preserves table data; backup before editing labels.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up spare table; verify six/seven/short-label framing with raw OD readback.
-- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
+- Source: [00437-90047, Sensor Data SN; conflicting Table 3-5 footnote PDF 72, printed 3-87, PDF 117](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=117).
 - Open issue: A03.
 
 ### C106
@@ -1427,7 +1427,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: EN advances selected level; EX exits. Exact remote function selection semantics require verification.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Use supported reversible menu context only, then EX; resolve ambiguity before destructive options.
-- Source: [00437-90047, SPECIAL remote procedure; exclusions 3-98–100, printed 3-97, PDF 127](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=127).
+- Source: [00437-90047, SPECIAL remote procedure; exclusions 3-98–100, printed 3-97, PDF 127](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=127).
 - Open issue: A05.
 
 ### C107
@@ -1440,7 +1440,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Turn-on mask0; status bits can become set even when masked.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Set mask, query *SRE?, produce controlled source, restore mask.
-- Source: [00437-90047, §3-29 Fig 3-6, printed 3-37, PDF 67](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=67).
+- Source: [00437-90047, §3-29 Fig 3-6, printed 3-37, PDF 67](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=67).
 - Open issue: A02.
 
 ### C108
@@ -1453,7 +1453,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Read operation leaves selection configured.
 - Response: ASCII000–255 + CR LF/EOI in §3-34; compare with RV legacy framing.
 - Future qualification: Read known values0,4,32 and compare raw response length.
-- Source: [00437-90047, §3-34; description3-37/PDF 67, printed 3-40, PDF 70](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=70).
+- Source: [00437-90047, §3-34; description3-37/PDF 67, printed 3-40, PDF 70](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=70).
 - Open issue: A02.
 
 ### C109
@@ -1466,7 +1466,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Survives PR; registers retained for recall; error57/INIT changes storage. Store selection auto-increments in menu workflow.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Save backed-up configuration into selected expendable register, modify, recall, compare.
-- Source: [00437-90047, STORE; see 3-102, printed 3-101, PDF 131](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=131).
+- Source: [00437-90047, STORE; see 3-102, printed 3-101, PDF 131](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=131).
 - Open issue: —.
 
 ### C110
@@ -1479,7 +1479,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Latched conditions/CS/SM interactions described in shared status rules.
 - Response: ASCII000–127 + CR LF/EOI; not a binary serial-poll byte.
 - Future qualification: Read twice after controlled event, compare CS effect; use separate serial-poll test.
-- Source: [00437-90047, §3-30; summary3-40/PDF 70, printed 3-38, PDF 68](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=68).
+- Source: [00437-90047, §3-30; summary3-40/PDF 70, printed 3-38, PDF 68](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=68).
 - Open issue: —.
 
 ### C111
@@ -1492,7 +1492,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: TR1/TR2 finish in standby; put trigger last in command string. New commands before completion abort trigger. TR3/local free-run does not update data-ready bit. PR TR3. For TR1/TR2, await the read or use a validated serial-poll route; an ASCII *STB?/SM command before completion is subject to the documented abort rule.
 - Response: TR1/TR2 produce a measurement for subsequent read, not a dedicated acknowledgement. TR0/TR3 use ordinary measurement output when read.
 - Future qualification: Stable input; compare TR0 stale data, TR1/TR2 results, TR3 updates and completion/status.
-- Source: [00437-90047, Triggering 3-103–105/PDF 133–135, printed 3-103, PDF 133](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=133).
+- Source: [00437-90047, Triggering 3-103–105/PDF 133–135, printed 3-103, PDF 133](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=133).
 - Open issue: —.
 
 ### C112
@@ -1505,7 +1505,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: TR1/TR2 finish in standby; put trigger last in command string. New commands before completion abort trigger. TR3/local free-run does not update data-ready bit. PR TR3. For TR1/TR2, await the read or use a validated serial-poll route; an ASCII *STB?/SM command before completion is subject to the documented abort rule.
 - Response: TR1/TR2 produce a measurement for subsequent read, not a dedicated acknowledgement. TR0/TR3 use ordinary measurement output when read.
 - Future qualification: Stable input; compare TR0 stale data, TR1/TR2 results, TR3 updates and completion/status.
-- Source: [00437-90047, Triggering 3-103–105/PDF 133–135, printed 3-103, PDF 133](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=133).
+- Source: [00437-90047, Triggering 3-103–105/PDF 133–135, printed 3-103, PDF 133](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=133).
 - Open issue: —.
 
 ### C113
@@ -1518,7 +1518,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: TR1/TR2 finish in standby; put trigger last in command string. New commands before completion abort trigger. TR3/local free-run does not update data-ready bit. PR TR3. For TR1/TR2, await the read or use a validated serial-poll route; an ASCII *STB?/SM command before completion is subject to the documented abort rule.
 - Response: TR1/TR2 produce a measurement for subsequent read, not a dedicated acknowledgement. TR0/TR3 use ordinary measurement output when read.
 - Future qualification: Stable input; compare TR0 stale data, TR1/TR2 results, TR3 updates and completion/status.
-- Source: [00437-90047, Triggering 3-103–105/PDF 133–135, printed 3-103, PDF 133](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=133).
+- Source: [00437-90047, Triggering 3-103–105/PDF 133–135, printed 3-103, PDF 133](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=133).
 - Open issue: —.
 
 ### C114
@@ -1531,7 +1531,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: TR1/TR2 finish in standby; put trigger last in command string. New commands before completion abort trigger. TR3/local free-run does not update data-ready bit. PR TR3. For TR1/TR2, await the read or use a validated serial-poll route; an ASCII *STB?/SM command before completion is subject to the documented abort rule.
 - Response: TR1/TR2 produce a measurement for subsequent read, not a dedicated acknowledgement. TR0/TR3 use ordinary measurement output when read.
 - Future qualification: Stable input; compare TR0 stale data, TR1/TR2 results, TR3 updates and completion/status.
-- Source: [00437-90047, Triggering 3-103–105/PDF 133–135, printed 3-103, PDF 133](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=133).
+- Source: [00437-90047, Triggering 3-103–105/PDF 133–135, printed 3-103, PDF 133](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=133).
 - Open issue: —.
 
 ### C115
@@ -1544,7 +1544,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Whether query runs tests or reports a result, its output, and state effects require evidence.
 - Response: Response format is unspecified by the supplied command summary.
 - Future qualification: Resolve semantics before invoking; preserve state/calibration and record raw reply.
-- Source: [00437-90047, Table 3-5; SPECIAL SELF TEST3-99–100/PDF 129–130, printed 3-42, PDF 72](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=72).
+- Source: [00437-90047, Table 3-5; SPECIAL SELF TEST3-99–100/PDF 129–130, printed 3-42, PDF 72](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=72).
 - Open issue: A05.
 
 ### C116
@@ -1557,7 +1557,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Zero data retained through power-off but excluded from ST/RC; PR does not initiate zero. Power interruption can cause error57.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Prepared no-RF path; completion/error check, record residual reading for all ranges.
-- Source: [00437-90047, ZERO3-106–108/PDF 136–138, printed 3-106, PDF 136](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=136).
+- Source: [00437-90047, ZERO3-106–108/PDF 136–138, printed 3-106, PDF 136](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=136).
 - Open issue: —.
 
 ### C117
@@ -1570,7 +1570,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Turn-on mask0; stream framing must remain intact.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Write binary mask4, compare RV/*SRE?; qualify framing before wider use.
-- Source: [00437-90047, §3-12 Require Service example printed 3-22; also3-37/PDF 67, printed 3-22, PDF 52](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=52).
+- Source: [00437-90047, §3-12 Require Service example printed 3-22; also3-37/PDF 67, printed 3-22, PDF 52](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=52).
 - Open issue: A02.
 
 ### C118
@@ -1583,7 +1583,7 @@ Entry types: W=write/action, Q=output selection/query, P=contextual syntax/entry
 - State, persistence, and completion: Restores snapshot fields; byte offsets undocumented. Treat as opaque snapshot rather than invented schema.
 - Response: Command completion without a dedicated response; subsequent ordinary reads follow the shared measurement-output rules.
 - Future qualification: Backed-up configuration and exact60-byte capture; restore and compare listed fields.
-- Source: [00437-90047, §3-21 Learn Mode; Table 3-5 PDF 72, printed 3-32, PDF 62](../../output/pdf/hp-437b-8482a/HP-437B-Operating-Manual-00437-90047.pdf#page=62).
+- Source: [00437-90047, §3-21 Learn Mode; Table 3-5 PDF 72, printed 3-32, PDF 62](../../references/manuals/hp-437b/HP-437B-Operating-Manual-00437-90047.pdf#page=62).
 - Open issue: A02.
 
 ## Physical and service boundaries
@@ -1600,6 +1600,6 @@ The service manual review identified physical adjustments, switch-driven self-te
 
 ## Sensor and measurement prerequisites
 
-[08481-90173, Introduction, printed/PDF 15](../../output/pdf/hp-437b-8482a/HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf#page=15) identifies437B compatibility and sensor-specific calibration-factor use. [Operation, printed/PDF 25](../../output/pdf/hp-437b-8482a/HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf#page=25) directs meter/sensor calibration to the meter's own procedure and notes temperature sensitivity. Apply the actual8482A limits and serial-specific factors indexed in [equipment records](../EQUIPMENT.md#individual-calibration-records).
+[08481-90173, Introduction, printed/PDF 15](../../references/manuals/hp-8480-series/HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf#page=15) identifies437B compatibility and sensor-specific calibration-factor use. [Operation, printed/PDF 25](../../references/manuals/hp-8480-series/HP-8482A-8480-Series-Operating-Service-Manual-08481-90173.pdf#page=25) directs meter/sensor calibration to the meter's own procedure and notes temperature sensitivity. Apply the actual8482A limits and serial-specific factors indexed in [equipment records](../EQUIPMENT.md#individual-calibration-records).
 
 The operating manual's performance-test preconditions include a half-hour warm-up (00437-90047 §4-1, printed 4-1/PDF 139). Its nominal20 readings/s figure and conditional settling tables (printed 1-9–10/PDF 19–20) are specification context, rather than a validated host/backend logging rate. Qualification must account for sensor, range, averaging, resolution, and signal changes. Record observations against the actual current meter, sensor, host, firmware, and setup; physical checks remain pending.

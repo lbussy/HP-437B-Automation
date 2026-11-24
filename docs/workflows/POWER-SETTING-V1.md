@@ -101,4 +101,4 @@ Fourteen scenarios: nominal, compressed, nonmonotonic, missing-target, missing-l
 
 The compressed example reproduces the catalogue: sensor means 1.0/4.8/9.5 mW, fictional 30 dB correction, DUT-plane means 1.0/4.8/9.5 W, errors 0/−4/−5%. Default acceptance remains NOT EVALUATED. With the explicitly fictional 5% criterion, the result passes inclusively; this says nothing about actual equipment.
 
-Next physical work requires **DUT-CTRL-01**: a prepared rated RF path, DUT-specific source controls/manual acknowledgements, observed condition policy, independent shutdown behavior, and safe correction records. POWER REF can rehearse a fixed single point but cannot create the multi-level sweep. No replacement meter or radio is required to finish this synthetic software milestone.
+Next physical work requires **DUT-CTRL-01**: a prepared rated RF path, DUT-specific source controls/manual acknowledgements, observed condition policy, independent shutdown behavior, and safe correction records. POWER REF can rehearse a fixed single point but cannot create the multi-level sweep. The synthetic software milestone runs without hardware.

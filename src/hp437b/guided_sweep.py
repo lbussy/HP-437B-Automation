@@ -14,7 +14,7 @@ from . import provenance as p
 from . import reporting as r
 from .instrument import Instrument
 from .logger import _atomic_json, collect
-from .sensor_correction import correction
+from .sensor_correction import LEGACY_SOURCE, correction
 from .simulation import DemoTransport
 from .transport import VisaTransport
 from .workflow_report import _seal
@@ -476,6 +476,10 @@ def analyze_unsealed(source, record):
             expected_correction = point_correction(record["equipment"], point["frequency"])
             if expected_correction is not None:
                 receipt = session.get("sensor_correction", {})
+                # Accept the known pre-relocation path without changing sealed evidence.
+                # All other fields, including the certificate hash, must still match.
+                if receipt.get("source") == LEGACY_SOURCE:
+                    expected_correction = {**expected_correction, "source": LEGACY_SOURCE}
                 p.require(
                     {
                         k: v
