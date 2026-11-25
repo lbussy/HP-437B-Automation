@@ -9,6 +9,7 @@ import hashlib
 import json
 import math
 import multiprocessing
+import re
 import signal
 import time
 from contextlib import contextmanager
@@ -73,13 +74,33 @@ class Target:
         protocol.identification(self.expected_idn)
 
 
+def pi_sweep_marker(lock):
+    return lock.with_suffix(".pi1-sweep-pending.json")
+
+
 @contextmanager
-def _lease(path):
+def _lease(path, *, pi_sweep_run=None):
     if path.is_symlink():
         raise ValueError("Symlink reconciliation locks are unsupported")
     with path.open("a+b") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         try:
+            # Shared physical resource locks are named with the resource's
+            # canonical SHA-256. Other lock domains have descriptive suffixes.
+            if re.fullmatch(r"[0-9a-f]{64}\.lock", path.name):
+                marker = pi_sweep_marker(path)
+                if marker.is_symlink() or marker.exists():
+                    permitted = (
+                        not marker.is_symlink()
+                        and pi_sweep_run is not None
+                        and marker.is_file()
+                        and marker.stat().st_size <= 4096
+                        and json.loads(marker.read_bytes()).get("run") == pi_sweep_run
+                    )
+                    if not permitted:
+                        raise BlockingIOError("Unresolved Pi sweep meter recovery")
+                elif pi_sweep_run is not None:
+                    raise BlockingIOError("Pi sweep meter reservation is absent")
             yield
         finally:
             fcntl.flock(handle, fcntl.LOCK_UN)

@@ -124,6 +124,7 @@ def _worker(
     supervised_zero=False,
     supervised_cal=False,
     cal_reference_factor=None,
+    pi_sweep_run=None,
 ):
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # Parent owns cancellation and disposal.
     wire = None
@@ -166,7 +167,7 @@ def _worker(
         emit(stage=name)
 
     try:
-        with rec._lease(Path(lock_path)):
+        with rec._lease(Path(lock_path), pi_sweep_run=pi_sweep_run):
             try:
                 stage("opening")
                 wire = factory(target.resource)
@@ -379,6 +380,7 @@ def run_physical(
     total_s=25.0,
     cancelled=lambda: False,
     _factory_override=None,
+    _pi_sweep_run=None,
 ):
     """Explicit hardware entry point; one attempt, with only selected profile effects.
 
@@ -388,6 +390,8 @@ def run_physical(
     if type(target) is not phy.PhysicalTarget:
         raise ValueError("PhysicalTarget required")
     target.validate()
+    if _pi_sweep_run is not None and (not supervised_zero or supervised_cal):
+        raise ValueError("Pi sweep reservation is available for the supervised ZERO only")
     if (
         confirmed is not True
         or prior_worker_stopped is not True
@@ -681,6 +685,7 @@ def run_physical(
             supervised_zero,
             supervised_cal,
             cal_reference_factor,
+            _pi_sweep_run,
         ),
     )
     process.daemon = True
@@ -723,7 +728,7 @@ def run_physical(
     leases = ExitStack()
     try:
         leases.enter_context(rec._lease(root / (key + ".diagnostics.lock")))
-        with rec._lease(root / (key + ".lock")):
+        with rec._lease(root / (key + ".lock"), pi_sweep_run=_pi_sweep_run):
             pass  # Child holds this shared resource lease through raw close.
         if cancelled():
             terminal = "cancelled"

@@ -26,7 +26,7 @@ Serial-specific Mac-controlled 8482A MY41094127 factor correction is implemented
 
 ## Remaining work
 
-- Pi owner integration for the 80-point `wspr1.local` GPIO20 sweep remains open. See the [focused implementation prompt](workflows/PI1-GPIO20-SWEEP-IMPLEMENTATION-PROMPT.md).
+- The Mac CLI supports the fixed 80-point Pi 1 GPIO20 matrix, sealed acquisition evidence, and offline report export. Live Review and Start require the WsprryPi owner contract. See the [Pi 1 workflow](workflows/PI1-GPIO20-SWEEP.md).
 - Confirm fresh setup for subsequent selected use and perform relevant additional checks when selected. Firmware 2.0/resource and the owner-supplied sensor setup were observed in the Mac bench run; laboratory address 13 remains unverified.
 - Extend conducted transmitter measurements to additional source profiles when selected.
 - Perform physical setting, frequency, or voltage experiments when selected; supply control is needed only for voltage experiments.

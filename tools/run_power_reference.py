@@ -6,7 +6,6 @@ Use --help without opening hardware. QA must inject an explicit fake factory.
 """
 
 import argparse
-import fcntl
 import hashlib
 import json
 import os
@@ -16,7 +15,7 @@ import subprocess
 import sys
 import time
 import uuid
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import asdict
 from datetime import UTC, datetime
 from decimal import Decimal, localcontext
@@ -28,6 +27,7 @@ from hp437b.errors import OperationTimeout, ProtocolError
 from hp437b.instrument import Instrument
 from hp437b.logger import _atomic_json, collect
 from hp437b.provenance import export_wf01, sidecar_path
+from hp437b.reconciliation import _lease
 from hp437b.transport import VisaTransport
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -74,15 +74,14 @@ def ownership(resource):
     folder = ROOT / "tmp/workflow-locks"
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / (hashlib.sha256(resource.encode()).hexdigest() + ".lock")
-    with path.open("a+") as handle:
+    with ExitStack() as lease:
         try:
-            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            lease.enter_context(_lease(path))
         except BlockingIOError as exc:
-            raise RuntimeError("Another WF-01 runner owns this resource") from exc
-        try:
-            yield
-        finally:
-            fcntl.flock(handle, fcntl.LOCK_UN)
+            raise RuntimeError(
+                "Another runner owns this meter or meter recovery is outstanding"
+            ) from exc
+        yield
 
 
 class Controller:

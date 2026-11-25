@@ -32,7 +32,7 @@ def remaining(deadline: float) -> float:
     return left
 
 
-def _worker(pipe, resource: str, max_bytes: int) -> None:
+def _worker(pipe, resource: str, max_bytes: int, preflight=None) -> None:
     manager = handle = None
     try:
         import pyvisa
@@ -42,6 +42,8 @@ def _worker(pipe, resource: str, max_bytes: int) -> None:
             operation, payload, milliseconds = pipe.recv()
             try:
                 if operation == "open":
+                    if preflight is not None:
+                        preflight()
                     result = {
                         name: importlib.metadata.version(name)
                         for name in ("PyVISA", "PyVISA-py", "PyUSB")
@@ -116,7 +118,7 @@ class VisaTransport:
         self.local_return: dict | None = None
         self.read_deadline_cleanup: dict | None = None
 
-    def open(self, timeout: float = 10.0) -> None:
+    def open(self, timeout: float = 10.0, *, preflight=None) -> None:
         if not math.isfinite(timeout) or timeout <= 0:
             raise ValueError("Finite positive open timeout required")
         with self._lock:
@@ -129,7 +131,7 @@ class VisaTransport:
             parent, child = context.Pipe()
             self._pipe = parent
             self._process = context.Process(
-                target=_worker, args=(child, self.resource, self.max_bytes)
+                target=_worker, args=(child, self.resource, self.max_bytes, preflight)
             )
             self._process.daemon = True
             deadline = time.monotonic() + timeout
