@@ -16,6 +16,12 @@ RF-free Pico tests cover native Start and finite shutdown at 144.490500 MHz for 
 
 The supervised HP Si5351 sweep retained **112 readings at 56 points**, with all four drives measured at 144.490500 MHz. The sealed report record is `f2d3366439c743f99dcd5ccebc7a44c0`. It includes verified meter closure and Pico restoration to 8 mA with both schedules disabled and RF inactive. The HP runner requires a fresh full Review before meter preparation, drive changes, or Start. The [HP RF-free contract fixtures](../tests/test_si5351_sweep.py) cover the 56-point operator-to-report path, bounded status retries, supervised continuation, and unconfirmed shutdown.
 
+## Raspberry Pi 1 GPIO20 pilot
+
+The November 24, 2026 conducted pilot used `wspr1.local` (Raspberry Pi Model A+, BCM2835), the 8482A SN MY41094127, and the Mac-controlled HP 437B. A temporary loopback-only WsprryPi process used native GPIO20 at a configured **2 mA** and requested **475,700 Hz**. The controller confirmed GPCLK0 on GPIO20 and committed **0.0 ppm additional clock correction**. The meter display readback verified **100.7% CAL FAC**. Both settling reads and the retained read indicated **3.0100 mW (4.79 dBm)** at the sensor input. RF-off readings were **−0.17 µW** before the tone and **−0.27 µW** afterward. The meter indication can include harmonics. The configured drive and carrier are controller evidence, with no independent current or frequency measurement for this point.
+
+The bounded request had a **50-second cutoff**. The controller confirmed shutdown after **6.18 s**, released ownership, and returned GPIO20 to input mode. The temporary process exited with the normal `wsprrypi.service` stopped and disabled. The meter accepted free-run and return to local. The local receipts are under `tmp/wspr1-gpio20-disabled-pilot.8lvyk3ni/capture/` as `pilot.json` (SHA-256 `1b63f5fab169d9e330d5333128708a83c1cb82c6c121d27563c893ccaf11ea4e`) and `pi-events.jsonl` (SHA-256 `c453831592612de44dbd49834775b3f24570440bfd481acbba8054f88fb1f520`). Automatic Pi sweep control remains open. [Sweep plan](workflows/AUTOMATIC-FREQUENCY-DRIVE-PLAN.md#2-device-controls)
+
 ## Record the environment
 
 Record the actual meter/sensor labels, firmware reply, USB resource, adapter model/firmware, cable, front-panel GPIB address, host/OS/architecture/Python/libusb, package versions/origin, sensor corrections, and full signal path. Distinguish supplied labels, laboratory records, observed protocol replies, and operator confirmations. See [equipment](EQUIPMENT.md).

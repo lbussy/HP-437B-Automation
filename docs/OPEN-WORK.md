@@ -13,7 +13,7 @@ Updated: November 24, 2026. ✅ Complete, ⏳ In progress, and ▧ Not started/d
 | Transmitter power measurement | ⏳ Conducted Pico direct-GPIO matrix recorded | [52-point bench record](validation/PICO-52-20261123.md) gives sensor-input power and fixture limitations. Additional output profiles remain unverified |
 | WF-04–WF-06 physical experiments | ▧ When selected | Actual setting/frequency/voltage experiment; a supply is needed only for the voltage case |
 | Si5351 56-point physical sweep | ✅ 56/56 points captured | 112 retained readings, including all four drive settings at 144.490500 MHz, with verified restoration to 8 mA. See the [validation record](VALIDATION.md#pico-si5351-test-tone) |
-| Automatic frequency × drive sweep and optional PDF | ⏳ Direct GPIO completed 52/52 physical points | [Guided workflow](workflows/OPERATOR-GUIDED-SWEEPS.md#live-control-prerequisites) and [full bench record](validation/PICO-52-20261123.md). Pi live control remains open |
+| Automatic frequency × drive sweep and optional PDF | ⏳ Pico GPIO completed 52/52 physical points. Pi GPIO20 pilot recorded | [Pico bench record](validation/PICO-52-20261123.md), [Pi 1 pilot](VALIDATION.md#raspberry-pi-1-gpio20-pilot), and [open Pi runner implementation](workflows/PI1-GPIO20-SWEEP-IMPLEMENTATION-PROMPT.md) |
 | Broader/unattended recovery | ▧ Optional/unqualified | No automatic workflow resumption or already-wedged repair claim |
 | Broader command/bus support | ▧ Optional | Resolve relevant [ambiguities](inventory/AMBIGUITIES.md) before enabling guarded operations |
 | AI/provider automation | ▧ Deferred | Human-started deterministic mode remains selected |
