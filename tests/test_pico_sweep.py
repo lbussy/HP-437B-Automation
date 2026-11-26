@@ -194,7 +194,9 @@ class PicoWire:
         return code, rev, response
 
 
-def setup_injected(monkeypatch, wire, *, limited=False):
+def setup_injected(monkeypatch, wire, *, limited=False, meter_read=None):
+    wire.meter_corrections = []
+
     class Meter(DemoTransport):
         metadata = {"transport": "test fixture"}
         capabilities = DemoTransport.capabilities | {"go_to_local"}
@@ -209,6 +211,7 @@ def setup_injected(monkeypatch, wire, *, limited=False):
                     assert not wire.running
             elif data.startswith(b"KB"):
                 assert not wire.running
+                wire.meter_corrections.append(data)
             else:
                 super().write(data, deadline)
 
@@ -218,6 +221,8 @@ def setup_injected(monkeypatch, wire, *, limited=False):
                 return b"HEWLETT-PACKARD,437B,,2.0\r\n"
             if self.pending == b"TR2":
                 self.pending = None
+                if meter_read is not None:
+                    return meter_read()
                 if wire.running:
                     if limited and len(wire.jobs) == 1:
                         return b"+90.000E-09\r\n"
@@ -231,12 +236,13 @@ def setup_injected(monkeypatch, wire, *, limited=False):
     monkeypatch.setattr(pico_pilot, "VisaTransport", lambda resource: Meter())
     monkeypatch.setattr(pico_sweep, "_matching_usb", lambda serial: None)
 
-    def zero(path, *args):
+    def zero(path, config, lock_root, meter_serial, cancelled, *, sensor_serial):
         path.mkdir()
         (path / "diagnostics.json").write_text(
             json.dumps(
                 dict(
                     status="completed",
+                    equipment_labels={"meter_serial": meter_serial, "sensor_serial": sensor_serial},
                     transport_closed=True,
                     zero_assessment=dict(accepted_full_case=True),
                 )

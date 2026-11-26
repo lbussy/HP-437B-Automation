@@ -1,6 +1,7 @@
 """Serial-specific sensor factors; no device access or persistent table editing."""
 
 from decimal import ROUND_HALF_UP, Decimal
+from typing import NamedTuple
 
 PROFILE = "8482a-MY41094127-20261015"
 SENSOR_SERIAL = "MY41094127"
@@ -31,6 +32,43 @@ TABLE = tuple(
     )
 )
 
+H_PROFILE = "8482h-3318A09219-20261115"
+H_SENSOR_SERIAL = "3318A09219"
+H_SOURCE = "references/calibration/hp-8482h/3318A09219/2026-11-15/originals/HP-8482H-SN-3318A09219-Calibration-Chart-2026-11-15.pdf"
+H_SOURCE_SHA256 = "1e3dfe6ae27de66a4b24b9aef7f98175ffccabb5e41a89f50593f328046d004b"
+H_TABLE = tuple(
+    (int(Decimal(mhz) * 1_000_000), Decimal(factor))
+    for mhz, factor in (
+        ("0.1", "99.8"),
+        ("0.3", "97.4"),
+        ("1", "97.9"),
+        ("3", "99.1"),
+        ("10", "99.5"),
+        ("30", "99.2"),
+        ("50", "99.0"),
+        ("100", "98.7"),
+        ("300", "98.4"),
+        ("1000", "98.2"),
+        ("2000", "94.8"),
+        ("3000", "93.1"),
+        ("4000", "90.3"),
+        ("4200", "94.1"),
+    )
+)
+
+
+class Calibration(NamedTuple):
+    profile: str
+    serial: str
+    source: str
+    page: int
+    sha256: str
+    table: tuple[tuple[int, Decimal], ...]
+
+
+CALIBRATION_8482A = Calibration(PROFILE, SENSOR_SERIAL, SOURCE, 2, SOURCE_SHA256, TABLE)
+CALIBRATION_8482H = Calibration(H_PROFILE, H_SENSOR_SERIAL, H_SOURCE, 1, H_SOURCE_SHA256, H_TABLE)
+
 
 def correction(profile, sensor_serial, frequency_hz):
     """Interpolate on linear Hz, then round half up to the meter's 0.1% grid.
@@ -38,20 +76,29 @@ def correction(profile, sensor_serial, frequency_hz):
     The chart span bounds correction lookup, not safe input power or bandwidth.
     No extrapolation, assumed band centers, or substitution of another sensor.
     """
-    if profile != PROFILE or sensor_serial != SENSOR_SERIAL:
-        raise ValueError("Correction profile must match 8482A sensor MY41094127")
-    if type(frequency_hz) is not int or not TABLE[0][0] <= frequency_hz <= TABLE[-1][0]:
+    calibration = next(
+        (
+            item
+            for item in (CALIBRATION_8482A, CALIBRATION_8482H)
+            if (profile, sensor_serial) == (item.profile, item.serial)
+        ),
+        None,
+    )
+    if calibration is None:
+        raise ValueError("Correction profile must match the sensor label serial")
+    table = calibration.table
+    if type(frequency_hz) is not int or not table[0][0] <= frequency_hz <= table[-1][0]:
         raise ValueError(
             "Use an integer frequency in Hz within the certificate's 100 kHz–4.2 GHz span"
         )
-    for hz, value in TABLE:
+    for hz, value in table:
         if frequency_hz == hz:
             low = high = (hz, value)
             factor = value
             break
     else:
         low, high = next(
-            (a, b) for a, b in zip(TABLE, TABLE[1:], strict=False) if a[0] < frequency_hz < b[0]
+            (a, b) for a, b in zip(table, table[1:], strict=False) if a[0] < frequency_hz < b[0]
         )
         factor = low[1] + (high[1] - low[1]) * Decimal(frequency_hz - low[0]) / Decimal(
             high[0] - low[0]
@@ -61,9 +108,9 @@ def correction(profile, sensor_serial, frequency_hz):
         profile=profile,
         sensor_serial=sensor_serial,
         frequency_hz=frequency_hz,
-        source=SOURCE,
-        source_page=2,
-        source_sha256=SOURCE_SHA256,
+        source=calibration.source,
+        source_page=calibration.page,
+        source_sha256=calibration.sha256,
         reference_factor_percent="99.0",
         method="linear interpolation in Hz; ROUND_HALF_UP to 0.1 percent; no extrapolation",
         bracket=[dict(frequency_hz=hz, factor_percent=str(v)) for hz, v in (low, high)],

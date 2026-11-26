@@ -5,7 +5,7 @@ import csv
 import time
 import uuid
 from contextlib import ExitStack
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
 from decimal import Decimal
 from pathlib import Path
 
@@ -20,7 +20,7 @@ from .logger import _atomic_json, collect
 from .pico_tone import PicoTone, UsbHost, UsbLink
 from .reconciliation import _lease
 from .reconciliation_physical import PhysicalTarget, _matching_usb
-from .sensor_correction import PROFILE, SENSOR_SERIAL, correction
+from .sensor_correction import CALIBRATION_8482A, PROFILE, SENSOR_SERIAL, correction
 from .transport import VisaTransport
 from .workflow_report import _seal
 
@@ -51,6 +51,29 @@ PREPARED = (
 MAX_W = Decimal("0.1")
 READ_TOLERANCE_W = Decimal("0.0000002")
 BASELINE_LIMIT_W = Decimal("0.000005")
+
+
+@dataclass(frozen=True)
+class ReadingLimits:
+    maximum_w: Decimal
+    baseline_w: Decimal
+    limited_w: Decimal
+    settling_w: Decimal
+    settling_fraction: Decimal = Decimal(0)
+
+    def settled(self, previous, current):
+        tolerance = max(self.settling_w, max(abs(previous), abs(current)) * self.settling_fraction)
+        return stable(previous, current, tolerance)
+
+
+DIRECT_LIMITS = ReadingLimits(MAX_W, BASELINE_LIMIT_W, BASELINE_LIMIT_W, READ_TOLERANCE_W)
+TIS_1W_LIMITS = ReadingLimits(
+    maximum_w=Decimal("3.0"),
+    baseline_w=Decimal("0.000050"),
+    limited_w=Decimal("0.000100"),
+    settling_w=Decimal("0.000010"),
+    settling_fraction=Decimal("0.01"),
+)
 
 
 def _idle(target):
@@ -95,7 +118,16 @@ def review(source):
 class PilotMeter(Instrument):
     """Use native logger records while controlling Start after the RF-off setup."""
 
-    def __init__(self, transport, expected_idn, *, launch=None, timing=None, allow_limited=False):
+    def __init__(
+        self,
+        transport,
+        expected_idn,
+        *,
+        launch=None,
+        timing=None,
+        allow_limited=False,
+        limits=DIRECT_LIMITS,
+    ):
         super().__init__(transport, timeout=30)
         self.expected_idn, self.launch = expected_idn, launch
         self.cleanup_stack = ExitStack()
@@ -107,6 +139,7 @@ class PilotMeter(Instrument):
         self.status_frames = []
         self.timing = timing or TIMING
         self.allow_limited = allow_limited
+        self.limits = limits
 
     def identify(self):
         result = super().identify()
@@ -144,7 +177,9 @@ class PilotMeter(Instrument):
     def _parsed_sample(self):
         reading = super().acquire("TR2")
         p.require(
-            reading.error_code is None and reading.value is not None and reading.value <= MAX_W,
+            reading.error_code is None
+            and reading.value is not None
+            and reading.value <= self.limits.maximum_w,
             "Meter error or reading above the prepared sensor input limit",
         )
         return reading
@@ -164,8 +199,8 @@ class PilotMeter(Instrument):
                         "bracket": asdict(bracket),
                     }
                 )
-                if len(self.settling) > 1 and stable(
-                    Decimal(self.settling[-2]["value_W"]), reading.value, READ_TOLERANCE_W
+                if len(self.settling) > 1 and self.limits.settled(
+                    Decimal(self.settling[-2]["value_W"]), reading.value
                 ):
                     break
             else:
@@ -174,7 +209,7 @@ class PilotMeter(Instrument):
             self._read_with_status, final=self.samples_taken + 1 == self.timing.samples
         )
         p.require(
-            self.allow_limited or reading.value > BASELINE_LIMIT_W,
+            self.allow_limited or reading.value > self.limits.limited_w,
             "The 30 m indication did not exceed the pilot's RF-off limit",
         )
         self.brackets.append(asdict(bracket))
@@ -188,7 +223,17 @@ class PilotMeter(Instrument):
             super().close()
 
 
-def _capture(path, config, *, launch=None, point=POINT, timing=None, context=None):
+def _capture(
+    path,
+    config,
+    *,
+    launch=None,
+    point=POINT,
+    timing=None,
+    context=None,
+    calibration=CALIBRATION_8482A,
+    limits=DIRECT_LIMITS,
+):
     transport = VisaTransport(config.resource)
     timing = timing or TIMING
     meter = PilotMeter(
@@ -197,6 +242,7 @@ def _capture(path, config, *, launch=None, point=POINT, timing=None, context=Non
         launch=launch,
         timing=timing,
         allow_limited=context is not None,
+        limits=limits,
     )
     try:
         record = collect(
@@ -206,12 +252,12 @@ def _capture(path, config, *, launch=None, point=POINT, timing=None, context=Non
             interval=timing.spacing_ms / 1000,
             unit="W",
             connect=lambda: transport.open(30),
-            sensor_correction=correction(PROFILE, SENSOR_SERIAL, point.carrier_hz),
+            sensor_correction=correction(calibration.profile, calibration.serial, point.carrier_hz),
             context=context
             if context is not None
             else {
                 "pilot": asdict(point),
-                "sensor_serial": SENSOR_SERIAL,
+                "sensor_serial": calibration.serial,
                 "measurement_plane": "meter_indication_at_sensor_input",
             },
         )
@@ -235,15 +281,15 @@ def _capture(path, config, *, launch=None, point=POINT, timing=None, context=Non
             )
 
 
-def _baseline(path, config):
-    _capture(path, config)
+def _baseline(path, config, *, calibration=CALIBRATION_8482A, limits=DIRECT_LIMITS):
+    _capture(path, config, calibration=calibration, limits=limits)
     with path.open(newline="") as handle:
         rows = list(csv.DictReader(handle))
     p.require(
         len(rows) == 1
         and rows[0]["status"] == "ok"
-        and abs(Decimal(rows[0]["value"])) <= BASELINE_LIMIT_W,
-        "RF-off indication exceeds the reviewed 5 µW baseline limit",
+        and abs(Decimal(rows[0]["value"])) <= limits.baseline_w,
+        f"RF-off indication exceeds the reviewed {limits.baseline_w * 1_000_000:g} µW baseline limit",
     )
     return rows[0]["value"]
 
@@ -261,7 +307,7 @@ def wait_running(window, launch_by, cancelled):
     raise ValueError("Pico did not confirm a matching running tone in time")
 
 
-def zero_meter(output, config, lock_root, meter_serial, cancelled):
+def zero_meter(output, config, lock_root, meter_serial, cancelled, *, sensor_serial=SENSOR_SERIAL):
     zero = diagnostics.run_physical(
         output,
         target=config,
@@ -272,7 +318,7 @@ def zero_meter(output, config, lock_root, meter_serial, cancelled):
             "no_rf_input": True,
             "warmed_up": True,
         },
-        equipment={"meter_serial": meter_serial, "sensor_serial": SENSOR_SERIAL},
+        equipment={"meter_serial": meter_serial, "sensor_serial": sensor_serial},
         workflow_lock_root=lock_root,
         supervised_zero=True,
         confirmed_zero=True,

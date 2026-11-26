@@ -22,9 +22,11 @@ Publisher editions, source URLs, sizes, and hashes are in the [manual manifest](
 
 DXCONNECTION / Valley Precision Instrument Calibration Services issued these records. The meter certificate reports Passed/In Tolerance as left, with **5.014 VDC** for its +5 V rail, within 4.75–5.25 V. The [calibration review](validation/CALIBRATION-REVIEW.md) records numeric results and printed-limit, reference-frequency, DVM-identification, and uncertainty limitations. The repository contains a four-page derived meter calibration record.
 
-The 8482H record reports Passed/In Tolerance and a 99% reference calibration factor. Its certificate and calibration chart are dated **November 15, 2026**. The two-page record contains the signed certificate and serial-specific chart; the complete chart is also available separately. See the [8482H review](validation/8482H-CALIBRATION-20261122.md). The selected measurement sensor is the 8482A SN MY41094127. Sensor input limits and the physical setup require confirmation for each selected use.
+The 8482H record reports Passed/In Tolerance and a 99% reference calibration factor. Its certificate and calibration chart are dated **November 15, 2026**. The two-page record contains the signed certificate and serial-specific chart; the complete chart is also available separately. See the [8482H review](validation/8482H-CALIBRATION-20261122.md).
 
 ## Setup and identification
+
+The owner confirms the **8482A SN MY41094127** is connected to the HP 437B. Its reference calibration factor is **99%**. The [supervised bench record](VALIDATION.md#8482a-zero-and-cal) documents completed ZERO and CAL for this connection. Confirm the RF path and sensor input limits for each run. See [meter preparation](workflows/METER-PREPARATION.md).
 
 The meter's laboratory sheets list software **2.0** and HPIB address **13**. The [November 23 Mac bench run](validation/30M-POWER-20261123.md) observed firmware 2.0 and descriptor/resource serial `HEWLETT-PACKARD_437B_2.0`, with owner-confirmed 8482A connection and source state. Reconfirm the actual setup for subsequent runs; broader interaction checks remain pending. The front-panel address was not independently read in that run.
 

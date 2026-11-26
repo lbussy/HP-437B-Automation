@@ -7,8 +7,8 @@ from .transport import remaining
 
 READ_S = 10.0
 CLEANUP_RESERVE_S = 6.0
-WORK_S = 35
-TOTAL_S = 40
+WORK_S = 55
+TOTAL_S = 60
 
 
 def factor_text(value):

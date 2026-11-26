@@ -325,6 +325,8 @@ class Jobs:
 
     def review_live_guided(self, target_id, selected_ids, include_pdf):
         """Review configured targets without reserving a run or contacting the meter."""
+        from . import pico_sweep
+
         p.require(isinstance(target_id, str), "Select a configured live review target")
         with self.mutex:
             self._reap()
@@ -346,10 +348,12 @@ class Jobs:
         p.require(
             not guided_sweep.reference_source(config), "Live review needs an external RF fixture"
         )
-        p.require(
-            config["sensor_serial"] == live_sweep_review.SENSOR_SERIAL,
-            "Live review requires the prepared 8482A MY41094127 fixture",
+        schema = (
+            pico_sweep.si5351_schema(config)
+            if target_id == sweep_matrix.SI5351_TARGET
+            else sweep_matrix.PICO_SCHEMA
         )
+        pico_sweep.configuration(config, schema=schema)
         proposed = live_sweep_review.review(
             target.reader,
             target_id,
@@ -358,6 +362,7 @@ class Jobs:
             tolerance_hz=target.tolerance_hz,
             include_pdf=include_pdf,
             selected_ids=selected_ids,
+            schema=schema,
         )
         if target_id == sweep_matrix.SI5351_TARGET:
             from .pico_sweep import SI5351_INITIAL_DRIVE_MA
@@ -387,7 +392,7 @@ class Jobs:
             p.require(self.pending_reference() is None, "Confirm the prior reference run first")
             plan = guided.validate(plan)
             live_pico = plan["schema"] in sweep_matrix.PICO_SCHEMAS
-            si5351 = plan["schema"] == sweep_matrix.SI5351_SCHEMA
+            si5351 = plan["schema"] in sweep_matrix.SI5351_SCHEMAS
             if plan["schema"] in sweep_matrix.MATRIX_SCHEMAS and include_pdf is None:
                 include_pdf = False
             p.require(
@@ -442,7 +447,7 @@ class Jobs:
                         and re.fullmatch(r"[0-9a-f]{64}", pico_review_digest),
                         f"Review all {len(guided.points(plan))} Pico points before Start",
                     )
-                    pico_sweep.configuration(config)
+                    pico_sweep.configuration(config, schema=plan["schema"])
                     pico_sweep.prepared_check(prepared, schema=plan["schema"])
                     if pico_previous_job_id is not None:
                         prior = self.get(pico_previous_job_id)
@@ -1056,6 +1061,9 @@ class Jobs:
         }
 
     def state(self):
+        from . import pico_sweep
+
+        si5351_schema = pico_sweep.si5351_schema(self.sweep_config)
         with self.mutex:
             self._reap()
             docs, issues = self.catalog()
@@ -1130,12 +1138,15 @@ class Jobs:
                     automatic_simulation=sweep_matrix.catalog(),
                     live_review_targets=sorted(self.live_review_targets),
                     si5351_unavailable=sweep_matrix.SI5351_UNAVAILABLE,
-                    live_si5351_schema=sweep_matrix.SI5351_SCHEMA
+                    live_si5351_schema=si5351_schema
                     if sweep_matrix.SI5351_TARGET in self.live_review_targets
                     else None,
-                    live_si5351_bands=sweep_matrix.bands(sweep_matrix.SI5351_DIALS),
+                    live_si5351_bands=sweep_matrix.bands(
+                        sweep_matrix.dials_for_schema(si5351_schema)
+                    ),
                     live_pico_schema=sweep_matrix.PICO_SCHEMA
                     if "pico-gpio" in self.live_review_targets
+                    and si5351_schema != sweep_matrix.TIS_1W_SCHEMA
                     else None,
                 ),
                 reference=(
@@ -1574,7 +1585,7 @@ def worker(path, *, lock_fd=None):
                     from .si5351_tone import Si5351Tone
 
                     adapter = (
-                        Si5351Tone if plan["schema"] == sweep_matrix.SI5351_SCHEMA else PicoTone
+                        Si5351Tone if plan["schema"] in sweep_matrix.SI5351_SCHEMAS else PicoTone
                     )
                     source = adapter(
                         UsbLink(UsbHost(**request["pico_usb"])),

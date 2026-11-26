@@ -2,7 +2,9 @@
 
 import json
 import time
+from collections import Counter
 from copy import deepcopy
+from types import SimpleNamespace
 from urllib.parse import parse_qs, urlsplit
 from zipfile import ZipFile
 
@@ -21,6 +23,7 @@ from hp437b import (
 )
 from hp437b import reporting as r
 from hp437b.pico_tone import CONTRACT, CONTROL, TONE
+from hp437b.sensor_correction import H_PROFILE, H_SENSOR_SERIAL, H_SOURCE_SHA256
 from hp437b.si5351_tone import DRIVES, ENGINE, PROFILE_ID, Si5351Tone
 from hp437b.workflow_report import _seal
 
@@ -29,6 +32,26 @@ local_http_server = test_guided_sweep.local_http_server
 FIXTURE = {**FIXTURE, "fixture": "Si5351 CLK0 coax directly to the 8482A"}
 PREPARED = dict.fromkeys(pico_sweep.SI5351_PREPARED, True)
 TARGET_ID = sweep_matrix.SI5351_TARGET
+TIS_FIXTURE = {
+    **FIXTURE,
+    "fixture_profile": "tis-1w",
+    "sensor_serial": H_SENSOR_SERIAL,
+    "fixture": "Pico Si5351 CLK0 through the TIS-1W into the 8482H",
+}
+TIS_PREPARED = dict.fromkeys(pico_sweep.TIS_1W_PREPARED, True)
+TIS_FACTORS = (
+    "98.4",
+    "99.1",
+    "99.2",
+    "99.3",
+    "99.5",
+    "99.4",
+    "99.4",
+    "99.3",
+    "99.3",
+    "99.2",
+    "99.0",
+)
 CARRIER = 14_097_100
 # Above JavaScript's safe integer range, so a round trip through event evidence
 # would show any conversion through floating point.
@@ -274,14 +297,15 @@ def point(drive=8):
     return live_sweep_review.Point("P050", "20m", CARRIER - 1500, CARRIER, drive)
 
 
-def reviewed(source, *, pdf=False):
+def reviewed(source, *, pdf=False, fixture=FIXTURE, schema=sweep_matrix.SI5351_SCHEMA):
     return live_sweep_review.review(
         source,
         TARGET_ID,
-        fixture_digest=r.digest(r.encoded(FIXTURE)),
+        fixture_digest=r.digest(r.encoded(fixture)),
         timing=pico_sweep.TIMING,
         tolerance_hz=1,
         include_pdf=pdf,
+        schema=schema,
     )
 
 
@@ -508,6 +532,153 @@ def test_2m_refusal_prevents_any_mutation_or_meter_access(tmp_path):
         run(tmp_path, source, review)
     assert not (tmp_path / "capture").exists()
     assert all(method == "GET" or path == TONE + "review" for method, path, *_ in wire.requests)
+
+
+def test_tis_1w_44_points_use_8482h_corrections_and_close(
+    tmp_path, monkeypatch, local_http_server, capsys
+):
+    from hp437b.guided_client import Client, main
+
+    wire = Si5351Wire()
+    reads = Counter()
+
+    def meter_read():
+        if not wire.running:
+            return b"+16.000E-06\r\n"
+        reads[len(wire.jobs)] += 1
+        return b"+1.0050E+00\r\n" if reads[len(wire.jobs)] == 1 else b"+1.0000E+00\r\n"
+
+    setup_injected(monkeypatch, wire, meter_read=meter_read)
+    wire.config = pico_tone.UsbHost(
+        "bench", "/bench/usb_installer.py", "a" * 64, "1" * 16, wire.device
+    )
+    process = SimpleNamespace(poll=lambda: None)
+    popen = operator_jobs.subprocess.Popen
+
+    def spawn(command, *args, **kwargs):
+        if command[1:3] == ["-m", "hp437b.operator_jobs"]:
+            return process
+        return popen(command, *args, **kwargs)
+
+    monkeypatch.setattr(operator_jobs.subprocess, "Popen", spawn)
+    monkeypatch.setattr(pico_tone, "UsbLink", lambda config: wire)
+    root = tmp_path / "jobs"
+    manager = operator_jobs.Jobs(
+        root,
+        sweep_config=TIS_FIXTURE,
+        plots=False,
+        workflow_lock_root=tmp_path / "locks",
+        live_review_targets={
+            TARGET_ID: live_sweep_review.ReviewTarget(
+                Si5351Tone(wire, TARGET_ID), pico_sweep.TIMING, 1
+            )
+        },
+    )
+    try:
+        server, *_ = local_http_server(manager)
+        client = Client(f"http://127.0.0.1:{server.server_port}")
+        guided = client.state()["guided"]
+        assert guided["live_si5351_schema"] == sweep_matrix.TIS_1W_SCHEMA
+        assert len(guided["live_si5351_bands"]) == 11
+        main(["tis-1w-plan"])
+        plan = json.loads(capsys.readouterr().out)
+        expected = tuple(
+            band for band in sweep_matrix.SI5351_DIALS if band not in {"2200m", "630m", "2m"}
+        )
+        assert plan["frequencies"] == list(expected)
+        review = client.review_live(TARGET_ID)
+        assert [row["correction_percent"] for row in review["dispositions"]] == list(
+            TIS_FACTORS
+        ) * 4
+        assert not wire.jobs and not wire.saved_drives and not wire.meter_corrections
+        job = client.start(
+            plan,
+            operator="Bench operator",
+            meter_mode="physical",
+            prepared=TIS_PREPARED,
+            include_pdf=False,
+            pico_review_digest=review["review_digest"],
+        )
+        assert job["total"] == 44
+        job_path = root / job["job_id"]
+        operator_jobs.worker(job_path)
+        process.poll = lambda: 0
+        assert client.state()["jobs"][0]["phase"] == "finished"
+    finally:
+        process.poll = lambda: 0
+        manager.close()
+
+    capture = job_path / "capture"
+    record, result, _ = guided_sweep.load(capture)
+    assert result["execution"] == "completed", result["stop_reason"]
+    assert result["completed_points"] == result["requested_points"] == 44
+    assert sum(row["samples"] for row in result["points"]) == 88
+    assert {row["mean_W"] for row in result["points"]} == {"1.0000"}
+    assert wire.jobs == [
+        (sweep_matrix.SI5351_DIALS[band] + 1500, drive) for drive in DRIVES for band in expected
+    ]
+    assert wire.meter_corrections[1:-1] == [f"KB{factor}EN".encode() for factor in TIS_FACTORS] * 4
+    assert wire.saved_drives == [2, 4, 6, 8] and wire.saved == wire.active == 8 and not wire.running
+    assert not list((tmp_path / "locks").glob("*.json"))
+    assert record["equipment"]["sensor_correction"]["profile"] == H_PROFILE
+    assert record["rf_off_before_W"] == record["rf_off_after_W"] == "0.000016000"
+    first = json.loads((capture / "P001/samples.csv.session.json").read_text())["sensor_correction"]
+    assert first["source_sha256"] == H_SOURCE_SHA256 and first["commanded_factor_percent"] == "98.4"
+    assert first["command_sent"] and first["status_checked"]
+    assert guided_report.validate_pair(capture, job_path / "report")
+    assert "Turn Island Systems TIS-1W" in (job_path / "report/report.html").read_text()
+
+
+def test_tis_1w_overrange_stops_before_next_point(tmp_path, monkeypatch):
+    wire = Si5351Wire()
+    setup_injected(
+        monkeypatch,
+        wire,
+        meter_read=lambda: b"+3.1000E+00\r\n" if wire.running else b"+16.000E-06\r\n",
+    )
+    source = Si5351Tone(wire, TARGET_ID)
+    schema = sweep_matrix.TIS_1W_SCHEMA
+    plan = sweep_matrix.si5351_plan(guided_sweep.example(), schema=schema)
+    review = reviewed(source, fixture=TIS_FIXTURE, schema=schema)
+    with pytest.raises(ValueError, match="TIS-1W 8482H"):
+        pico_sweep.run(
+            source,
+            tmp_path / "invalid",
+            plan,
+            FIXTURE,
+            tmp_path / "locks",
+            TIS_PREPARED,
+            review.digest,
+        )
+    with pytest.raises(ValueError, match="fields|keys|shape"):
+        pico_sweep.run(
+            source,
+            tmp_path / "unprepared",
+            plan,
+            TIS_FIXTURE,
+            tmp_path / "locks",
+            {
+                key: value
+                for key, value in TIS_PREPARED.items()
+                if key != "independent_tis_1w_shutdown_ready"
+            },
+            review.digest,
+        )
+    assert not wire.jobs and not wire.meter_corrections
+    result = pico_sweep.run(
+        source,
+        tmp_path / "capture",
+        plan,
+        TIS_FIXTURE,
+        tmp_path / "locks",
+        TIS_PREPARED,
+        review.digest,
+    )
+    assert result["execution"] == "failed"
+    assert "sensor input limit" in result["stop_reason"]
+    assert result["completed_points"] == 0 and result["not_reached_points"] == 43
+    assert wire.jobs == [(1_838_100, 2)]
+    assert wire.saved == wire.active == 8 and not wire.running
 
 
 @pytest.mark.parametrize("duration", [10, 120_000])

@@ -6,6 +6,7 @@ import math
 import platform
 import re
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -48,8 +49,9 @@ class PhysicalTarget:
             raise ValueError("Only the explicitly named 03eb:2065 adapter is supported")
 
 
-def _matching_usb(serial):
-    """Descriptor preflight before VISA asserts REN; never select a fallback device."""
+@contextmanager
+def _selected_usb(serial):
+    """Hold the unique device matching the established descriptor profile."""
     import usb.core
     import usb.util
 
@@ -69,11 +71,12 @@ def _matching_usb(serial):
                     interfaces[0].bInterfaceProtocol,
                 ) != (0, 0xFE, 3, 1):
                     raise ProtocolError("USB488 interface profile changed")
-                matches.append(device)
+                matches.append((device, interfaces[0]))
         if not matches:
             raise FileNotFoundError("Selected adapter is absent; no fallback selected")
         if len(matches) != 1:
             raise ProtocolError("Ambiguous USB identity; multiple matching adapters")
+        yield matches[0]
     except usb.core.USBError as exc:
         if exc.errno == 13:
             raise PermissionError("USB access denied") from exc
@@ -81,6 +84,12 @@ def _matching_usb(serial):
     finally:
         for device in devices:
             usb.util.dispose_resources(device)
+
+
+def _matching_usb(serial):
+    """Descriptor preflight before VISA asserts REN; never select a fallback device."""
+    with _selected_usb(serial):
+        pass
 
 
 class _Bridge:

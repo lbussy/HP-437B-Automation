@@ -1,6 +1,6 @@
 # Bounded CAL automation
 
-This document describes the implemented software path and its current operating limits. Hardware behavior on meter SN 3125U22346 remains unverified; use fresh setup and explicit supervision for selected physical work. Normal logging does not start these diagnostic operations automatically.
+Use fresh setup and explicit supervision for physical CAL. A completed run verifies the operation for its recorded meter, sensor, host, and adapter. Normal logging does not start CAL automatically.
 
 ## Manual and actual sensor factor
 
@@ -16,7 +16,7 @@ Selection: **`--supervised-cal --confirm-cal`**, mutually exclusive with other e
 
 The same thirteen-row plan is used: initial source-off/idle SM and zero ESE/SRE masks; consume old adapter cache; CS and clear native baseline; **one CL99EN** for the recorded sensor; native polling until new completion; post-completion CS and clear native status; source-off/error-free SM; one ordinary acquisition and final SM; normal TR3/GTL/raw closure. No ASCII program command is sent while CAL is pending. No claim about the source being on is inferred from an in-flight SM query; the internal source behavior comes from the manual, with final restoration observed afterward.
 
-The physical work/total budgets are **35/40 seconds**. CAL must have its full ten-second completion window plus an eighteen-second finish reserve available before starting; otherwise it does not start. The single followup read has its own ten-second window, and is not started unless that full window plus six seconds for final status/cleanup remain. Writes, queries other than that measurement read, native polling, and local-return control retain the two-second native-call cap. Native cap, half-second incomplete-poll spacing, distinct tags without wrap, sticky poll failure, compact streamed raw evidence, shared exact-resource lease, parent finish grace, and disposal remain the accepted implementation. At most twenty completion polls are possible, plus cache/baseline/post-clear polls.
+The physical work/total budgets are **55/60 seconds**. CAL starts only if the full 30-second completion window and an 18-second finish reserve are available. The follow-up read requires its full 10-second window plus six seconds for final status and cleanup. Writes, other queries, native polling, and local return have a two-second native-call cap. The runner spaces incomplete polls half a second apart and uses up to 60 completion polls, plus cache, baseline, and post-clear polls. It uses distinct tags without wraparound, retains partial poll evidence, and holds a shared resource lease through transport closure.
 
 Before the CL write, the assessment conservatively marks CAL and its reference output as potentially active, because even a partial write can take effect. While CAL completion is unknown, native/framing/partial/cancelled/deadline failures stop **all** later commands, including CS, status queries, local-return commands, and source-off writes that could abort a still-running calibration. Raw close/disposal is permitted. No retry, reconnect, reset, compensating CAL, or automatic gain rollback is performed.
 

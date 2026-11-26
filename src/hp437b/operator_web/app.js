@@ -170,12 +170,20 @@ async function refresh(force=false) {
   const observed=generation;
   const task=(async()=>{
   try{
-    const latest=await api("/api/state");if(observed!==generation)return;model=latest;$("connection").hidden=true;
+    const latest=await api("/api/state");if(observed!==generation)return;
+    if (guidedSi5351() && latest.guided?.live_si5351_schema !== model.guided?.live_si5351_schema) {
+      picoReview = null;
+      setText("guided-pico-review-status", "");
+      for (const input of $("guided-pico-prepared").querySelectorAll("input")) input.checked = false;
+    }
+    model=latest;$("connection").hidden=true;
     $("mode").querySelector('option[value="physical"]').disabled=!model.reference;
     $("reference-suite-source").querySelector('option[value="physical"]').disabled=!model.reference;
     if(model.reference){$("reference-identity").textContent=`Meter ${model.reference.meter_serial}; sensor ${model.reference.sensor_serial}. ${model.reference.resource}`;$("reference-issues").textContent="Known issues: "+(model.reference.known_issues.join("; ")||"None reported");}
     $("guided-execution").querySelector('option[value="pico"]').disabled=!model.guided?.live_pico_schema;
-    $("guided-execution").querySelector('option[value="pico-si5351"]').disabled=!model.guided?.live_si5351_schema;
+    const si5351Option=$("guided-execution").querySelector('option[value="pico-si5351"]');
+    si5351Option.disabled=!model.guided?.live_si5351_schema;
+    si5351Option.textContent=model.guided?.live_si5351_schema===tis1wSchema?"Automatic Pico Si5351 with TIS-1W and 8482H":"Automatic Pico Si5351";
     setText("guided-si5351-note",model.guided?.live_si5351_schema?"":model.guided?.si5351_unavailable||"");
     $("guided-meter").querySelector('option[value="physical"]').disabled=!model.guided?.meter;
     $("guided-meter-note").textContent=model.guided?.meter?`Meter ${model.guided.meter.meter_serial}; sensor ${model.guided.meter.sensor_serial}. ${model.guided.meter.fixture}${model.guided.meter.signal_source==="power_ref"?" POWER REF repeats only: start with reference off; switch it on before capture and off after finishing or stopping.":""}`:"Configure the bench meter at service launch to enable measured captures.";
@@ -213,8 +221,11 @@ function guidedPrepared(){return Object.fromEntries([...document.querySelectorAl
 const picoSetup = {
  pico_gp2_direct_to_sensor: "GP2 coax goes directly to the 8482A MY41094127 with no amplifier",
  pico_si5351_clk0_direct_to_sensor: "Si5351 CLK0 coax goes directly to the 8482A MY41094127 with no amplifier or attenuator",
+ tis_1w_50_ohm_fixture: "CLK0 drives the TIS-1W through the verified 50 Ω fixture, with input and sensor power within their limits",
  independent_si5351_shutdown_ready: "I can independently disconnect or disable the Si5351 output if software shutdown fails",
+ independent_tis_1w_shutdown_ready: "I can independently remove USB-C power from the TIS-1W at the bench",
  "8482a_my41094127_on_sensor": "The 8482A sensor cable is on the 437B",
+ "8482h_3318a09219_on_sensor": "The 8482H 3318A09219 is in the TIS-1W output path and its sensor cable is on the 437B",
  meter_warmed_and_prepared_cal: "The meter is warmed and CAL is complete",
  power_ref_off: "POWER REF is off",
  other_control_apps_closed: "Other meter and radio control apps are closed",
@@ -239,8 +250,10 @@ function guidedPico() {
  return $("guided-series").value === "combined" && ["pico", "pico-si5351"].includes($("guided-execution").value);
 }
 const guidedSi5351 = () => guidedPico() && $("guided-execution").value === "pico-si5351";
+const tis1wSchema = "hp437b.automatic-pico-si5351-tis-1w.v1";
+const guidedTis1w = () => guidedSi5351() && model.guided?.live_si5351_schema === tis1wSchema;
 const picoExecution = schema => schema === "hp437b.automatic-pico-sweep.v1" ? "pico"
- : schema === "hp437b.automatic-pico-si5351.v1" ? "pico-si5351" : null;
+ : ["hp437b.automatic-pico-si5351.v1", tis1wSchema].includes(schema) ? "pico-si5351" : null;
 const liveSchema = schema => Boolean(picoExecution(schema));
 function guidedReady() {
  if (guidedPico()) {
@@ -269,6 +282,7 @@ $("guided-pico-review").addEventListener("click", async () => {
  if (picoReviewBusy || model.active_id || !guidedPico()) return;
  const includePdf = $("guided-pdf").checked;
  const target = guidedSi5351() ? "pico-si5351" : "pico-gpio";
+ const schema = guidedPlan().schema;
  const expectedCount = guidedPlan().frequencies.length * guidedPlan().drives.length;
  picoReview = null;
  picoReviewBusy = true;
@@ -279,7 +293,7 @@ $("guided-pico-review").addEventListener("click", async () => {
   const result = await api("/api/guided-live-review", {
    target_id: target, selected_ids: null, include_pdf: includePdf
   });
-  if (!guidedPico() || (target === "pico-si5351") !== guidedSi5351() || $("guided-pdf").checked !== includePdf) return;
+  if (!guidedPico() || guidedPlan().schema !== schema || $("guided-pdf").checked !== includePdf) return;
   const refused = result.dispositions.filter(row => row.reason);
   if (refused.length) {
    const reasons = refused.map(row => `${row.point.band} / ${row.point.drive_ma} mA: ${row.reason}`);
@@ -290,7 +304,7 @@ $("guided-pico-review").addEventListener("click", async () => {
    setText("guided-pico-review-status", `All ${expectedCount} points admitted. Drive changes restart the Pico. Plan ceiling: ${minutes} minutes.`);
   }
  } catch (exc) {
-  setText("guided-pico-review-status", exc.message);
+  if (guidedPico() && guidedPlan().schema === schema) setText("guided-pico-review-status", exc.message);
  } finally {
   picoReviewBusy = false;
   guidedPlanChanged();
@@ -338,9 +352,17 @@ function guidedValid(){const p=guidedPlan();return Boolean(p.schema)&&p.name.len
 function guidedPlanChanged(){
  const p=guidedPlan(), live=guidedPico(), auto=guidedAutomatic()||live, active=Boolean(model.active_id);
  renderGuidedBands();
+ const fixtureKeys = {
+  pico_gp2_direct_to_sensor: !guidedSi5351(),
+  pico_si5351_clk0_direct_to_sensor: guidedSi5351() && !guidedTis1w(),
+  independent_si5351_shutdown_ready: guidedSi5351(),
+  "8482a_my41094127_on_sensor": !guidedTis1w(),
+  tis_1w_50_ohm_fixture: guidedTis1w(),
+  "8482h_3318a09219_on_sensor": guidedTis1w(),
+  independent_tis_1w_shutdown_ready: guidedTis1w()
+ };
  for(const input of $("guided-pico-prepared").querySelectorAll("input")){
-  const sourceSpecific = ["pico_si5351_clk0_direct_to_sensor","independent_si5351_shutdown_ready"].includes(input.value);
-  input.parentElement.hidden = sourceSpecific ? !guidedSi5351() : input.value === "pico_gp2_direct_to_sensor" && guidedSi5351();
+  input.parentElement.hidden = fixtureKeys[input.value] === false;
  }
  const points=p.frequencies.length*p.drives.length;
  $("guided-plan").textContent=guidedValid()

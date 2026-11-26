@@ -10,7 +10,17 @@ import pytest
 from hp437b import guided_sweep as g
 from hp437b.instrument import Instrument
 from hp437b.logger import collect
-from hp437b.sensor_correction import PROFILE, SOURCE, SOURCE_SHA256, TABLE, correction
+from hp437b.sensor_correction import (
+    H_PROFILE,
+    H_SENSOR_SERIAL,
+    H_SOURCE,
+    H_SOURCE_SHA256,
+    PROFILE,
+    SOURCE,
+    SOURCE_SHA256,
+    TABLE,
+    correction,
+)
 from hp437b.simulation import DemoTransport
 
 
@@ -38,9 +48,22 @@ def test_bad_frequency_rejected(hz):
 
 
 def test_wrong_sensor_or_profile_rejected():
-    for profile, serial in [(PROFILE, "3318A09219"), ("generic8482A", "MY41094127")]:
+    for profile, serial in [
+        (PROFILE, H_SENSOR_SERIAL),
+        (H_PROFILE, "MY41094127"),
+        ("generic8482A", "MY41094127"),
+    ]:
         with pytest.raises(ValueError):
             correction(profile, serial, 10_140_200)
+
+
+def test_8482h_chart_integrity_and_provenance():
+    assert hashlib.sha256(Path(H_SOURCE).read_bytes()).hexdigest() == H_SOURCE_SHA256
+    fixture = correction(H_PROFILE, H_SENSOR_SERIAL, 1_838_100)
+    assert fixture["command_ascii"] == "KB98.4EN"
+    assert fixture["source"] == H_SOURCE
+    assert fixture["source_sha256"] == H_SOURCE_SHA256 and fixture["source_page"] == 1
+    assert correction(H_PROFILE, H_SENSOR_SERIAL, 50_000_000)["command_ascii"] == "KB99.0EN"
 
 
 class Wire(DemoTransport):

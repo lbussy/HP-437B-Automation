@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from hp437b.errors import CapabilityUnavailable, TransportError
-from hp437b.usb488 import go_to_local, local_profile
+from hp437b.usb488 import go_to_local, local_profile, release_remote_enable
 
 
 def adapter(*, supported=True, capability_reply=None, local_reply=b"\x01"):
@@ -16,7 +16,7 @@ def adapter(*, supported=True, capability_reply=None, local_reply=b"\x01"):
         calls.append((kind, request, value, index, length, timeout))
         if request == 7:
             return caps if capability_reply is None else capability_reply
-        assert request == 0xA1
+        assert request in (0xA0, 0xA1)
         return local_reply
 
     interface = SimpleNamespace(
@@ -34,6 +34,21 @@ def test_negotiation_and_gtl_use_actual_interface_and_exact_status():
     assert result["status"] == "accepted" and result["response_hex"] == "01"
     assert result["interface"] == 4
     assert calls == [(0xA1, 7, 0, 4, 24, 125), (0xA1, 0xA1, 0, 4, 1, 125)]
+
+
+@pytest.mark.parametrize("reply", [b"\x01", b"", b"\x80"])
+def test_ren_release_uses_control_endpoint_only_and_requires_acceptance(reply):
+    interface, calls = adapter(local_reply=reply)
+    if reply == b"\x01":
+        assert release_remote_enable(interface.usb_dev, interface.usb_intf, 125) == {
+            "status": "accepted",
+            "interface": 4,
+            "response_hex": "01",
+        }
+    else:
+        with pytest.raises(TransportError, match="REN release failed"):
+            release_remote_enable(interface.usb_dev, interface.usb_intf, 125)
+    assert calls == [(0xA1, 7, 0, 4, 24, 125), (0xA1, 0xA0, 0, 4, 1, 125)]
 
 
 def test_unrecognized_adapter_or_missing_capability_never_sends_gtl():

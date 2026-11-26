@@ -7,7 +7,7 @@ from typing import Protocol
 from . import provenance as p
 from . import reporting as r
 from . import sweep_matrix
-from .sensor_correction import PROFILE, SENSOR_SERIAL, TABLE, correction
+from .sensor_correction import CALIBRATION_8482A, CALIBRATION_8482H, correction
 
 
 @dataclass(frozen=True)
@@ -142,9 +142,15 @@ class Review:
         )
 
 
-def _matrix(owner, profile):
+def calibration_for_schema(schema):
+    return CALIBRATION_8482H if schema == sweep_matrix.TIS_1W_SCHEMA else CALIBRATION_8482A
+
+
+def _matrix(owner, profile, *, schema=None):
     dials = (
-        sweep_matrix.SI5351_DIALS if (owner, profile) == ("pico", "si5351") else sweep_matrix.DIALS
+        sweep_matrix.dials_for_schema(schema or sweep_matrix.SI5351_SCHEMA)
+        if (owner, profile) == ("pico", "si5351")
+        else sweep_matrix.DIALS
     )
     points = []
     for drive in sweep_matrix.PROFILES[profile][1]:
@@ -164,6 +170,7 @@ def review(
     tolerance_hz: int,
     include_pdf: bool,
     selected_ids=None,
+    schema=None,
 ) -> Review:
     """Review all requested settings without touching the meter or mutating the source."""
     p.require(
@@ -204,7 +211,12 @@ def review(
         and target.active_drive_ma in sweep_matrix.PROFILES[target.profile][1],
         "Source is unavailable for a fresh live review",
     )
-    points = _matrix(target.owner, target.profile)
+    p.require(
+        schema != sweep_matrix.TIS_1W_SCHEMA
+        or (target.owner, target.profile, target.output) == ("pico", "si5351", "CLK0"),
+        "TIS-1W review requires Pico Si5351 CLK0",
+    )
+    points = _matrix(target.owner, target.profile, schema=schema)
     available_ids = {point.point_id for point in points}
     if selected_ids is not None:
         p.require(
@@ -216,7 +228,9 @@ def review(
     selected = available_ids if selected_ids is None else set(selected_ids)
     p.require(bool(selected) and selected <= available_ids, "Invalid reduced point selection")
     if (target.owner, target.profile) == ("pico", "si5351"):
-        p.require(selected == available_ids, "Review the full 56-point Pico Si5351 matrix")
+        p.require(
+            selected == available_ids, f"Review the full {len(points)}-point Pico Si5351 matrix"
+        )
     selected_points = tuple(point for point in points if point.point_id in selected)
 
     batch = getattr(reader, "admit_many", None)
@@ -231,7 +245,9 @@ def review(
             isinstance(receipt, Admission) and receipt.point == point and receipt.target == target,
             "Read-only admission belongs to a different point or target revision",
         )
-        dispositions.append(_disposition(receipt, timing, tolerance_hz))
+        dispositions.append(
+            _disposition(receipt, timing, tolerance_hz, calibration=calibration_for_schema(schema))
+        )
     p.require(reader.snapshot(target_id) == target, "Source changed during live review")
 
     change_count = 0
@@ -260,7 +276,7 @@ def review(
     )
 
 
-def _disposition(receipt, timing, tolerance_hz):
+def _disposition(receipt, timing, tolerance_hz, *, calibration=CALIBRATION_8482A):
     point = receipt.point
     reason, cap, bounds = receipt.reason, receipt.maximum_tone_ms, receipt.realization_hz
     commanded = None
@@ -282,14 +298,14 @@ def _disposition(receipt, timing, tolerance_hz):
             reason = "tone_budget_exceeds_owner_limit"
         elif max(abs(low - point.carrier_hz), abs(high - point.carrier_hz)) > tolerance_hz:
             reason = "realization_outside_tolerance"
-        elif low < TABLE[0][0] or high > TABLE[-1][0]:
+        elif low < calibration.table[0][0] or high > calibration.table[-1][0]:
             reason = "realization_outside_calibration"
         else:
             # Linear interpolation can turn at a chart knot. Check every knot
             # inside the interval as well as its endpoints.
-            checks = (low, high, *(hz for hz, _ in TABLE if low < hz < high))
+            checks = (low, high, *(hz for hz, _ in calibration.table if low < hz < high))
             factors = {
-                correction(PROFILE, SENSOR_SERIAL, hz)["commanded_factor_percent"]
+                correction(calibration.profile, calibration.serial, hz)["commanded_factor_percent"]
                 for hz in (point.carrier_hz, *checks)
             }
             if len(factors) == 1:

@@ -88,6 +88,8 @@ Use every `hp437b.pico_sweep.SI5351_PREPARED` key for the prepared file. Obtain 
 
 For supervised continuation, add `--pico-previous-job-id JOB_ID` to Start. Use a sealed interrupted capture from the same plan and fixture with verified restoration and the same confirmed idle target state. The worker verifies the earlier points, runs a fresh ZERO, and measures the remaining points. An unconfirmed shutdown leaves a pending marker for supervised reconciliation.
 
+For the amplified 8482H setup, use the [44-point TIS-1W sweep](TIS-1W-SWEEP.md). The service selects its matrix and preparation fields from the declared fixture profile.
+
 ## Meter setup
 
 The simulated source is available without equipment configuration. To enable measured captures, launch the service from a qualified host environment with the selected report dependencies and an explicit, locally saved setup file:

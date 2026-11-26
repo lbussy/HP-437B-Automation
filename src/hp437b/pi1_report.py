@@ -17,7 +17,8 @@ from .logger import FIELDS
 from .sensor_correction import PROFILE, SENSOR_SERIAL, correction
 from .workflow_report import _seal, preflight
 
-REPORT = "hp437b.pi1-gpio20-report.v1"
+REPORT = "hp437b.gpio-qualification-report.v1"
+HISTORICAL_REPORT = "hp437b.pi1-gpio20-report.v1"
 
 
 def _bytes(value):
@@ -55,13 +56,15 @@ def _reading(frame, maximum):
 
 
 def _owner_binding(receipt, record):
+    historical = record["schema"] == sweep.HISTORICAL_SCHEMA
     source = record["review"]["source"]
-    p.require(
-        receipt["run"] == record["run"]
-        and receipt["boot"] == source["boot"]
-        and receipt["device"] == source["device"],
-        "Wrong run, device, or boot in owner evidence",
+    sweep.owner_binding(
+        receipt, source, record["run"], record.get("claim", {}).get("owner"), historical=historical
     )
+
+
+def _current_source(record):
+    return record["review"]["source"] if record["schema"] == sweep.SCHEMA else None
 
 
 def _observation(obs, record, row, plan, bank, phase, earliest, latest):
@@ -72,7 +75,17 @@ def _observation(obs, record, row, plan, bank, phase, earliest, latest):
         "Owner observation is outside the local deadline or sample window",
     )
     _owner_binding(obs["receipt"], record)
-    return sweep.validate_tone(obs["receipt"], row, plan, bank, phase)
+    source = _current_source(record)
+    worker = (
+        None
+        if source is None
+        else next(
+            group["opened"]["worker"]
+            for group in record["groups"]
+            if group["instance"] == row["instance"]
+        )
+    )
+    return sweep.validate_tone(obs["receipt"], row, plan, bank, phase, source, worker)
 
 
 def _confirmed(record, row, point, admission, group):
@@ -86,13 +99,14 @@ def _confirmed(record, row, point, admission, group):
         and "stop_error" not in row,
         "Confirmed samples are missing authorization or the temporary group binding",
     )
+    source = _current_source(record)
     receipt = _calibrated(row["factor"], point)
     bank, start = record["bank"], row["host_start_ns"]
     p.require(
         type(start) is int
         and record["began_ns"] <= start
         and start + (sweep.TONE_S + sweep.FINAL_S) * sweep.NS
-        <= record["began_ns"] + sweep.RUN_S * sweep.NS,
+        <= record["began_ns"] + sweep.run_limit(record["review"]) * sweep.NS,
         "Invalid monotonic origin or whole-run reservation",
     )
     stop_by = start + (sweep.TONE_S - sweep.STOP_S) * sweep.NS
@@ -102,7 +116,9 @@ def _confirmed(record, row, point, admission, group):
         row["active"], record, row, admission, bank, "active", row["ack"]["received_ns"], active_by
     )
     p.require(
-        active["generation"] == ack["generation"] and active["revision"] >= ack["revision"],
+        active["generation"] == ack["generation"]
+        and active["revision"] >= ack["revision"]
+        and (source is None or active["ceiling_ms"] == ack["ceiling_ms"]),
         "Start and active observations disagree",
     )
     previous = row["active"]["received_ns"] + sweep.DWELL_S * sweep.NS
@@ -142,6 +158,7 @@ def _confirmed(record, row, point, admission, group):
         p.require(
             before["generation"] == after["generation"] == ack["generation"]
             and revision <= before["revision"] == after["revision"]
+            and (source is None or before["ceiling_ms"] == after["ceiling_ms"] == ack["ceiling_ms"])
             and frame["after"]["received_ns"] - frame["before"]["sent_ns"]
             <= sweep.READ_S * sweep.NS,
             "Measurement crosses a stale or changed RF window",
@@ -165,7 +182,9 @@ def _confirmed(record, row, point, admission, group):
         start + sweep.TONE_S * sweep.NS,
     )
     p.require(
-        stop["generation"] == ack["generation"] and stop["revision"] > revision,
+        stop["generation"] == ack["generation"]
+        and stop["revision"] > revision
+        and (source is None or stop["ceiling_ms"] == ack["ceiling_ms"]),
         "Terminal proof belongs to a different generation or precedes the last active sample",
     )
     p.require(row["state"] == sweep.classify(row, record["pre"]), "Invalid limited classification")
@@ -187,7 +206,7 @@ def _confirmed(record, row, point, admission, group):
 def validate(record):
     p.require(
         isinstance(record, dict)
-        and record.get("schema") == sweep.SCHEMA
+        and record.get("schema") in (sweep.SCHEMA, sweep.HISTORICAL_SCHEMA)
         and record.get("mode") == "physical"
         and sweep._valid_token(record.get("run"))
         and record.get("status") in ("completed", "partial"),
@@ -199,17 +218,20 @@ def validate(record):
         and 0 <= record["began_ns"] <= record["finished_ns"],
         "Invalid recorded host monotonic run interval",
     )
-    review = sweep.validate_review(record["review"])
+    source = _current_source(record)
+    review = sweep.validate_review(record["review"], historical=source is None, saved=True)
+    points = sweep.requested_points(review)
+    group_count = len({point.drive_ma for point in points})
     rows = record["points"]
-    p.require(isinstance(rows, list) and len(rows) == len(sweep.POINTS), "Incomplete saved matrix")
+    p.require(isinstance(rows, list) and len(rows) == len(points), "Incomplete saved run scope")
     groups = record["groups"]
-    p.require(isinstance(groups, list) and len(groups) <= len(sweep.DRIVES), "Invalid drive groups")
+    p.require(isinstance(groups, list) and len(groups) <= group_count, "Invalid drive groups")
     instances = set()
     bank = record["bank"]
     if bank is not None:
         _owner_binding(record["claim"], record)
         p.require(
-            sweep.validate_claim(record["claim"], record["run"]) == bank,
+            sweep.validate_claim(record["claim"], record["run"], source) == bank,
             "Original pad state disagrees with source lease receipt",
         )
     for i, group in enumerate(groups):
@@ -225,10 +247,12 @@ def validate(record):
         instances.add(instance)
         if group["opened"] is not None:
             _owner_binding(group["opened"], record)
-            sweep.validate_open(group["opened"], instance, drive, bank)
+            sweep.validate_open(group["opened"], instance, drive, bank, source)
         if group["closed"] is not None:
             _owner_binding(group["closed"], record)
-            sweep.validate_group_close(group["closed"], instance, bank)
+            sweep.validate_group_close(
+                group["closed"], instance, bank, source, (group["opened"] or {}).get("worker")
+            )
     for label in ("pre", "post"):
         baselines = record[label]
         p.require(isinstance(baselines, list) and len(baselines) <= 3, "Invalid baseline count")
@@ -264,7 +288,7 @@ def validate(record):
     source_verified = isinstance(cleanup, dict) and cleanup.get("verified") is True
     if source_verified:
         _owner_binding(cleanup["receipt"], record)
-        sweep.validate_release(cleanup["receipt"], record["run"], bank)
+        sweep.validate_release(cleanup["receipt"], record["run"], bank, source)
         p.require(
             all(group["closed"] is not None for group in groups),
             "Released run contains an unclosed drive group",
@@ -277,7 +301,7 @@ def validate(record):
     preceding_tone = record["began_ns"]
     report_rows = []
     for index, (row, point, admission) in enumerate(
-        zip(rows, sweep.POINTS, review["admissions"], strict=True)
+        zip(rows, points, review["admissions"][: len(points)], strict=True)
     ):
         p.require(r.encoded(row["point"]) == r.encoded(sweep.asdict(point)), "Saved matrix differs")
         state = row["state"]
@@ -308,6 +332,38 @@ def validate(record):
                     "Invalid or reused tone request",
                 )
                 request_ids.add(request)
+                if source is not None:
+                    reservation = row.get("reservation")
+                    _owner_binding(reservation, record)
+                    sweep.validate_tone(
+                        reservation,
+                        row,
+                        admission,
+                        bank,
+                        "reserved",
+                        source,
+                        group["opened"]["worker"],
+                    )
+                    for key in ("ack", "active", "stop"):
+                        if key not in row:
+                            continue
+                        observation = row[key]
+                        phase = {"ack": "accepted", "active": "active", "stop": "terminal"}[key]
+                        if (
+                            key == "stop"
+                            and observation["receipt"].get("phase") == "cancelled-before-enable"
+                        ):
+                            phase = "cancelled-before-enable"
+                        _observation(
+                            observation,
+                            record,
+                            row,
+                            admission,
+                            bank,
+                            phase,
+                            record["began_ns"],
+                            record["finished_ns"],
+                        )
             else:
                 p.require(
                     not row["rf_confirmed"]
@@ -363,14 +419,14 @@ def validate(record):
     if record["status"] == "completed":
         p.require(
             not stopped
-            and len(groups) == len(sweep.DRIVES)
+            and len(groups) == group_count
             and source_verified
             and (record["meter_cleanup"] or {}).get("status") == "accepted"
             and record["post_error"] is None
             and len(record["post"]) == 3
             and record["error"] is None
-            and record["finished_ns"] - record["began_ns"] <= sweep.RUN_S * sweep.NS,
-            "Completed sweep has missing acquisition or cleanup",
+            and record["finished_ns"] - record["began_ns"] <= sweep.run_limit(review) * sweep.NS,
+            "Completed run has missing acquisition or cleanup",
         )
     return report_rows
 
@@ -409,7 +465,7 @@ def _native(record):
         "instrument_cleanup": record["meter_cleanup"],
         "settings": {"unit": "W", "trigger": "TR1"},
         "context": {
-            "schema": sweep.SCHEMA,
+            "schema": record["schema"],
             "meter_serial": hp.METER_SERIAL,
             "sensor_serial": SENSOR_SERIAL,
             "measurement_plane": "sensor_input",
@@ -425,14 +481,17 @@ def seal_capture(output, record):
             handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
-    _seal(output, {"schema": sweep.SCHEMA, "mode": "physical", "run": record["run"]})
+    _seal(output, {"schema": record["schema"], "mode": "physical", "run": record["run"]})
     sweep.sync_directory(output)
 
 
 def load(source):
     bundle = p.Bundle(source)
     inventory = bundle.inventory("artifacts.json", "physical")
-    p.require(inventory.get("schema") == sweep.SCHEMA, "Wrong capture inventory")
+    p.require(
+        inventory.get("schema") in (sweep.SCHEMA, sweep.HISTORICAL_SCHEMA),
+        "Wrong capture inventory",
+    )
     p.require(not any(path.is_symlink() for path in bundle.root.rglob("*")), "Symlink capture")
     actual = {
         path.relative_to(bundle.root).as_posix()
@@ -441,7 +500,11 @@ def load(source):
     }
     p.require(actual == set(bundle.entries), "Unsealed or unexpected capture evidence")
     record = bundle.json("workflow.json")
-    p.require(record.get("run") == inventory.get("run"), "Capture inventory belongs to another run")
+    p.require(
+        record.get("run") == inventory.get("run")
+        and record.get("schema") == inventory.get("schema"),
+        "Capture inventory belongs to another run or schema",
+    )
     rows = validate(record)
     if record["zero_sha256"] is not None:
         zero_path = "zero/diagnostics.json"
@@ -486,8 +549,15 @@ def publish(source, output, *, pdf=False):
         key: sum(row["state"] == key for row in rows)
         for key in ("measured", "limited", "failed", "not reached")
     }
+    source = _current_source(run)
+    selected = sweep.pi.route(20) if source is None else sweep.pi.route(source["gpio"])
+    scope = run["review"].get("scope", "sweep")
+    title = f"Pi 1 GPIO{selected['gpio']} {scope}"
+    schema = HISTORICAL_REPORT if source is None else REPORT
     summary = {
-        "schema": REPORT,
+        "schema": schema,
+        "route": selected,
+        "scope": scope,
         "run": run["run"],
         "capture_inventory_sha256": inventory_hash,
         "status": run["status"],
@@ -520,6 +590,7 @@ def publish(source, output, *, pdf=False):
     from .guided_report import html_summary
 
     lines = [
+        f"Route: GPIO{selected['gpio']}/{selected['mux']} (GPCLK0)",
         f"Capture: {run['status']}",
         f"Measurement plane: {summary['measurement_plane']}",
         "RF frequency accuracy: Unqualified",
@@ -540,9 +611,14 @@ def publish(source, output, *, pdf=False):
     with (output / "index.html").open("x", encoding="utf-8") as stream:
         stream.write(
             '<!doctype html><html lang="en"><head><meta charset="utf-8">'
-            "<title>Pi 1 GPIO20 sweep</title></head><body><h1>Pi 1 GPIO20 sweep</h1>"
-            f"{html_summary(lines)}<table><caption>Requested points</caption>"
-            f"<thead><tr>{header}</tr></thead><tbody>{body}</tbody></table></body></html>"
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            f"<title>{escape(title)}</title>"
+            "<style>body>table{max-width:100%}.points{overflow-x:auto}"
+            ".points:focus-visible{outline:2px solid #135c91}</style>"
+            f"</head><body><h1>{escape(title)}</h1>{html_summary(lines)}"
+            '<div class="points" tabindex="0" role="region" aria-label="Requested points">'
+            f"<table><caption>Requested points</caption><thead><tr>{header}</tr></thead>"
+            f"<tbody>{body}</tbody></table></div></body></html>"
         )
     if pdf:
         from .pdf_reports import _write
@@ -551,7 +627,7 @@ def publish(source, output, *, pdf=False):
         sweep.create_json(
             output / "metadata.json",
             {
-                "schema": REPORT,
+                "schema": schema,
                 "run": run["run"],
                 "capture_inventory_sha256": inventory_hash,
             },
@@ -569,10 +645,10 @@ def publish(source, output, *, pdf=False):
             producer=identify(),
             run_id=run["run"],
             physical=True,
-            source_label="Conducted Pi 1 GPIO20 sweep",
+            source_label=f"Conducted {title}",
             multipage=True,
         )
-    _seal(output, {"schema": REPORT, "mode": "physical", "run": run["run"]})
+    _seal(output, {"schema": schema, "mode": "physical", "run": run["run"]})
     with suppress(OSError):
         sweep.sync_directory(output)
     return {"status": "completed", "coverage": counts, "output": str(output)}

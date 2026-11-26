@@ -2,7 +2,13 @@
 
 Updated: November 24, 2026. The current meter is **SN 3125U22346**, with laboratory software **2.0** and HPIB address **13** listed in its calibration record. A [supervised Mac ZERO and 30 m power capture](validation/30M-POWER-20261123.md), a [native Pico Test Tone pilot](validation/30M-POWER-20261123.md#native-test-tone-pilot), and a [complete 52-point Pico sweep](validation/PICO-52-20261123.md) are recorded. Broader interaction checks and meter control from a Pi remain **pending**. Laboratory certification and software tests do not establish current host/backend compatibility or absolute RF accuracy.
 
-The 8482H SN 3318A09219 [calibration review](validation/8482H-CALIBRATION-20261122.md) records laboratory evidence from the certificate and calibration chart dated November 15, 2026. Physical project qualification for this sensor remains pending.
+The [supervised 8482H bench check](validation/8482H-BENCH-20261124.md) for SN 3318A09219 recorded completed ZERO and CAL at 99.0%, followed by three **1.0050 mW** POWER REF indications with measurement CAL FAC verified at 99.0%. The meter confirmed POWER REF off after the check. The [8482H calibration review](validation/8482H-CALIBRATION-20261122.md) covers the laboratory certificate and chart.
+
+## 8482A ZERO and CAL
+
+On November 24, 2026, the HP 437B completed supervised ZERO in **10.1 s** with the 8482A SN MY41094127 connected directly to POWER REF. The first RF-off reading was **+0.08 µW**. The operator confirmed live readings, RMT and POWER REF off, and unchanged connections before CAL. The meter completed CAL at **99.0% REF CAL FACTOR** in **2.6 s**, reported POWER REF off with no measurement or entry errors, and indicated **+0.02 µW** with RF off. It accepted the return-to-local command and the USB session closed. The operator confirmed live front-panel readings, RMT and POWER REF off, and no active operation or displayed error after CAL.
+
+The native receipts are retained locally under `tmp/8482a-zero-cal.n500M0Og/` as `zero/diagnostics.json` (SHA-256 `31cd4f34209f0338e91b5ee22210f056189d4f736b85b9c9347612e0e17c9161`) and `cal/diagnostics.json` (SHA-256 `01ab15d4693aa61b04823963179aeacc4d15e9653ab1eff136dfe1e8e2529a0b`).
 
 ## Pico Si5351 Test Tone
 
@@ -16,11 +22,24 @@ RF-free Pico tests cover native Start and finite shutdown at 144.490500 MHz for 
 
 The supervised HP Si5351 sweep retained **112 readings at 56 points**, with all four drives measured at 144.490500 MHz. The sealed report record is `f2d3366439c743f99dcd5ccebc7a44c0`. It includes verified meter closure and Pico restoration to 8 mA with both schedules disabled and RF inactive. The HP runner requires a fresh full Review before meter preparation, drive changes, or Start. The [HP RF-free contract fixtures](../tests/test_si5351_sweep.py) cover the 56-point operator-to-report path, bounded status retries, supervised continuation, and unconfirmed shutdown.
 
+## TIS-1W conducted Si5351 sweep
+
+The November 24, 2026 [TIS-1W sweep](workflows/TIS-1W-SWEEP.md) used Pico C (`wpicoc.local`), the operator-confirmed 50 Ω fixture, and the 8482H SN 3318A09219 on the Mac-controlled HP 437B. The runner applied the sensor’s frequency-specific CAL FAC before each point. The sealed report record `06273823668445178b2e02b9d826267b` retains 88 readings across 44 points on 11 bands. The reported power is the meter indication at the sensor input. The run record leaves filter and attenuation details unspecified.
+
+| Si5351 drive | Range of point means |
+| --- | --- |
+| 2 mA | All 11 points below the 100 µW reporting floor |
+| 4 mA | 0.6885–1.4400 W |
+| 6 mA | 0.7095–1.4400 W |
+| 8 mA | 0.7120–1.4400 W |
+
+The meter completed ZERO before the initial segment and again before the supervised continuation. The initial segment stopped at 60 m / 8 mA when the readings failed the settling check. The sealed result carries forward 35 points and includes a settled 1.3700 W mean at 60 m / 8 mA from the continuation. RF-off indications bracketing the continuation were 5 and 6 µW. Final status verified RF inactive, both schedules disabled, and active and saved drive restored to 8 mA. The meter accepted the return-to-local command.
+
 ## Raspberry Pi 1 GPIO20 pilot
 
 The November 24, 2026 conducted pilot used `wspr1.local` (Raspberry Pi Model A+, BCM2835), the 8482A SN MY41094127, and the Mac-controlled HP 437B. A temporary loopback-only WsprryPi process used native GPIO20 at a configured **2 mA** and requested **475,700 Hz**. The controller confirmed GPCLK0 on GPIO20 and committed **0.0 ppm additional clock correction**. The meter display readback verified **100.7% CAL FAC**. Both settling reads and the retained read indicated **3.0100 mW (4.79 dBm)** at the sensor input. RF-off readings were **−0.17 µW** before the tone and **−0.27 µW** afterward. The meter indication can include harmonics. The configured drive and carrier are controller evidence, with no independent current or frequency measurement for this point.
 
-The bounded request had a **50-second cutoff**. The controller confirmed shutdown after **6.18 s**, released ownership, and returned GPIO20 to input mode. The temporary process exited with the normal `wsprrypi.service` stopped and disabled. The meter accepted free-run and return to local. The local receipts are under `tmp/wspr1-gpio20-disabled-pilot.8lvyk3ni/capture/` as `pilot.json` (SHA-256 `1b63f5fab169d9e330d5333128708a83c1cb82c6c121d27563c893ccaf11ea4e`) and `pi-events.jsonl` (SHA-256 `c453831592612de44dbd49834775b3f24570440bfd481acbba8054f88fb1f520`). The [Mac sweep runner](workflows/PI1-GPIO20-SWEEP.md) has RF-free evidence for all eight drive groups and 160 retained samples. The WsprryPi owner contract and physical full-matrix qualification remain open. [Sweep plan](workflows/AUTOMATIC-FREQUENCY-DRIVE-PLAN.md#2-device-controls)
+The bounded request had a **50-second cutoff**. The controller confirmed shutdown after **6.18 s**, released ownership, and returned GPIO20 to input mode. The temporary process exited with the normal `wsprrypi.service` stopped and disabled. The meter accepted free-run and return to local. The local receipts are under `tmp/wspr1-gpio20-disabled-pilot.8lvyk3ni/capture/` as `pilot.json` (SHA-256 `1b63f5fab169d9e330d5333128708a83c1cb82c6c121d27563c893ccaf11ea4e`) and `pi-events.jsonl` (SHA-256 `c453831592612de44dbd49834775b3f24570440bfd481acbba8054f88fb1f520`). The [Mac sweep runner](workflows/PI1-GPIO20-SWEEP.md) has RF-free evidence for all eight drive groups and 160 retained samples. Live Review with the matching WsprryPi owner and physical full-matrix qualification remain open for each route. [Sweep plan](workflows/AUTOMATIC-FREQUENCY-DRIVE-PLAN.md#2-device-controls)
 
 ## Record the environment
 

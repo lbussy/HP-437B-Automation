@@ -21,6 +21,9 @@ def fake_worker(pipe, mode):
         time.sleep(5)
     elif mode == "disconnect":
         pipe.close()
+    elif mode == "native_timeout":
+        pipe.send(("timeout", "VisaIOError: VI_ERROR_TMO"))
+        pipe.close()
     else:
         pipe.send(("ok", b"reply"))
         pipe.close()
@@ -86,6 +89,13 @@ def test_ipc_success_and_worker_disconnect():
             transport.read(time.monotonic() + 2)
     finally:
         transport.close()
+
+
+def test_backend_read_timeout_retains_timeout_type_and_disposes_worker():
+    transport = connected("native_timeout")
+    with pytest.raises(OperationTimeout, match="VI_ERROR_TMO"):
+        transport.read(time.monotonic() + 2)
+    assert transport._process is None and transport._pipe is None
 
 
 @pytest.mark.parametrize(

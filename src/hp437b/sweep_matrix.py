@@ -6,7 +6,10 @@ SCHEMA = "hp437b.automatic-sweep-simulation.v1"
 PICO_SCHEMA = "hp437b.automatic-pico-sweep.v1"
 SI5351_PLAN_SCHEMA = "hp437b.automatic-pico-si5351-plan.v1"
 SI5351_SCHEMA = "hp437b.automatic-pico-si5351.v1"
-PICO_SCHEMAS = (PICO_SCHEMA, SI5351_SCHEMA)
+TIS_1W_SCHEMA = "hp437b.automatic-pico-si5351-tis-1w.v1"
+TIS_1W_FIXTURE = "tis-1w"
+SI5351_SCHEMAS = (SI5351_SCHEMA, TIS_1W_SCHEMA)
+PICO_SCHEMAS = (PICO_SCHEMA, *SI5351_SCHEMAS)
 MATRIX_SCHEMAS = (SCHEMA, *PICO_SCHEMAS)
 PLAN_SCHEMAS = (*MATRIX_SCHEMAS, SI5351_PLAN_SCHEMA)
 SI5351_TARGET = "pico-si5351"
@@ -30,6 +33,9 @@ DIALS = {
     "6m": 50293000,
 }
 SI5351_DIALS = {**DIALS, "2m": 144489000}
+TIS_1W_DIALS = {
+    band: dial for band, dial in SI5351_DIALS.items() if band not in ("2200m", "630m", "2m")
+}
 PROFILES = {
     "pico-gpio": ("Pico direct GPIO", (2, 4, 8, 12)),
     "si5351": ("Si5351", (2, 4, 6, 8)),
@@ -68,7 +74,7 @@ def si5351_plan(base, *, schema=SI5351_SCHEMA):
     return {
         **simulation_plan(base, "si5351"),
         "schema": schema,
-        "frequencies": list(SI5351_DIALS),
+        "frequencies": list(dials_for_schema(schema)),
         "samples": 2,
         "interval_s": 1.0,
         "timeout_s": 30.0,
@@ -104,7 +110,7 @@ def validate(plan):
     )
     if plan["schema"] == PICO_SCHEMA:
         p.require(plan == pico_plan(plan), "Use the reviewed direct-GPIO Pico capture settings")
-    elif plan["schema"] in (SI5351_SCHEMA, SI5351_PLAN_SCHEMA):
+    elif plan["schema"] in (*SI5351_SCHEMAS, SI5351_PLAN_SCHEMA):
         p.require(
             plan == si5351_plan(plan, schema=plan["schema"]),
             "Use the exact Pico Si5351 capture settings",
@@ -117,6 +123,8 @@ def validate(plan):
 
 
 def dials_for_schema(schema):
+    if schema == TIS_1W_SCHEMA:
+        return TIS_1W_DIALS
     return SI5351_DIALS if schema in (SI5351_SCHEMA, SI5351_PLAN_SCHEMA) else DIALS
 
 

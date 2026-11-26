@@ -21,18 +21,26 @@ OFF = {
     "gpclk_enabled": False,
     "gpclk_busy": False,
     "gpio_input": True,
+    "other_gpio_input": True,
+    "dma_idle": True,
+    "pwm_idle": True,
     "owned": False,
     "mux": "INPUT",
 }
-ON = {**{key: not value for key, value in OFF.items()}, "mux": "ALT5"}
+ON = {**{key: not value for key, value in OFF.items()}, "other_gpio_input": True}
 SOURCE = {
     **pi.TARGET,
+    **pi.route(20),
     "device": "1" * 32,
     "boot": "2" * 32,
     "revision": "3" * 40,
     "executable": "4" * 64,
     "station": "5" * 64,
-    "capabilities": pi.CAPABILITIES,
+    "capabilities": pi.CURRENT_CAPABILITIES,
+    "clock_policy": "uncalibrated",
+    "ppm_millionths": 0,
+    "correction": "6" * 64,
+    "correction_provenance": "Offline test vector",
 }
 FIXTURE = {
     "signal_path": "Contained load on GPIO20 with isolated DC path to the HP 8482A",
@@ -45,13 +53,25 @@ FIXTURE = {
 
 
 class Bench:
-    def __init__(self, root):
+    def __init__(self, root, gpio=20):
         self.root = root
         (root / "tmp").mkdir()
         self.ns = 100 * sweep.NS
         self.now = 1000
         self.ops = []
-        self.source = dict(SOURCE)
+        self.gpio = gpio
+        self.source = {**SOURCE, **pi.route(gpio)}
+        self.prepared = {
+            **FIXTURE,
+            "signal_path": f"Contained load on GPIO{gpio}",
+            "confirm": dict.fromkeys(
+                (f"conducted_gpio{gpio}_fixture_through_16ma_all_ten_carriers", *sweep.CONFIRM[1:]),
+                True,
+            ),
+        }
+        self.receipts = {}
+        self.reservation = None
+        self.worker = "a" * 32
         self.overrides = {}
         self.group = None
         self.tone = None
@@ -91,24 +111,37 @@ class Bench:
         return {
             "carrier_hz": point["carrier_hz"],
             "drive_code": point["drive_ma"] // 2 - 1,
-            "ppm_millionths": 0,
-            "policy": "uncalibrated",
+            "ppm_millionths": self.source["ppm_millionths"],
+            "policy": self.source["clock_policy"],
             "lower_nhz": requested - 500,
             "upper_nhz": requested + 500,
             "deadline_ms": 50_000,
-            "plan": r.digest(r.encoded(point)),
+            "plan": r.digest(r.encoded({"point": point, "route": pi.route(self.gpio)})),
             "refusal": None,
         }
 
     def ssh(self, argv, *, input, timeout, **kwargs):
-        assert argv == pi.SSH and 0 < timeout <= 3
+        assert argv == pi.SSH
+        assert "-oStrictHostKeyChecking=yes" in argv
+        assert argv[-5:] == (
+            "wspr1",
+            "/usr/bin/sudo",
+            "-n",
+            "--",
+            "/usr/local/libexec/wsprrypi-gpio-qualification-owner",
+        )
         request = json.loads(input)
         assert request["contract"] == pi.CONTRACT
         operation = request["operation"]
+        assert 0 < timeout <= (pi.REVIEW_OP_S if operation == "review_matrix" else pi.OP_S)
         self.ops.append(operation)
         self.sleep(0.0001)
         try:
             receipt = self.owner(operation, request)
+            if operation in ("claim", "open_group", "close_group", "reserve", "release"):
+                self.receipts[(operation, request.get("instance"), request.get("request"))] = (
+                    receipt
+                )
             if operation in self.overrides:
                 receipt = self.overrides[operation](receipt, request)
         except subprocess.TimeoutExpired:
@@ -118,6 +151,7 @@ class Bench:
         reply = {
             "contract": pi.CONTRACT,
             "operation": operation,
+            "call": request["call"],
             "request_sha256": r.digest(input),
             "receipt": receipt,
         }
@@ -130,12 +164,26 @@ class Bench:
             "service": sweep.SERVICE,
             **{key: self.source[key] for key in ("boot", "device")},
             "run": req.get("run"),
+            "owner": "7" * 32,
+            "profile": self.source["profile"],
+            "gpio": self.gpio,
+            "route_mux": pi.MUX[self.gpio],
         }
+        if op == "review_matrix":
+            assert req["route"] == pi.route(self.gpio) and req["duration_ms"] == pi.TONE_MS
+            assert req["points"] == [sweep.asdict(point) for point in sweep.POINTS]
+            return {
+                "source": self.source,
+                "admissions": [self.admit(point) for point in req["points"]],
+            }
         if op == "review":
+            assert req["route"] == pi.route(self.gpio)
             return self.source
         assert req["source"] == self.source
         if op == "admit":
             return self.admit(req["point"])
+        if op == "lookup":
+            return self.receipts.get((req["kind"], req.get("instance"), req.get("request")))
         if op == "claim":
             assert self.run is None and req["lifetime_ms"] == sweep.RUN_S * 1000
             self.run = req["run"]
@@ -143,7 +191,7 @@ class Bench:
         assert self.run == req["run"]
         if op == "admit_matrix":
             return {
-                **{key: fields[key] for key in sweep.OWNER_FIELDS},
+                **{key: fields[key] for key in (*sweep.OWNER_FIELDS, *sweep.ROUTE_FIELDS)},
                 "admissions": [self.admit(point) for point in req["points"]],
             }
         if op == "open_group":
@@ -151,10 +199,12 @@ class Bench:
             pending = sweep.json_file(self.controller.auth / "source-pending.json")
             assert (pending["run"], pending["instance"]) == (self.run, req["instance"])
             self.group = req["instance"]
-            self.generation = 0
+            self.worker = req["instance"]
             return {
                 **fields,
                 "instance": self.group,
+                "worker": self.worker,
+                "phase": "ready",
                 "drive_code": req["drive_code"],
                 "listen": "127.0.0.1",
                 "port": 43146,
@@ -169,36 +219,57 @@ class Bench:
         if op == "close_group":
             assert self.tone is None
             self.group = None
-            return {**fields, "instance": req["instance"], "exited": True}
-        if op == "start":
+            return {**fields, "instance": req["instance"], "worker": self.worker, "exited": True}
+        assert req["worker"] == self.worker
+        if op == "reserve":
             assert self.tone is None
+            assert req["duration_ms"] == pi.TONE_MS
+            assert req["admission"] == self.admit(req["point"])
+            self.generation += 1
+            plan = req["admission"]
+            self.reservation = {
+                **fields,
+                "instance": self.group,
+                "worker": self.worker,
+                "request": req["request"],
+                "generation": self.generation,
+                "revision": 0,
+                "phase": "reserved",
+                "plan": plan["plan"],
+                "drive_code": plan["drive_code"],
+                "clock": "GPCLK0",
+                "cutoff_ms": pi.TONE_MS,
+                "reserved_until_ms": self.ns // 10**6 + 8000,
+                "ceiling_ms": 0,
+                "armed_at_ms": 0,
+                "inactive_at_ms": 0,
+            }
+            return self.reservation
+        assert self.reservation["request"] == req["request"]
+        assert req["generation"] == self.generation
+        if op == "start":
+            assert self.tone is None and self.reservation["phase"] == "reserved"
             assert req["duration_ms"] == pi.TONE_MS
             assert req["admission"] == self.admit(req["point"])
             pending = sweep.json_file(self.controller.auth / "source-pending.json")
             assert pending["request"] == req["request"] and pending["phase"] == "start-pending"
+            assert pending["generation"] == self.generation
             self.starts += 1
-            self.generation += 1
-            plan = req["admission"]
             self.tone = {
-                **fields,
-                "instance": self.group,
-                "request": req["request"],
-                "generation": self.generation,
-                "revision": 1,
+                **self.reservation,
                 "phase": "accepted",
-                "plan": plan["plan"],
-                "drive_code": plan["drive_code"],
-                "gpio": 20,
-                "clock": "GPCLK0",
-                "cutoff_ms": pi.TONE_MS,
+                "revision": 1,
+                "ceiling_ms": self.ns // 10**6 + pi.TONE_MS,
+                "armed_at_ms": self.ns // 10**6,
             }
             return self.tone
-        assert self.tone and self.tone["request"] == req["request"]
-        assert req["generation"] in (None, self.generation)
         if op == "status":
+            if self.tone is None:
+                return self.reservation
             return {
                 **self.tone,
                 **ON,
+                "mux": pi.MUX[self.gpio],
                 "phase": "active",
                 "revision": 2,
                 "bank": {**BANK, "drive": self.tone["drive_code"]},
@@ -206,8 +277,17 @@ class Bench:
         if op == "stop":
             assert threading.current_thread() is not threading.main_thread()
             self.stops += 1
-            result = {**self.tone, **OFF, "phase": "terminal", "revision": 3}
+            base = self.tone or self.reservation
+            phase = "terminal" if self.tone else "cancelled-before-enable"
+            result = {
+                **base,
+                **OFF,
+                "phase": phase,
+                "revision": 3,
+                "inactive_at_ms": self.ns // 10**6,
+            }
             self.tone = None
+            self.reservation = result
             self.stop_signal.set()
             return result
         raise AssertionError(op)
@@ -247,7 +327,7 @@ class Bench:
             )
 
     def review(self):
-        return self.controller.review(FIXTURE, self.path("review.json"))
+        return self.controller.review(self.prepared, self.path("review.json"), self.gpio)
 
     def start(self, name="capture", **kwargs):
         auth = sweep.json_file(self.path("review.json"))["authorization"]
@@ -308,9 +388,12 @@ def bench(tmp_path):
     return Bench(tmp_path)
 
 
-def test_complete_cli_full_matrix_and_reexport(bench, capsys):
-    assert sweep.main(["plan"], controller=bench.controller) == 0
+@pytest.mark.parametrize("gpio", [4, 20])
+def test_complete_cli_full_matrix_and_reexport(tmp_path, gpio, capsys):
+    bench = Bench(tmp_path, gpio)
+    assert sweep.main(["plan", "--gpio", str(gpio)], controller=bench.controller) == 0
     plan = json.loads(capsys.readouterr().out)
+    assert plan["target"]["gpio"] == gpio
     assert len(plan["requested_points"]) == 80
     assert [row["drive_ma"] for row in plan["requested_points"][::10]] == list(range(2, 17, 2))
     assert [row["carrier_hz"] for row in plan["requested_points"][:10]] == [
@@ -326,11 +409,13 @@ def test_complete_cli_full_matrix_and_reexport(bench, capsys):
         28126100,
     ]
     assert bench.ops == []
-    bench.path("fixture.json").write_bytes(r.encoded(FIXTURE))
+    bench.path("fixture.json").write_bytes(r.encoded(bench.prepared))
     assert (
         sweep.main(
             [
                 "review",
+                "--gpio",
+                str(gpio),
                 "--fixture",
                 str(bench.path("fixture.json")),
                 "--output",
@@ -341,7 +426,7 @@ def test_complete_cli_full_matrix_and_reexport(bench, capsys):
         == 0
     )
     saved = json.loads(capsys.readouterr().out)
-    assert set(bench.ops) == {"review", "admit"}
+    assert bench.ops == ["review_matrix"]
     assert bench.zero_count == bench.meter_contact == 0
     assert (
         sweep.main(
@@ -366,6 +451,7 @@ def test_complete_cli_full_matrix_and_reexport(bench, capsys):
     assert bench.meter_commands[-3:] == [b"TR3", b"GTL", b"CLOSE"]
     assert bench.run is bench.group is bench.tone is None
     result, rows, _ = report.load(bench.path("capture"))
+    assert result["review"]["source"]["gpio"] == gpio
     assert sum(row["samples"] for row in rows) == 160
     assert rows[0]["cal_fac_percent"] == "100.7" and rows[0]["dbm"] == pytest.approx(4.785665)
     assert len(result["pre"]) == len(result["post"]) == 3
@@ -394,19 +480,21 @@ def test_complete_cli_full_matrix_and_reexport(bench, capsys):
 
 @pytest.mark.parametrize("ppm, band", [(-76332300, "630m"), (-71997500, "160m")])
 def test_low_band_native_refusal(bench, ppm, band):
+    bench.source.update(clock_policy="selected", ppm_millionths=ppm)
+
     def refuse(value, req):
-        value.update(policy="selected", ppm_millionths=ppm)
-        if req["point"]["band"] == band:
-            value.update(
-                lower_nhz=None,
-                upper_nhz=None,
-                deadline_ms=None,
-                plan=None,
-                refusal="BCM2835 fractional divider is outside the native window",
-            )
+        for row, point in zip(value["admissions"], req["points"], strict=True):
+            if point["band"] == band:
+                row.update(
+                    lower_nhz=None,
+                    upper_nhz=None,
+                    deadline_ms=None,
+                    plan=None,
+                    refusal="BCM2835 fractional divider is outside the native window",
+                )
         return value
 
-    bench.overrides["admit"] = refuse
+    bench.overrides["review_matrix"] = refuse
     assert sum(row["refusal"] is not None for row in bench.review()["admissions"]) == 8
     with pytest.raises(ValueError, match="refused"):
         bench.start()
@@ -428,24 +516,55 @@ def test_unqualified_source_never_enters_prepare(bench, field, value):
     bench.source[field] = value
     with pytest.raises(ValueError):
         bench.review()
-    assert bench.ops == ["review"]
+    assert bench.ops == ["review_matrix"]
     assert bench.zero_count == bench.meter_contact == 0
 
 
 def test_installed_pilot_cannot_supply_owner_contract(bench):
-    bench.overrides["review"] = lambda *_: None
+    bench.overrides["review_matrix"] = lambda *_: None
     with pytest.raises(OSError, match="unavailable"):
         bench.review()
-    assert bench.ops == ["review"]
+    assert bench.ops == ["review_matrix"]
 
 
-@pytest.mark.parametrize("fault", ["expired", "station", "matrix", "token", "changed-plan", "busy"])
+def test_expired_batch_does_not_publish_review(bench):
+    def expire(value, request):
+        bench.sleep(pi.REVIEW_OP_S)
+        return value
+
+    bench.overrides["review_matrix"] = expire
+    with pytest.raises(ValueError, match="after its deadline"):
+        bench.review()
+    assert bench.ops == ["review_matrix"]
+    assert not bench.path("review.json").exists()
+
+
+def test_runtime_stop_and_its_status_use_the_independent_connection():
+    owner = pi.Owner()
+    control, stop = object(), object()
+    owner.lanes = {"control": control, "stop": stop}
+    assert owner._runtime_lane("status", False) is control
+    assert owner._runtime_lane("stop", False) is stop
+    assert owner._runtime_lane("status", True) is stop
+    assert owner._runtime_lane("review_matrix", False) is None
+
+
+def test_incomplete_batch_does_not_publish_review(bench):
+    def omit(value, request):
+        value["admissions"].pop()
+        return value
+
+    bench.overrides["review_matrix"] = omit
+    with pytest.raises(ValueError, match="every matrix row"):
+        bench.review()
+    assert not bench.path("review.json").exists()
+
+
+@pytest.mark.parametrize("fault", ["station", "matrix", "token", "changed-plan", "busy"])
 def test_review_binding_prevents_unsafe_start(bench, fault):
     bench.review()
     saved = sweep.json_file(bench.path("review.json"))
-    if fault == "expired":
-        bench.now += sweep.REVIEW_TTL_S
-    elif fault == "station":
+    if fault == "station":
         bench.source["station"] = "6" * 64
     elif fault == "matrix":
         saved["review"]["plan"]["requested_points"].reverse()
@@ -510,7 +629,6 @@ def test_raw_error_reviewed_bound_and_limited_report(bench, raw, matched):
     "fault",
     [
         "lost-start",
-        "lost-stop",
         "stale-instance",
         "wrong-drive",
         "wrong-clock",
@@ -528,8 +646,6 @@ def test_failure_progression_and_native_cleanup(bench, fault):
     cancelled = threading.Event()
     if fault == "lost-start":
         bench.overrides["start"] = fail
-    elif fault == "lost-stop":
-        bench.overrides["stop"] = fail
     elif fault == "status-timeout":
         bench.overrides["status"] = fail
     elif fault == "cancel":
@@ -585,7 +701,7 @@ def test_rehashed_capture_window_tamper_is_rejected(bench):
     sweep.checkpoint(capture / "workflow.json", run)
     (capture / "artifacts.json").unlink()
     report._seal(capture, {"schema": sweep.SCHEMA, "mode": "physical", "run": run["run"]})
-    with pytest.raises(ValueError, match="changed RF window"):
+    with pytest.raises(ValueError, match="Pi deadline does not match"):
         report.publish(capture, bench.path("report"))
     assert not bench.path("report").exists()
 
@@ -636,7 +752,14 @@ def test_source_disconnect_leaves_both_recovery_markers(bench):
     def disconnected(value, req):
         raise OSError("Injected SSH disconnect")
 
-    bench.overrides.update(stop=disconnected, close_group=disconnected)
+    def lost_status(value, req):
+        if value.get("phase") == "terminal":
+            disconnected(value, req)
+        return value
+
+    bench.overrides.update(
+        stop=disconnected, status=lost_status, close_group=disconnected, lookup=disconnected
+    )
     bench.review()
     run = bench.start()
     assert run["points"][0]["state"] == "failed" and bench.starts == 1
@@ -668,7 +791,7 @@ def test_report_refuses_cross_run_owner_receipt_even_if_rehashed(bench):
     sweep.checkpoint(capture / "workflow.json", record)
     (capture / "artifacts.json").unlink()
     report._seal(capture, {"schema": sweep.SCHEMA, "mode": "physical", "run": record["run"]})
-    with pytest.raises(ValueError, match="Wrong run, device, or boot"):
+    with pytest.raises(ValueError, match="different run, device, or boot"):
         report.publish(capture, bench.path("report"))
 
 
@@ -694,6 +817,36 @@ def test_storage_failure_keeps_source_shutdown_ahead_of_finalization(bench, monk
     assert report.load(bench.path("capture"))[1][0]["state"] == "measured"
 
 
+@pytest.mark.parametrize("accepted", [True, False])
+def test_final_baseline_timeout_still_attempts_local_once(bench, monkeypatch, accepted):
+    real_read = Wire.read
+
+    def timeout_after_release(wire, deadline):
+        if wire.pending == b"TR1" and "release" in bench.ops:
+            raise OperationTimeout("Injected closing RF-off read timeout")
+        return real_read(wire, deadline)
+
+    def release_local(wire, serial, deadline):
+        assert serial == hp.ADAPTER and bench.tone is None
+        assert wire.bench.meter_commands[-1] == b"CLOSE"
+        wire.bench.meter_commands.append(b"REN OFF")
+        if not accepted:
+            raise OperationTimeout("Injected USB control timeout")
+        return {"status": "accepted"}
+
+    monkeypatch.setattr(Wire, "read", timeout_after_release)
+    monkeypatch.setattr(Wire, "release_after_final_timeout", release_local, raising=False)
+    bench.review()
+    run = bench.start()
+    assert bench.starts == bench.stops == len(sweep.POINTS)
+    assert run["status"] == "partial" and run["source_cleanup"]["verified"]
+    assert "Injected closing RF-off read timeout" in run["post_error"]
+    assert run["post"] == [{"raw_hex": ""}]
+    assert bench.meter_commands[-3:] == [b"TR1", b"CLOSE", b"REN OFF"]
+    assert run["meter_cleanup"]["status"] == ("accepted" if accepted else "failed")
+    assert sweep._meter_paths(bench.controller.locks)[1].exists() is not accepted
+
+
 def _slow_usb_descriptor():
     time.sleep(30)
 
@@ -703,3 +856,113 @@ def test_usb_identity_preflight_respects_worker_deadline():
     with pytest.raises(OperationTimeout):
         wire.open(1, preflight=_slow_usb_descriptor)
     assert wire._process is None
+
+
+@pytest.mark.parametrize(
+    "operation", ("claim", "open_group", "reserve", "close_group", "release", "stop")
+)
+def test_lost_replies_resolve_by_identified_lookup(bench, operation):
+    def lost(*_):
+        bench.overrides.pop(operation)
+        raise subprocess.TimeoutExpired("fake-ssh", 1)
+
+    bench.overrides[operation] = lost
+    bench.review()
+    result = bench.start()
+    assert result["status"] == "completed"
+    assert bench.starts == bench.stops == 80
+    if operation != "stop":
+        assert "lookup" in bench.ops
+    _, rows, _ = report.load(bench.path("capture"))
+    assert sum(row["samples"] for row in rows) == 160
+
+
+def test_report_uses_historical_capture_contract(bench):
+    bench.review()
+    result = bench.start()
+    result["schema"] = sweep.HISTORICAL_SCHEMA
+    result["review"]["plan"] = sweep.plan()
+    result["review"].pop("scope")
+    result["review"]["expires"] = result["review"]["issued"] + sweep.HISTORICAL_REVIEW_TTL_S
+    source = result["review"]["source"]
+    for name in (
+        "profile",
+        "mux",
+        "clock_policy",
+        "ppm_millionths",
+        "correction",
+        "correction_provenance",
+    ):
+        del source[name]
+    source["capabilities"] = pi.CAPABILITIES
+
+    def historical(receipt, *, tone=False):
+        for field in (
+            *sweep.ROUTE_FIELDS,
+            *sweep.EXTRA_OFF_FIELDS,
+            "worker",
+            "ceiling_ms",
+            "armed_at_ms",
+            "inactive_at_ms",
+            "reserved_until_ms",
+        ):
+            if field != "gpio" or not tone:
+                receipt.pop(field, None)
+
+    historical(result["claim"])
+    historical(result["source_cleanup"]["receipt"])
+    for group in result["groups"]:
+        historical(group["opened"])
+        group["opened"].pop("phase")
+        historical(group["closed"])
+    for point in result["points"]:
+        point.pop("reservation")
+        for key in ("ack", "active", "stop"):
+            historical(point[key]["receipt"], tone=True)
+        for sample in point["samples"]:
+            for key in ("before", "after"):
+                historical(sample[key]["receipt"], tone=True)
+    capture = bench.path("capture")
+    for name in ("readings.csv", "readings.csv.session.json", "artifacts.json"):
+        (capture / name).unlink()
+    sweep.checkpoint(capture / "workflow.json", result)
+    report.seal_capture(capture, result)
+    run, rows, _ = report.load(capture)
+    assert run["review"]["source"]["gpio"] == 20
+    assert sum(row["samples"] for row in rows) == 160
+
+
+def test_durable_pilot_is_single_use_and_never_runs_a_sweep(bench):
+    review_path = bench.path("pilot-review.json")
+    bench.controller.review(bench.prepared, review_path, 20, pilot=True)
+    review = sweep.json_file(review_path)
+    assert review["review"]["scope"] == "pilot"
+    assert "expires" not in review["review"]
+    token = review["authorization"]
+    bench.now += 24 * 60 * 60
+    with pytest.raises(ValueError, match="run scope"):
+        bench.controller.start(review_path, token, bench.path("sweep"))
+    assert bench.starts == 0
+    assert (
+        sweep.main(
+            [
+                "pilot",
+                "--review",
+                str(review_path),
+                "--authorize",
+                token,
+                "--output",
+                str(bench.path("pilot")),
+            ],
+            controller=bench.controller,
+        )
+        == 0
+    )
+    assert bench.starts == bench.stops == 1
+    assert bench.ops.count("open_group") == bench.ops.count("close_group") == 1
+    run, rows, _ = report.load(bench.path("pilot"))
+    assert run["status"] == "completed"
+    assert len(rows) == 1 and rows[0]["carrier_hz"] == 475700
+    assert rows[0]["drive_ma"] == 2 and rows[0]["samples"] == 2
+    with pytest.raises(ValueError, match="replay"):
+        bench.controller.start(review_path, token, bench.path("replay"), pilot=True)

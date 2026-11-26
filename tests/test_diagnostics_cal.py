@@ -27,8 +27,8 @@ def cal_run(tmp_path, scenario="healthy", **overrides):
         prepared=dict.fromkeys(
             (*dp.PREPARED, "direct_reference_path", "warmed_up", "zero_ready"), True
         ),
-        work_s=35,
-        total_s=40,
+        work_s=cal.WORK_S,
+        total_s=cal.TOTAL_S,
         _factory_override=Backend(tmp_path / "trace.jsonl", scenario, calibration=True),
     )
     args.update(overrides)
@@ -113,7 +113,7 @@ def test_cancel_pending_CAL_retains_unknown_reference_and_stops_worker(tmp_path)
         {"cal_factor_source": ""},
         {"supervised_zero": True},
         {"include_latched_reads": True},
-        {"work_s": 45, "total_s": 50},
+        {"work_s": 35, "total_s": 40},
         {"prepared": dict.fromkeys(dp.PREPARED, True)},
     ],
 )
@@ -123,30 +123,44 @@ def test_CAL_context_factor_and_budget_guards_precede_open(tmp_path, overrides):
     assert not (tmp_path / "trace.jsonl").exists() and not (tmp_path / "result").exists()
 
 
-def test_CAL_deadline_uses_manual_ten_seconds_without_ascii_abort(monkeypatch, scripted):
+@pytest.mark.parametrize("complete", [False, True])
+def test_CAL_uses_thirty_second_window_without_ascii_abort(monkeypatch, scripted, complete):
     clock = [100.0]
     monkeypatch.setattr(zero.time, "monotonic", lambda: clock[0])
     monkeypatch.setattr(
         zero.time, "sleep", lambda seconds: clock.__setitem__(0, clock[0] + seconds)
     )
-    wire = scripted(
-        [
-            ("write", b"SM"),
-            ("read", status_fixture(logarithmic=False)),
-            ("write", b"*ESE?"),
-            ("read", b"000\r\n"),
-            ("write", b"*SRE?"),
-            ("read", b"000\r\n"),
-            ("write", b"CS"),
-            ("write", b"CL99EN"),
-        ]
-    )
+    quiet = status_fixture(logarithmic=False)
+    script = [
+        ("write", b"SM"),
+        ("read", quiet),
+        ("write", b"*ESE?"),
+        ("read", b"000\r\n"),
+        ("write", b"*SRE?"),
+        ("read", b"000\r\n"),
+        ("write", b"CS"),
+        ("write", b"CL99EN"),
+    ]
+    if complete:
+        script.extend(
+            [
+                ("write", b"CS"),
+                ("write", b"SM"),
+                ("read", quiet),
+                ("write", b"TR1"),
+                ("read", b"+1.0000E-03\r\n"),
+                ("write", b"SM"),
+                ("read", quiet),
+            ]
+        )
+    wire = scripted(script)
     polls = []
 
     def poll(deadline, *, cancelled):
+        done = complete and clock[0] >= 111 and not any(p["adapter_status_byte"] for p in polls)
         v = dict(
             tag=2 + len(polls),
-            adapter_status_byte=0,
+            adapter_status_byte=2 if done else 0,
             capabilities_hex="",
             control_hex="010200",
             interrupt_hex="8200",
@@ -164,15 +178,20 @@ def test_CAL_deadline_uses_manual_ten_seconds_without_ascii_abort(monkeypatch, s
         cal.plan("99"),
         100,
         reference_factor="99",
-        deadline=135,
+        deadline=100 + cal.WORK_S,
         before_step=lambda _: None,
         after_step=lambda: None,
         on_row=lambda _: None,
         stop=SimpleNamespace(is_set=lambda: False),
     )
-    assert status == "query_failed" and not a["completion_indication_observed"]
-    assert len(polls) <= 22 and clock[0] <= 110.01
-    assert wire.calls[-1] == ("write", b"CL99EN") and a["reference_may_be_on"]
+    assert wire.calls == [(kind, data if kind == "write" else None) for kind, data in script]
+    if complete:
+        assert status == "completed" and a["completion_indication_observed"]
+        assert a["reference_restored_off_verified"] and clock[0] == pytest.approx(111.0)
+    else:
+        assert status == "query_failed" and not a["completion_indication_observed"]
+        assert a["reference_may_be_on"]
+        assert len(polls) == 62 and clock[0] == pytest.approx(130.0)
 
 
 def test_default_ZERO_plan_is_preserved_and_CAL_has_no_valid_setting_setters():
@@ -220,6 +239,7 @@ def test_CAL_followup_can_exceed_old_native_cap_and_returns_local(tmp_path):
     assert 9000 <= read["timeout_ms"] <= 10000
     assert r["local_return"]["status"] == "accepted"
     assert r["budgets"]["native_call_s"] == 2.0
+    assert r["budgets"]["cal_completion_s"] == 30.0
     assert r["budgets"]["cal_followup_read_s"] == 10.0
     assert all(
         e["timeout_ms"] <= 2000 for e in trace if e["event"] == "read" and e["command"] != "TR1"

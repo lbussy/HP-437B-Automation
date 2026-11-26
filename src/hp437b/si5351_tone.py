@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from . import provenance as p
 from . import reporting as r
-from .live_sweep_review import Admission, Point, Target, _disposition
+from .live_sweep_review import Admission, Point, Target, _disposition, calibration_for_schema
 from .live_sweep_window import Observation
 from .pico_tone import CONTRACT, CONTROL, PicoTone, _decimal_string, request, tone_descriptor
 from .sweep_matrix import PROFILES
@@ -134,9 +134,14 @@ def realization_bounds(value, carrier_hz):
     return (programmed - bound) // 10**9, (programmed + bound + 10**9 - 1) // 10**9
 
 
-def applied_factor(value, target, point, timing):
+def applied_factor(value, target, point, timing, *, schema=None):
     bounds = realization_bounds(value, point.carrier_hz)
-    result = _disposition(Admission(point, target, None, timing.tone_ms, bounds), timing, 1)
+    result = _disposition(
+        Admission(point, target, None, timing.tone_ms, bounds),
+        timing,
+        1,
+        calibration=calibration_for_schema(schema),
+    )
     p.require(result.reason is None, "Si5351 LOAD left the admitted sensor correction range")
     return result.correction_percent
 

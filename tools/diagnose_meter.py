@@ -6,6 +6,7 @@ import signal
 import threading
 from pathlib import Path
 
+from hp437b import diagnostics_cal as cal
 from hp437b.diagnostics_physical import run_physical
 from hp437b.reconciliation_physical import PhysicalTarget
 
@@ -133,14 +134,14 @@ def main():
             cal_factor_source=setup.get("cal_factor_source"),
             original_resolution=setup.get("original_resolution"),
             confirmed_reference_control=args.confirm_reference_control,
-            work_s=35
+            work_s=cal.WORK_S
             if args.supervised_cal
             else 45
             if args.supervised_zero
             else 60
             if args.acquisition_settings
             else 20,
-            total_s=40
+            total_s=cal.TOTAL_S
             if args.supervised_cal
             else 50
             if args.supervised_zero

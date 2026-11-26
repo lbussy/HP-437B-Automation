@@ -14,7 +14,7 @@ from . import provenance as p
 from . import reporting as r
 from .instrument import Instrument
 from .logger import _atomic_json, collect
-from .sensor_correction import LEGACY_SOURCE, correction
+from .sensor_correction import LEGACY_SOURCE, SOURCE, correction
 from .simulation import DemoTransport
 from .transport import VisaTransport
 from .workflow_report import _seal
@@ -134,12 +134,25 @@ def configuration(document):
     keys = ("resource", "meter_serial", "sensor_serial", "known_issues", "fixture")
     p._keys(
         document,
-        (*keys, *(key for key in ("signal_source", "sensor_correction") if key in document)),
+        (
+            *keys,
+            *(
+                key
+                for key in ("signal_source", "sensor_correction", "fixture_profile")
+                if key in document
+            ),
+        ),
     )
     p.require(
         document.get("signal_source", "external") in ("external", "power_ref"),
         "Invalid configured signal source",
     )
+    if "fixture_profile" in document:
+        p.require(
+            document["fixture_profile"] == sweep_matrix.TIS_1W_FIXTURE
+            and not reference_source(document),
+            "TIS-1W fixture requires an external RF source",
+        )
     VisaTransport(document["resource"])  # Syntax only; no discovery or device I/O.
     for key in ("meter_serial", "sensor_serial", "fixture"):
         text(document[key], 1000 if key == "fixture" else 120)
@@ -482,7 +495,10 @@ def analyze_unsealed(source, record):
                 receipt = session.get("sensor_correction", {})
                 # Accept the known pre-relocation path without changing sealed evidence.
                 # All other fields, including the certificate hash, must still match.
-                if receipt.get("source") == LEGACY_SOURCE:
+                if (
+                    receipt.get("source") == LEGACY_SOURCE
+                    and expected_correction["source"] == SOURCE
+                ):
                     expected_correction = {**expected_correction, "source": LEGACY_SOURCE}
                 p.require(
                     {
@@ -589,7 +605,7 @@ def analyze_unsealed(source, record):
             point["status"] not in ("completed", "limited") or session is not None,
             "Completed point has no native evidence",
         )
-        if record["schema"] == sweep_matrix.SI5351_SCHEMA and point["status"] not in (
+        if record["schema"] in sweep_matrix.SI5351_SCHEMAS and point["status"] not in (
             "completed",
             "limited",
         ):

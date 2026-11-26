@@ -217,7 +217,9 @@ def package(source, report, target=None):
         readme = readme.replace(
             b"All included measurements are synthetic.",
             (
-                b"Recorded Pico Si5351 CLK0 measurements. Control/1 source and equipment records are included."
+                b"Recorded Pico Si5351 CLK0 measurements through the TIS-1W using the 8482H. Control/1 source and equipment records are included."
+                if source_schema == sweep_matrix.TIS_1W_SCHEMA
+                else b"Recorded Pico Si5351 CLK0 measurements. Control/1 source and equipment records are included."
                 if source_schema == sweep_matrix.SI5351_SCHEMA
                 else b"Recorded Pico direct-GPIO measurements. Control/1 source and equipment records are included."
                 if source_schema == sweep_matrix.PICO_SCHEMA

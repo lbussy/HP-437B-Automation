@@ -20,7 +20,6 @@ from .live_sweep_window import ActiveWindow
 from .logger import _atomic_json
 from .reconciliation import _lease
 from .reconciliation_physical import PhysicalTarget, _matching_usb
-from .sensor_correction import PROFILE, SENSOR_SERIAL
 from .workflow_report import _seal
 
 SCHEMA = sweep_matrix.PICO_SCHEMA
@@ -32,27 +31,67 @@ SI5351_PREPARED = (
     *PREPARED[1:],
     "independent_si5351_shutdown_ready",
 )
+TIS_1W_PREPARED = (
+    "tis_1w_50_ohm_fixture",
+    "8482h_3318a09219_on_sensor",
+    *PREPARED[2:],
+    "independent_si5351_shutdown_ready",
+    "independent_tis_1w_shutdown_ready",
+)
+PREPARED_BY_SCHEMA = {
+    SCHEMA: PREPARED,
+    sweep_matrix.SI5351_SCHEMA: SI5351_PREPARED,
+    sweep_matrix.TIS_1W_SCHEMA: TIS_1W_PREPARED,
+}
 
 
 def target_id(schema):
-    return sweep_matrix.SI5351_TARGET if schema == sweep_matrix.SI5351_SCHEMA else "pico-gpio"
+    return sweep_matrix.SI5351_TARGET if schema in sweep_matrix.SI5351_SCHEMAS else "pico-gpio"
 
 
 def expected_output(schema):
-    return ("si5351", "CLK0") if schema == sweep_matrix.SI5351_SCHEMA else ("pico-gpio", "GP2")
+    return ("si5351", "CLK0") if schema in sweep_matrix.SI5351_SCHEMAS else ("pico-gpio", "GP2")
 
 
-def configuration(config):
+def si5351_schema(config):
+    if config and config.get("fixture_profile") == sweep_matrix.TIS_1W_FIXTURE:
+        return sweep_matrix.TIS_1W_SCHEMA
+    return sweep_matrix.SI5351_SCHEMA
+
+
+def configuration(config, *, schema=SCHEMA):
     config = guided.configuration(config)
+    tis_1w = schema == sweep_matrix.TIS_1W_SCHEMA
+    calibration = live.calibration_for_schema(schema)
     p.require(
-        config["sensor_serial"] == SENSOR_SERIAL and not guided.reference_source(config),
-        "Configure the conducted 8482A MY41094127 fixture for live Pico capture",
+        config["sensor_serial"] == calibration.serial
+        and not guided.reference_source(config)
+        and ("fixture_profile" in config) == tis_1w,
+        f"Configure the {'TIS-1W 8482H' if tis_1w else 'direct 8482A'} "
+        f"{calibration.serial} fixture for this live Pico capture",
     )
     return config
 
 
+def _equipment(fixture, schema):
+    return dict(
+        fixture,
+        sensor_correction={
+            "profile": live.calibration_for_schema(schema).profile,
+            "frequency_hz": {
+                band: dial + sweep_matrix.OFFSET_HZ
+                for band, dial in sweep_matrix.dials_for_schema(schema).items()
+            },
+        },
+    )
+
+
+def _reading_limits(schema):
+    return pilot.TIS_1W_LIMITS if schema == sweep_matrix.TIS_1W_SCHEMA else pilot.DIRECT_LIMITS
+
+
 def prepared_check(prepared, *, schema=SCHEMA):
-    p._keys(prepared, SI5351_PREPARED if schema == sweep_matrix.SI5351_SCHEMA else PREPARED)
+    p._keys(prepared, PREPARED_BY_SCHEMA[schema])
     p.require(
         all(value is True for value in prepared.values()),
         "Confirm the complete current Pico bench setup",
@@ -90,7 +129,9 @@ def _current(source, expected, *, deadline_ns=None):
     return current
 
 
-def _admitted(source, target, point, expected, *, deadline=None, cancelled=lambda: False):
+def _admitted(
+    source, target, point, expected, *, calibration, deadline=None, cancelled=lambda: False
+):
     current = target
     while True:
         if cancelled():
@@ -98,7 +139,9 @@ def _admitted(source, target, point, expected, *, deadline=None, cancelled=lambd
         attempt_deadline = min(deadline, time.monotonic_ns() + 8_000_000_000) if deadline else None
         assessed = source.assess(current, point, TIMING.tone_ms, deadline_ns=attempt_deadline)
         if assessed["admission"] == "ready":
-            admitted = live._disposition(source._admission(current, point, assessed), TIMING, 1)
+            admitted = live._disposition(
+                source._admission(current, point, assessed), TIMING, 1, calibration=calibration
+            )
             p.require(
                 admitted.reason is None and admitted.correction_percent == expected,
                 "Pico realization, duration, or sensor correction changed after review",
@@ -114,20 +157,23 @@ def _admitted(source, target, point, expected, *, deadline=None, cancelled=lambd
         current = _current(source, target, deadline_ns=deadline)
 
 
-def _power_limited(path):
+def _power_limited(path, limits):
     with path.open(newline="") as stream:
-        return any(
-            Decimal(row["value"]) <= pilot.BASELINE_LIMIT_W for row in csv.DictReader(stream)
-        )
+        return any(Decimal(row["value"]) <= limits.limited_w for row in csv.DictReader(stream))
 
 
-def _point_ready(source, target, disposition, cancelled, *, retry_timeout):
+def _point_ready(source, target, disposition, cancelled, *, calibration, retry_timeout):
     def read_only_checks():
         if cancelled():
             raise KeyboardInterrupt("Sweep stopped before RF")
         current = _current(source, target)
         return _admitted(
-            source, current, disposition.point, disposition.correction_percent, cancelled=cancelled
+            source,
+            current,
+            disposition.point,
+            disposition.correction_percent,
+            calibration=calibration,
+            cancelled=cancelled,
         )
 
     try:
@@ -157,7 +203,7 @@ def previous_capture(path, plan, fixture, expected_target):
         and sequence <= 5,
         "Previous capture is ineligible for a known-safe continuation of this sweep",
     )
-    if previous["schema"] == sweep_matrix.SI5351_SCHEMA:
+    if previous["schema"] in sweep_matrix.SI5351_SCHEMAS:
         zero = bundle.json("zero/diagnostics.json")
         p.require(
             zero["status"] == "completed"
@@ -213,11 +259,13 @@ def run(
     """Join the frozen owner review to a single physical run and seal its native evidence."""
     plan = guided.validate(plan)
     schema = plan["schema"]
-    si5351 = schema == sweep_matrix.SI5351_SCHEMA
+    si5351 = schema in sweep_matrix.SI5351_SCHEMAS
     p.require(schema in sweep_matrix.PICO_SCHEMAS, "Use the exact physical Pico matrix")
     p.require(source.target_id == target_id(schema), "Selected Pico source does not match the plan")
     prepared_check(prepared, schema=schema)
-    fixture = configuration(fixture)
+    fixture = configuration(fixture, schema=schema)
+    calibration = live.calibration_for_schema(schema)
+    limits = _reading_limits(schema)
     review = live.review(
         source,
         source.target_id,
@@ -225,6 +273,7 @@ def run(
         timing=TIMING,
         tolerance_hz=1,
         include_pdf=include_pdf,
+        schema=schema,
     )
     review.require_admitted_start(reviewed_digest)
     p.require(
@@ -243,16 +292,7 @@ def run(
     prior = (
         previous_capture(continue_from, plan, fixture, asdict(target)) if continue_from else None
     )
-    equipment = dict(
-        fixture,
-        sensor_correction={
-            "profile": PROFILE,
-            "frequency_hz": {
-                band: dial + sweep_matrix.OFFSET_HZ
-                for band, dial in sweep_matrix.dials_for_schema(schema).items()
-            },
-        },
-    )
+    equipment = _equipment(fixture, schema)
     meter = PhysicalTarget(
         fixture["resource"], "HEWLETT-PACKARD_437B_2.0", b"HEWLETT-PACKARD,437B,,2.0"
     )
@@ -343,7 +383,9 @@ def run(
 
         def launch(stack):
             nonlocal target, source_uncertain, attempted
-            target, assessed = _point_ready(source, target, disposition, gate, retry_timeout=si5351)
+            target, assessed = _point_ready(
+                source, target, disposition, gate, calibration=calibration, retry_timeout=si5351
+            )
             journal(
                 source_pending,
                 "start-requested",
@@ -385,6 +427,7 @@ def run(
                         target,
                         disposition.point,
                         TIMING,
+                        schema=schema,
                     )
                     == disposition.correction_percent,
                     "Si5351 LOAD changed the sensor correction",
@@ -398,6 +441,8 @@ def run(
                 launch=launch,
                 point=disposition.point,
                 timing=TIMING,
+                calibration=calibration,
+                limits=limits,
                 context=dict(
                     workflow=schema,
                     pico_authorization=auth,
@@ -423,7 +468,9 @@ def run(
             terminal is not None and terminal["job"]["outcome"] == "stopped",
             "Pico early Stop did not verify for the retained point",
         )
-        point["status"] = "limited" if _power_limited(folder / "samples.csv") else "completed"
+        point["status"] = (
+            "limited" if _power_limited(folder / "samples.csv", limits) else "completed"
+        )
 
     try:
         with _lease(source_pending.with_suffix(".lock")):
@@ -437,7 +484,14 @@ def run(
             journal(meter_pending, "zero-pending")
             meter_uncertain = True
             emit(phase="running", current="GUIDED", stage="Fresh supervised ZERO")
-            pilot.zero_meter(output / "zero", meter, lock_root, fixture["meter_serial"], gate)
+            pilot.zero_meter(
+                output / "zero",
+                meter,
+                lock_root,
+                fixture["meter_serial"],
+                gate,
+                sensor_serial=calibration.serial,
+            )
             meter_uncertain = False
             with _lease(meter_lock):
                 _matching_usb(meter.adapter_identity)
@@ -446,7 +500,9 @@ def run(
                 journal(meter_pending, "capture-pending")
                 try:
                     meter_uncertain = True
-                    record["rf_off_before_W"] = pilot._baseline(output / "rf-off-before.csv", meter)
+                    record["rf_off_before_W"] = pilot._baseline(
+                        output / "rf-off-before.csv", meter, calibration=calibration, limits=limits
+                    )
                     meter_uncertain = False
                     for i, (point, disposition) in enumerate(
                         zip(record["points"], review.dispositions, strict=True)
@@ -466,6 +522,7 @@ def run(
                                 target,
                                 disposition.point,
                                 disposition.correction_percent,
+                                calibration=calibration,
                                 deadline=ready_by,
                                 cancelled=gate,
                             )
@@ -493,7 +550,10 @@ def run(
                         if not meter_uncertain and "rf_off_before_W" in record:
                             meter_uncertain = True
                             record["rf_off_after_W"] = pilot._baseline(
-                                output / "rf-off-after.csv", meter
+                                output / "rf-off-after.csv",
+                                meter,
+                                calibration=calibration,
+                                limits=limits,
                             )
                             meter_uncertain = False
                     if not meter_uncertain and not source_uncertain:
@@ -523,7 +583,9 @@ def validate_window(folder, record, point, values, session):
     receipt = p._json((folder / "terminal.json").read_bytes())
     window = p._json((folder / "rf-window.json").read_bytes())
     job, terminal = tone["job"], receipt["job"]
-    si5351 = record["schema"] == sweep_matrix.SI5351_SCHEMA
+    schema = record["schema"]
+    si5351 = schema in sweep_matrix.SI5351_SCHEMAS
+    limits = _reading_limits(schema)
     if si5351:
         from . import si5351_tone as si
         from .pico_tone import _decimal_string
@@ -571,6 +633,7 @@ def validate_window(folder, record, point, values, session):
                     point["drive_ma"],
                 ),
                 TIMING,
+                schema=schema,
             )
             == session["sensor_correction"]["commanded_factor_percent"]
             and initial["phase"] in ("accepted", "running")
@@ -655,7 +718,11 @@ def validate_window(folder, record, point, values, session):
             "Pico settling evidence differs from its native frame",
         )
         settled.append(raw.value)
-    p.require(live.stable(*settled[-2:], pilot.READ_TOLERANCE_W), "Pico settling did not verify")
+    p.require(
+        limits.settled(*settled[-2:])
+        and all(value <= limits.maximum_w for value in (*settled, *values)),
+        "Pico settling or sensor power limit did not verify",
+    )
     for bracket in [*(row["bracket"] for row in window["settling"]), *window["brackets"]]:
         before, after = bracket["before"], bracket["after"]
         for item in (before, after):
@@ -696,7 +763,7 @@ def validate_window(folder, record, point, values, session):
         )
         previous = after["observed_ns"]
     p.require(
-        (point["status"] == "limited") == any(value <= pilot.BASELINE_LIMIT_W for value in values),
+        (point["status"] == "limited") == any(value <= limits.limited_w for value in values),
         "Pico low indication classification differs from the native samples",
     )
 
@@ -722,11 +789,16 @@ def _validate_si5351_review(record):
         and type(review["include_pdf"]) is bool,
         "Si5351 review lacks the prepared source and acquisition bounds",
     )
-    matrix = live._matrix("pico", "si5351")
+    schema = record["schema"]
+    calibration = live.calibration_for_schema(schema)
+    matrix = live._matrix("pico", "si5351", schema=schema)
     for point, row in zip(matrix, review["dispositions"], strict=True):
         bound = row["maximum_tone_ms"]
         expected = live._disposition(
-            live.Admission(point, target, None, bound, tuple(row["realization_hz"])), TIMING, 1
+            live.Admission(point, target, None, bound, tuple(row["realization_hz"])),
+            TIMING,
+            1,
+            calibration=calibration,
         )
         p.require(
             bound <= target.maximum_duration_ms
@@ -773,12 +845,13 @@ def validate_run(record, bundle):
     review = record["review"]
     original = review["target"]
     schema = record["schema"]
-    si5351 = schema == sweep_matrix.SI5351_SCHEMA
+    si5351 = schema in sweep_matrix.SI5351_SCHEMAS
+    fixture = configuration(record["review_fixture"], schema=schema)
     p.require(
         (original["profile"], original["output"]) == expected_output(schema)
         and original["target_id"] == target_id(schema)
         and (not si5351 or "settings_sha256" in original)
-        and review["fixture_digest"] == r.digest(r.encoded(configuration(record["review_fixture"])))
+        and review["fixture_digest"] == r.digest(r.encoded(fixture))
         and review["review_digest"]
         == r.digest(
             r.encoded({key: value for key, value in review.items() if key != "review_digest"})
@@ -791,6 +864,11 @@ def validate_run(record, bundle):
     )
     if si5351:
         _validate_si5351_review(record)
+    if schema == sweep_matrix.TIS_1W_SCHEMA:
+        p.require(
+            record["equipment"] == _equipment(fixture, schema),
+            "TIS-1W equipment differs from the reviewed fixture and 8482H correction profile",
+        )
     for field in ("rf_off_before_W", "rf_off_after_W"):
         if field in record:
             filename = field.removesuffix("_W").replace("_", "-") + ".csv"
@@ -802,9 +880,16 @@ def validate_run(record, bundle):
                 and native.error_code is None
                 and native.value == Decimal(row["value"])
                 and native.value == Decimal(record[field])
-                and abs(native.value) <= pilot.BASELINE_LIMIT_W,
+                and abs(native.value) <= _reading_limits(schema).baseline_w,
                 "Pico RF-off baseline differs from its native evidence",
             )
+            if schema == sweep_matrix.TIS_1W_SCHEMA:
+                receipt = bundle.json(filename + ".session.json").get("sensor_correction")
+                expected = guided.point_correction(record["equipment"], pilot.POINT.band)
+                p.require(
+                    receipt == {**expected, "command_sent": True, "status_checked": True},
+                    "TIS-1W RF-off baseline lacks the 8482H correction",
+                )
     previous = original
     visited_boots = {original["boot_id"]}
     for change in record["drive_changes"]:
@@ -864,6 +949,11 @@ def validate_run(record, bundle):
         p.require(
             zero["status"] == "completed"
             and zero["zero_assessment"]["accepted_full_case"] is True
-            and zero["transport_closed"] is True,
+            and zero["transport_closed"] is True
+            and (
+                schema != sweep_matrix.TIS_1W_SCHEMA
+                or zero["equipment_labels"]
+                == {key: fixture[key] for key in ("meter_serial", "sensor_serial")}
+            ),
             "Completed Pico sweep has no verified ZERO",
         )

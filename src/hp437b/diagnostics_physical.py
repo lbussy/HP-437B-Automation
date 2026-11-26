@@ -454,7 +454,9 @@ def run_physical(
         if not isinstance(cal_factor_source, str) or not 1 <= len(cal_factor_source.strip()) <= 256:
             raise ValueError("Record the sensor REF CAL FACTOR source")
         if include_latched_reads or (work_s, total_s) != (calibration.WORK_S, calibration.TOTAL_S):
-            raise ValueError("CAL is a separate bounded 35/40-second profile")
+            raise ValueError(
+                f"CAL is a separate bounded {calibration.WORK_S}/{calibration.TOTAL_S}-second profile"
+            )
     elif confirmed_cal or cal_reference_factor is not None or cal_factor_source is not None:
         raise ValueError("CAL factor/confirmation apply only to supervised CAL")
     if supervised_zero:
@@ -634,6 +636,7 @@ def run_physical(
             total_s=total_s,
             native_call_s=phy.NATIVE_S,
             native_finish_grace_s=phy.SHUTDOWN_GRACE_S,
+            cal_completion_s=zero.COMPLETION_S if supervised_cal else None,
             cal_followup_read_s=calibration.READ_S if supervised_cal else None,
         ),
         queries=rows,

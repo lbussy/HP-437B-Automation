@@ -17,8 +17,12 @@ def session_interface(manager, handle):
 
 def local_profile(interface, timeout_ms):
     """Negotiate only the identified adapter and its actual USBTMC interface."""
-    device = getattr(interface, "usb_dev", None)
-    descriptor = getattr(interface, "usb_intf", None)
+    return _local_profile(
+        getattr(interface, "usb_dev", None), getattr(interface, "usb_intf", None), timeout_ms
+    )
+
+
+def _local_profile(device, descriptor, timeout_ms):
     if (getattr(device, "idVendor", None), getattr(device, "idProduct", None)) != (
         0x03EB,
         0x2065,
@@ -56,3 +60,14 @@ def go_to_local(interface, timeout_ms):
     if raw != b"\x01":
         raise TransportError(f"USB488 GO_TO_LOCAL failed: {raw.hex()}")
     return {**profile, "status": "accepted", "response_hex": raw.hex()}
+
+
+def release_remote_enable(device, descriptor, timeout_ms):
+    """Release the dedicated meter's REN line without opening a VISA session."""
+    profile = _local_profile(device, descriptor, timeout_ms)
+    if profile is None:
+        raise CapabilityUnavailable("Adapter does not advertise USB488 remote control")
+    raw = bytes(device.ctrl_transfer(0xA1, 0xA0, 0, profile["interface"], 1, timeout=timeout_ms))
+    if raw != b"\x01":
+        raise TransportError(f"USB488 REN release failed: {raw.hex()}")
+    return {"status": "accepted", "interface": profile["interface"], "response_hex": raw.hex()}

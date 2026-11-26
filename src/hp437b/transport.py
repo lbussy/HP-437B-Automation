@@ -1,8 +1,4 @@
-"""Explicit USBTMC opening with bounded worker disposal after a failed RPC.
-
-The parent never issues a retry or instrument recovery command. Clean local
-return uses a project-local USB488 extension; other bus operations stay guarded.
-"""
+"""Explicit USBTMC opening with bounded disposal and USB488 local return."""
 
 import importlib.metadata
 import math
@@ -14,7 +10,7 @@ from contextlib import suppress
 from typing import Protocol
 
 from .errors import CapabilityUnavailable, OperationTimeout, TransportError
-from .usb488 import go_to_local, local_profile, session_interface
+from .usb488 import go_to_local, local_profile, release_remote_enable, session_interface
 
 
 class Transport(Protocol):
@@ -37,6 +33,7 @@ def _worker(pipe, resource: str, max_bytes: int, preflight=None) -> None:
     try:
         import pyvisa
         from pyvisa.constants import StatusCode
+        from pyvisa.errors import VisaIOError
 
         while True:
             operation, payload, milliseconds = pipe.recv()
@@ -58,11 +55,23 @@ def _worker(pipe, resource: str, max_bytes: int, preflight=None) -> None:
                     handle.read_termination = None
                     handle.write_termination = None
                     handle.send_end = True
-                    profile = local_profile(session_interface(manager, handle), milliseconds)
+                    interface = session_interface(manager, handle)
+                    profile = local_profile(interface, milliseconds)
                     if profile is not None:
                         result["local_return_profile"] = profile["profile"]
+                        device = interface.usb_dev
+                        result["usb_location"] = (device.bus, device.address)
                 elif operation == "close":
                     break
+                elif operation == "release_remote_enable":
+                    # This worker has never opened VISA or asserted REN.
+                    from .reconciliation_physical import _selected_usb
+
+                    serial, location = payload
+                    with _selected_usb(serial) as (device, descriptor):
+                        if (device.bus, device.address) != location:
+                            raise TransportError("USB adapter connection changed since meter open")
+                        result = release_remote_enable(device, descriptor, min(milliseconds, 1000))
                 else:
                     handle.timeout = milliseconds
                     if operation == "write":
@@ -82,6 +91,13 @@ def _worker(pipe, resource: str, max_bytes: int, preflight=None) -> None:
                     else:
                         raise RuntimeError("Unknown transport operation")
                 pipe.send(("ok", result))
+            except VisaIOError as exc:
+                kind = (
+                    "timeout"
+                    if operation == "read" and exc.error_code == StatusCode.error_timeout
+                    else "error"
+                )
+                pipe.send((kind, f"{type(exc).__name__}: {exc}"))
             except Exception as exc:
                 pipe.send(("error", f"{type(exc).__name__}: {exc}"))
     except (EOFError, BrokenPipeError):
@@ -114,7 +130,7 @@ class VisaTransport:
         self.max_bytes = max_bytes
         self._process = self._pipe = None
         self._lock = threading.RLock()
-        self.metadata: dict[str, str] = {}
+        self.metadata: dict = {}
         self.local_return: dict | None = None
         self.read_deadline_cleanup: dict | None = None
 
@@ -127,16 +143,9 @@ class VisaTransport:
             self.capabilities = type(self).capabilities
             self.local_return = None
             self.read_deadline_cleanup = None
-            context = multiprocessing.get_context("spawn")
-            parent, child = context.Pipe()
-            self._pipe = parent
-            self._process = context.Process(
-                target=_worker, args=(child, self.resource, self.max_bytes, preflight)
-            )
-            self._process.daemon = True
             deadline = time.monotonic() + timeout
             try:
-                self._process.start()
+                self._start(preflight)
                 self.metadata = self._rpc("open", None, deadline)
                 self.capabilities = type(self).capabilities
                 if "local_return_profile" in self.metadata:
@@ -145,8 +154,18 @@ class VisaTransport:
             except BaseException:
                 self._stop()
                 raise
-            finally:
-                child.close()
+
+    def _start(self, preflight=None):
+        context = multiprocessing.get_context("spawn")
+        parent, child = context.Pipe()
+        self._pipe = parent
+        self._process = context.Process(
+            target=_worker, args=(child, self.resource, self.max_bytes, preflight), daemon=True
+        )
+        try:
+            self._process.start()
+        finally:
+            child.close()
 
     def _stop(self) -> None:
         process, pipe = self._process, self._pipe
@@ -176,9 +195,11 @@ class VisaTransport:
             if self._pipe.poll(1.0):
                 outcome, detail = self._pipe.recv()
                 result["status"] = (
-                    "worker_error_received" if outcome == "error" else "late_result_discarded"
+                    "worker_error_received"
+                    if outcome in ("error", "timeout")
+                    else "late_result_discarded"
                 )
-                if outcome == "error":
+                if outcome in ("error", "timeout"):
                     result["worker_error"] = str(detail)
         except (EOFError, OSError):
             result["status"] = "worker_disconnected"
@@ -198,6 +219,8 @@ class VisaTransport:
                     raise OperationTimeout(f"{operation} deadline expired; no automatic retry")
                 outcome, result = self._pipe.recv()
                 read_pending = False
+                if outcome == "timeout":
+                    raise OperationTimeout(result)
                 if outcome != "ok":
                     raise TransportError(result)
                 remaining(deadline)
@@ -235,6 +258,25 @@ class VisaTransport:
         except BaseException as exc:
             self.local_return = {"status": "failed", "error": f"{type(exc).__name__}: {exc}"}
             raise
+
+    def release_after_final_timeout(self, serial: str, deadline: float):
+        """One control-only release after the identified meter session has closed."""
+        with self._lock:
+            location = self.metadata.get("usb_location")
+            if (
+                self._process is not None
+                or "go_to_local" not in self.capabilities
+                or not isinstance(location, tuple)
+                or len(location) != 2
+                or any(type(part) is not int for part in location)
+                or self.resource.split("::")[3:4] != [serial]
+            ):
+                raise CapabilityUnavailable("No closed, identified USB488 session to release")
+            try:
+                self._start()
+                return self._rpc("release_remote_enable", (serial, location), deadline)
+            finally:
+                self.close()
 
     def close(self) -> None:
         with self._lock:

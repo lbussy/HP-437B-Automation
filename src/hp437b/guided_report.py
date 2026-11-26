@@ -71,7 +71,7 @@ def provenance(record, bundle):
         label_basis="Simulated setpoints; no transmitter control or RF evidence"
         if record["schema"] == sweep_matrix.SCHEMA
         else "Control/1 requested carrier and job-bound Si5351 CLK0 synthesis readback"
-        if record["schema"] == sweep_matrix.SI5351_SCHEMA
+        if record["schema"] in sweep_matrix.SI5351_SCHEMAS
         else "Control/1 requested carrier and job-bound Pico GPIO drive"
         if record["schema"] == sweep_matrix.PICO_SCHEMA
         else "Operator-confirmed declarations; not independently measured",
@@ -81,7 +81,7 @@ def provenance(record, bundle):
         },
         **(
             {"source_review": record["review"]}
-            if record["schema"] == sweep_matrix.SI5351_SCHEMA
+            if record["schema"] in sweep_matrix.SI5351_SCHEMAS
             else {}
         ),
     )
@@ -147,7 +147,7 @@ def plots(output, record, result):
             "simulated setpoint"
             if record["schema"] == sweep_matrix.SCHEMA
             else "Si5351 CLK0 job setting"
-            if record["schema"] == sweep_matrix.SI5351_SCHEMA
+            if record["schema"] in sweep_matrix.SI5351_SCHEMAS
             else "Pico job setting"
             if record["schema"] in sweep_matrix.PICO_SCHEMAS
             else "operator confirmed"
@@ -193,7 +193,8 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
     record, result, bundle = sweep.load(source)
     simulated = record["schema"] == sweep_matrix.SCHEMA
     live_pico = record["schema"] in sweep_matrix.PICO_SCHEMAS
-    si5351 = record["schema"] == sweep_matrix.SI5351_SCHEMA
+    si5351 = record["schema"] in sweep_matrix.SI5351_SCHEMAS
+    tis_1w = record["schema"] == sweep_matrix.TIS_1W_SCHEMA
     automatic = simulated or live_pico
     if automatic and include_pdf is None:
         include_pdf = False
@@ -249,7 +250,9 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
     ]
     if complete:
         notes.append(
-            "Si5351 clock harmonics can contribute to the sensor-input indication."
+            "TIS-1W output harmonics can contribute to the sensor-input indication."
+            if tis_1w
+            else "Si5351 clock harmonics can contribute to the sensor-input indication."
             if si5351
             else "Unfiltered GPIO harmonics can contribute to the sensor-input indication."
         )
@@ -275,7 +278,9 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
         lines.append("Simulated output: " + sweep_matrix.PROFILES[record["plan"]["profile"]][0])
     if live_pico:
         lines.append(
-            "RF output: QRP Labs Si5351A Synthesizer and 25MHz TCXO module"
+            "RF output: Si5351 CLK0 through the Turn Island Systems TIS-1W"
+            if tis_1w
+            else "RF output: QRP Labs Si5351A Synthesizer and 25MHz TCXO module"
             if si5351
             else "RF output: Pico direct GPIO (GP2)"
         )
@@ -287,7 +292,8 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
             )
         if result["limited_points"]:
             lines.append(f"Limited indications: {result['limited_points']}")
-            notes.append(f"Limited points at the RF-off threshold: {result['limited_points']}.")
+            basis = "at or below 100 µW" if tis_1w else "at the RF-off threshold"
+            notes.append(f"Limited points {basis}: {result['limited_points']}.")
     observed = [
         D(row["mean_W"])
         for row in result["points"]
@@ -364,6 +370,7 @@ def publish(source, output, *, plot=True, package=None, include_pdf=None):
         not in (
             "Unfiltered GPIO harmonics can contribute to the sensor-input indication.",
             "Si5351 clock harmonics can contribute to the sensor-input indication.",
+            "TIS-1W output harmonics can contribute to the sensor-input indication.",
             "Measurement notes: Meter-indicated power at sensor input; record the RF path and meter corrections here.",
             "Acceptance: N/A. No acceptance limits were supplied.",
         )

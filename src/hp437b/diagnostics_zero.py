@@ -8,7 +8,7 @@ from .diagnostics_snapshot import _quiet
 from .errors import OperationTimeout, ProtocolError, StateUncertain
 from .serial_poll_probe import SerialPollProbe
 
-ZERO_S = 30.0
+COMPLETION_S = 30.0
 GAP_S = 0.5
 MAX_POLLS = 60
 RESERVE_S = 8.0
@@ -91,7 +91,6 @@ def collect(
     operation = "CAL" if _calibration_factor is not None else "ZERO"
     prefix = operation.lower()
     payload = encode("CL", _calibration_factor) if operation == "CAL" else b"ZE"
-    window_s, max_polls = (10.0, 20) if operation == "CAL" else (ZERO_S, MAX_POLLS)
     reserve_s = 18.0 if operation == "CAL" else RESERVE_S
     started_key = f"{prefix}_may_have_started"
     result = assessment(None)
@@ -113,10 +112,10 @@ def collect(
         try:
             before_step(row["step_id"])
             if step == f"{prefix}.start":
-                if deadline - time.monotonic() < window_s + reserve_s:
+                if deadline - time.monotonic() < COMPLETION_S + reserve_s:
                     reason = "insufficient_time_no_ZERO_started"
                 else:
-                    zero_deadline = time.monotonic() + window_s
+                    zero_deadline = time.monotonic() + COMPLETION_S
                     result[started_key] = True
                     if operation == "CAL":
                         result["reference_may_be_on"] = True
@@ -148,7 +147,7 @@ def collect(
                 elif kind == "poll_window":
                     samples = []
                     row["value"] = dict(samples=samples)
-                    for _number in range(max_polls):
+                    for _number in range(MAX_POLLS):
                         after_step()
                         if time.monotonic() >= zero_deadline:
                             raise OperationTimeout(

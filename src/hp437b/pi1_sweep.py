@@ -1,4 +1,4 @@
-"""Plan, review, and run the conducted Pi 1 GPIO20 sweep from the Mac."""
+"""Plan, review, and run a conducted BCM2835 GPIO sweep from the Mac."""
 
 import argparse
 import hashlib
@@ -25,7 +25,8 @@ from .reconciliation import _lease, pi_sweep_marker
 from .sensor_correction import PROFILE, SENSOR_SERIAL, correction
 from .sweep_matrix import DIALS, OFFSET_HZ, PROFILES
 
-SCHEMA = "hp437b.pi1-gpio20-sweep.v1"
+HISTORICAL_SCHEMA = "hp437b.pi1-gpio20-sweep.v1"
+SCHEMA = "hp437b.gpio-qualification-sweep.v1"
 BANDS = ("630m", "160m", "80m", "60m", "40m", "30m", "20m", "17m", "15m", "10m")
 DRIVES = PROFILES["pi-bcm283x"][1]
 POINTS = tuple(
@@ -33,8 +34,9 @@ POINTS = tuple(
     for index, (drive, band) in enumerate(((drive, band) for drive in DRIVES for band in BANDS), 1)
 )
 NS = 10**9
-REVIEW_S = 270
-REVIEW_TTL_S = 600
+REVIEW_S = pi.REVIEW_OP_S
+PREVIOUS_REVIEW_S = 270
+HISTORICAL_REVIEW_TTL_S = 600
 PREPARATION_S = 100
 GROUP_S = 15
 POINT_PREP_S = 22
@@ -48,6 +50,7 @@ TONE_S = pi.TONE_MS // 1000
 POINT_S = POINT_PREP_S + TONE_S
 GROUP_LIFETIME_MS = (len(BANDS) * POINT_S + 2 * GROUP_S) * 1000
 RUN_S = PREPARATION_S + len(DRIVES) * 2 * GROUP_S + len(POINTS) * POINT_S + FINAL_S
+PILOT_RUN_S = PREPARATION_S + 2 * GROUP_S + POINT_S + FINAL_S
 SERVICE = {key: pi.TARGET[key] for key in ("service_active", "service_enabled", "service_pid")}
 CONFIRM = (
     "conducted_gpio20_fixture_through_16ma_all_ten_carriers",
@@ -60,21 +63,21 @@ ROOT = Path(__file__).resolve().parents[2]
 LOCKS = ROOT / "tmp/workflow-locks"
 
 
-def plan():
+def plan(gpio=None, *, pilot=False):
     p.require(
-        START_S + DWELL_S + 5 * READ_S + 4 * SPACING_S + STOP_S < TONE_S,
+        START_S + DWELL_S + 5 * READ_S + 4 * SPACING_S + STOP_S + 1.5 < TONE_S,
         "Point budget does not fit before cutoff",
     )
     return {
-        "schema": SCHEMA,
-        "target": pi.TARGET,
+        "schema": HISTORICAL_SCHEMA if gpio is None else SCHEMA,
+        "target": pi.TARGET if gpio is None else {**pi.TARGET, **pi.route(gpio)},
         "meter_serial": hp.METER_SERIAL,
         "sensor_serial": SENSOR_SERIAL,
         "tone_ms": pi.TONE_MS,
         "drive_codes": {str(drive): drive // 2 - 1 for drive in DRIVES},
         "requested_points": [asdict(point) for point in POINTS],
-        "review_limit_s": REVIEW_S,
-        "start_to_finalize_limit_s": RUN_S,
+        "review_limit_s": PREVIOUS_REVIEW_S if gpio is None else REVIEW_S,
+        "start_to_finalize_limit_s": PILOT_RUN_S if pilot else RUN_S,
         "timing_s": {
             "preparation": PREPARATION_S,
             "group_transition": GROUP_S,
@@ -90,14 +93,15 @@ def plan():
     }
 
 
-def fixture(value):
+def fixture(value, gpio=20):
     p._keys(value, ("signal_path", "maximum_indication_w", "peak_w", "dc_v", "shutdown", "confirm"))
     for key in ("signal_path", "shutdown"):
         p.require(
             isinstance(value[key], str) and 0 < len(value[key].strip()) <= 400,
             f"Record the fixture {key}",
         )
-    p._keys(value["confirm"], CONFIRM)
+    expected = (f"conducted_gpio{gpio}_fixture_through_16ma_all_ten_carriers", *CONFIRM[1:])
+    p._keys(value["confirm"], expected)
     p.require(all(v is True for v in value["confirm"].values()), "Bench confirmations are required")
     for key, low, high in (
         ("maximum_indication_w", hp.FLOOR_W, hp.LIMIT_W),
@@ -171,22 +175,54 @@ def _valid_token(value, pattern=pi.HEX):
     return isinstance(value, str) and bool(pattern.fullmatch(value))
 
 
-def validate_review(record, *, permit_refusal=False):
-    p._keys(record, ("id", "issued", "expires", "plan", "fixture", "source", "admissions"))
+def requested_points(review):
+    return POINTS[:1] if review.get("scope") == "pilot" else POINTS
+
+
+def run_limit(review):
+    return PILOT_RUN_S if review.get("scope") == "pilot" else RUN_S
+
+
+def validate_review(record, *, permit_refusal=False, historical=False, saved=False):
+    fields = ("id", "issued", "plan", "fixture", "source", "admissions")
+    legacy = saved and isinstance(record, dict) and "scope" not in record
+    p._keys(record, (*fields, "expires" if legacy else "scope"))
+    source = record["source"]
+    p.require(isinstance(source, dict), "Malformed WsprryPi source")
+    gpio = None if historical else source.get("gpio")
+    p.require(historical or type(gpio) is int and gpio in pi.MUX, "Missing reviewed GPIO selection")
+    pi.target(source, gpio)
+    p.require(
+        legacy or record["scope"] == "sweep" or (record["scope"] == "pilot" and gpio == 20),
+        "Pilot scope is restricted to the first GPIO20 point",
+    )
+    expected_plan = plan(gpio, pilot=record.get("scope") == "pilot")
+    if (
+        saved
+        and isinstance(record["plan"], dict)
+        and record["plan"].get("review_limit_s") == PREVIOUS_REVIEW_S
+    ):
+        expected_plan["review_limit_s"] = PREVIOUS_REVIEW_S
     p.require(
         _valid_token(record["id"])
         and type(record["issued"]) is int
-        and type(record["expires"]) is int
-        and record["expires"] == record["issued"] + REVIEW_TTL_S
-        and r.encoded(record["plan"]) == r.encoded(plan()),
+        and (
+            not legacy
+            or (
+                type(record["expires"]) is int
+                and record["expires"] == record["issued"] + HISTORICAL_REVIEW_TTL_S
+            )
+        )
+        and r.encoded(record["plan"]) == r.encoded(expected_plan),
         "Review matrix, deadline, or authorization identity changed",
     )
-    fixture(record["fixture"])
-    pi.target(record["source"])
+    fixture(record["fixture"], 20 if historical else gpio)
     rows = record["admissions"]
     p.require(isinstance(rows, list) and len(rows) == len(POINTS), "Review needs every matrix row")
     for point, row in zip(POINTS, rows, strict=True):
-        pi.admission(row, point, permit_refusal=permit_refusal)
+        pi.admission(
+            row, point, permit_refusal=permit_refusal, source=None if historical else source
+        )
     p.require(
         len({(row["policy"], row["ppm_millionths"]) for row in rows}) == 1,
         "Clock correction changed while reviewing the matrix",
@@ -239,32 +275,33 @@ class Controller:
     def by(self, duration, enclosing):
         return min(self.clock() + duration * NS, enclosing)
 
-    def review(self, prepared, output):
-        prepared = fixture(prepared)
+    def review(self, prepared, output, gpio, *, pilot=False):
+        p.require(not pilot or gpio == 20, "Pilot scope requires GPIO20")
+        selection = pi.route(gpio)
+        prepared = fixture(prepared, gpio)
         output = checked_path(output, self.root)
         p.require(not output.exists(), "Review already exists")
         end = self.clock() + REVIEW_S * NS
-        source = pi.target(self.owner.call("review", {}, end))
-        rows = [
-            self.owner.call(
-                "admit", {"source": source, "point": asdict(point), "duration_ms": pi.TONE_MS}, end
-            )
-            for point in POINTS
-        ]
-        p.require(
-            pi.target(self.owner.call("review", {}, end)) == source,
-            "Owner or normal service changed during Review",
+        reply = self.owner.call(
+            "review_matrix",
+            {
+                "route": selection,
+                "points": [asdict(point) for point in POINTS],
+                "duration_ms": pi.TONE_MS,
+            },
+            end,
         )
+        p._keys(reply, ("source", "admissions"))
         issued = int(self.wall())
         record = validate_review(
             {
                 "id": secrets.token_hex(16),
                 "issued": issued,
-                "expires": issued + REVIEW_TTL_S,
-                "plan": plan(),
+                "scope": "pilot" if pilot else "sweep",
+                "plan": plan(gpio, pilot=pilot),
                 "fixture": prepared,
-                "source": source,
-                "admissions": rows,
+                "source": reply["source"],
+                "admissions": reply["admissions"],
             },
             permit_refusal=True,
         )
@@ -274,13 +311,17 @@ class Controller:
         )
         return record
 
-    def start(self, review_file, token, output, *, cancelled=lambda: False):
-        end = self.clock() + RUN_S * NS
+    def start(self, review_file, token, output, *, pilot=False, cancelled=lambda: False):
+        began = self.clock()
         output = checked_path(output, self.root)
         review_file = checked_path(review_file, self.root)
         wrapper = json_file(review_file)
         p._keys(wrapper, ("review", "authorization"))
         review = validate_review(wrapper["review"])
+        p.require(
+            review["scope"] == ("pilot" if pilot else "sweep"),
+            "Review authorization does not match the requested run scope",
+        )
         p.require(
             _valid_token(token, pi.HASH)
             and _valid_token(wrapper["authorization"], pi.HASH)
@@ -289,15 +330,18 @@ class Controller:
             "Start requires the locally issued review authorization",
         )
         with _lease(self.auth / "source.lock"):
-            return Run(self, review, output, end, cancelled).execute()
+            return Run(self, review, output, began + run_limit(review) * NS, cancelled).execute()
 
 
 def _service(value):
     p.require(r.encoded(value) == r.encoded(SERVICE), "Normal WsprryPi service state changed")
 
 
-def _off(receipt):
-    p.require(pi.native_off(receipt), "Native shutdown, pin mode, or ownership is unconfirmed")
+def _off(receipt, source=None):
+    p.require(
+        pi.native_off(receipt, current=source is not None),
+        "Native shutdown, pin mode, or ownership is unconfirmed",
+    )
 
 
 class Run:
@@ -308,7 +352,10 @@ class Run:
         self.run = secrets.token_hex(16)
         self.instance = None
         self.source = review["source"]
+        self.points = requested_points(review)
         self.bank = None
+        self.incarnation = None
+        self.worker = None
         self.group_close_attempted = False
         self.meter = None
         self.claimed = False
@@ -323,7 +370,7 @@ class Run:
             "error": None,
             "bank": None,
             "groups": [],
-            "began_ns": end - RUN_S * NS,
+            "began_ns": end - run_limit(review) * NS,
             "finished_ns": None,
             "pre": [],
             "post": [],
@@ -332,7 +379,7 @@ class Run:
             "meter_cleanup": None,
             "zero_sha256": None,
             "source_cleanup": None,
-            "points": [{"point": asdict(point), "state": "not reached"} for point in POINTS],
+            "points": [{"point": asdict(point), "state": "not reached"} for point in self.points],
         }
 
     def save(self):
@@ -346,6 +393,9 @@ class Run:
                 "phase": phase,
                 "boot": self.source["boot"],
                 "device": self.source["device"],
+                "route": pi.route(self.source["gpio"]),
+                "owner": self.incarnation,
+                "worker": self.worker,
                 **fields,
             },
         )
@@ -356,15 +406,18 @@ class Run:
         if self.c.clock() >= end:
             raise TimeoutError("Reviewed sweep budget expired")
 
-    def call(self, op, end, **fields):
-        receipt = self.c.owner.call(op, {"run": self.run, "source": self.source, **fields}, end)
-        p.require(
-            receipt.get("run") == self.run
-            and receipt.get("boot") == self.source["boot"]
-            and receipt.get("device") == self.source["device"],
-            "Owner receipt belongs to a different run, device, or boot",
+    def call(self, op, end, *, independent=False, **fields):
+        receipt = self.c.owner.call(
+            op, {"run": self.run, "source": self.source, **fields}, end, independent=independent
         )
+        owner_binding(receipt, self.source, self.run, self.incarnation)
         return receipt
+
+    def lookup_after_loss(self, op, end, *, lookup, **fields):
+        try:
+            return self.call(op, end, **fields)
+        except (TimeoutError, OSError):
+            return self.call("lookup", end, kind=op, **lookup)
 
     def fresh(self, point, reviewed, end):
         self.gate(end)
@@ -372,23 +425,29 @@ class Run:
             "admit", {"source": self.source, "point": asdict(point), "duration_ms": pi.TONE_MS}, end
         )
         p.require(
-            pi.admission(value, point) == reviewed, "Native clock admission changed after Review"
+            pi.admission(value, point, source=self.source) == reviewed,
+            "Native clock admission changed after Review",
         )
 
     def guard(self, end):
         self.gate(end)
         p.require(
-            pi.target(self.c.owner.call("review", {}, end)) == self.source,
+            pi.target(
+                self.c.owner.call("review", {"route": pi.route(self.source["gpio"])}, end),
+                self.source["gpio"],
+            )
+            == self.source,
             "Owner, clock source provenance, or normal service changed",
         )
 
     def baseline(self, label, end):
         readings = self.record[label]
+        read = self.meter.read_final if label == "post" else self.meter.read
         for _ in range(3):
             self.gate(end)
             row = {}
             readings.append(row)
-            value = self.meter.read(self.c.by(READ_S, end), row)
+            value = read(self.c.by(READ_S, end), row)
             row["watts"] = str(value)
             if label == "pre":
                 p.require(abs(value) <= hp.BASELINE_W, "Initial RF-off indication exceeds 5 µW")
@@ -402,14 +461,25 @@ class Run:
         self.record["groups"].append(group)
         self.journal(self.source_pending, "group-pending", instance=self.instance, drive_ma=drive)
         self.save()
-        opened = self.call(
+        opened = self.lookup_after_loss(
             "open_group",
             end,
+            lookup={"instance": self.instance},
             instance=self.instance,
             drive_code=drive // 2 - 1,
             lifetime_ms=GROUP_LIFETIME_MS,
         )
-        validate_open(opened, self.instance, drive, self.bank)
+        while opened.get("phase") == "pending":
+            p._keys(opened, (*OWNER_FIELDS, *ROUTE_FIELDS, "instance", "worker", "phase"))
+            p.require(
+                opened["instance"] == self.instance and _valid_token(opened["worker"]),
+                "Pending group receipt does not identify this worker",
+            )
+            self.gate(end)
+            self.c.sleep(0.05)
+            opened = self.call("lookup", end, kind="open_group", instance=self.instance)
+        validate_open(opened, self.instance, drive, self.bank, self.source)
+        self.worker = opened["worker"]
         group["opened"] = opened
         return group
 
@@ -417,10 +487,13 @@ class Run:
         instance = self.instance
         group = self.record["groups"][-1]
         self.group_close_attempted = True
-        receipt = self.call("close_group", end, instance=instance)
-        validate_group_close(receipt, instance, self.bank)
+        receipt = self.lookup_after_loss(
+            "close_group", end, lookup={"instance": instance}, instance=instance
+        )
+        validate_group_close(receipt, instance, self.bank, self.source, self.worker)
         group["closed"] = receipt
         self.instance = None
+        self.worker = None
 
     def point(self, index, point):
         end = self.c.by(POINT_S, self.work_end)
@@ -444,9 +517,31 @@ class Run:
                 correction(PROFILE, SENSOR_SERIAL, point.carrier_hz), setup_end, row["factor"]
             )
             self.gate(setup_end)
-            row.update(request=secrets.token_hex(16), dispatch_pending=True)
+            row["request"] = secrets.token_hex(16)
+            identity = {"instance": self.instance, "worker": self.worker, "request": row["request"]}
             self.journal(
-                self.source_pending, "start-pending", instance=self.instance, request=row["request"]
+                self.source_pending,
+                "reserve-pending",
+                instance=self.instance,
+                request=row["request"],
+            )
+            receipt = self.lookup_after_loss(
+                "reserve",
+                setup_end,
+                lookup=identity,
+                **identity,
+                point=asdict(point),
+                admission=reviewed,
+                duration_ms=pi.TONE_MS,
+            )
+            validate_tone(receipt, row, reviewed, self.bank, "reserved", self.source, self.worker)
+            row.update(reservation=receipt, dispatch_pending=True)
+            self.journal(
+                self.source_pending,
+                "start-pending",
+                instance=self.instance,
+                request=row["request"],
+                generation=receipt["generation"],
             )
             self.save()
             self.gate(setup_end)
@@ -465,15 +560,15 @@ class Run:
         preparation_end = self.c.by(PREPARATION_S, self.work_end)
         self.gate(preparation_end)
         p.require(
-            self.review["issued"] <= self.c.wall() < self.review["expires"],
-            "The reviewed Start authorization expired",
-        )
-        p.require(
             not consumed.exists()
             and not self.source_pending.exists()
             and not self.meter_pending.exists(),
             "Start replay or unresolved recovery state",
         )
+        with self.c.owner.runtime(preparation_end):
+            return self._execute(preparation_end, consumed)
+
+    def _execute(self, preparation_end, consumed):
         self.guard(preparation_end)
         self.output.mkdir(mode=0o700)
         create_json(consumed, {"run": self.run})
@@ -484,8 +579,11 @@ class Run:
             try:
                 self.journal(self.source_pending, "claim-pending")
                 self.claimed = True
-                claim = self.call("claim", preparation_end, lifetime_ms=RUN_S * 1000)
-                self.bank = validate_claim(claim, self.run)
+                claim = self.lookup_after_loss(
+                    "claim", preparation_end, lookup={}, lifetime_ms=RUN_S * 1000
+                )
+                self.bank = validate_claim(claim, self.run, self.source)
+                self.incarnation = claim["owner"]
                 self.record.update(bank=self.bank, claim=claim)
                 fresh = self.call(
                     "admit_matrix",
@@ -493,7 +591,7 @@ class Run:
                     points=[asdict(point) for point in POINTS],
                     duration_ms=pi.TONE_MS,
                 )
-                p._keys(fresh, (*OWNER_FIELDS, "admissions"))
+                p._keys(fresh, (*OWNER_FIELDS, *ROUTE_FIELDS, "admissions"))
                 p.require(
                     r.encoded(fresh["admissions"]) == r.encoded(self.review["admissions"]),
                     "Native matrix admission changed before meter preparation",
@@ -516,13 +614,13 @@ class Run:
                     self.record.setdefault("baseline_factor", {}),
                 )
                 self.baseline("pre", preparation_end)
-                for index, point in enumerate(POINTS):
+                for index, point in enumerate(self.points):
                     self.gate(self.work_end)
                     if index % len(BANDS) == 0:
                         self.c.emit(f"Drive group {point.drive_ma} mA")
                         self.group(point.drive_ma)
                     self.point(index, point)
-                    if index % len(BANDS) == len(BANDS) - 1:
+                    if index % len(BANDS) == len(BANDS) - 1 or index + 1 == len(self.points):
                         self.close_group(self.c.by(GROUP_S, self.work_end))
                         self.save()
                 completed = True
@@ -558,10 +656,12 @@ class Run:
                         "Group cleanup was already attempted, reconciliation is required",
                     )
                     self.close_group(self.c.by(GROUP_S, self.end))
-                terminal = self.call("release", self.c.by(pi.OP_S, self.end))
+                terminal = self.lookup_after_loss(
+                    "release", self.c.by(2 * pi.OP_S, self.end), lookup={}
+                )
                 # Retain the native receipt even when it fails validation.
                 self.record["source_cleanup"] = {"receipt": terminal, "verified": False}
-                validate_release(terminal, self.run, self.bank)
+                validate_release(terminal, self.run, self.bank, self.source)
                 self.record["source_cleanup"]["verified"] = True
                 self.source_pending.unlink()
                 sync_directory(self.source_pending.parent)
@@ -574,7 +674,7 @@ class Run:
         if self.meter is not None:
             if self.source_verified() and len(self.record["pre"]) == 3 and self.meter.can_read():
                 try:
-                    baseline_end = self.end - 5 * NS
+                    baseline_end = self.end - hp.FINAL_CLOSE_RESERVE_S * NS
                     self.meter.factor(
                         correction(PROFILE, SENSOR_SERIAL, POINTS[0].carrier_hz),
                         baseline_end,
@@ -590,11 +690,10 @@ class Run:
                 )
             try:
                 closed = self.meter.close()
-                p.require(
-                    isinstance(closed, dict) and closed.get("status") == "accepted",
-                    "Meter stream or TR3/GTL closure is unconfirmed",
-                )
-                self.record["meter_cleanup"] = closed
+                self.record["meter_cleanup"] = closed or {
+                    "status": "unverified",
+                    "error": "Meter return to local is unconfirmed",
+                }
             except BaseException as exc:
                 self.record["meter_cleanup"] = {"status": "unverified", "error": describe(exc)}
         if (
@@ -634,12 +733,58 @@ def settled(a, b):
 
 OFF_FIELDS = ("gpclk_enabled", "gpclk_busy", "gpio_input", "owned", "mux")
 OWNER_FIELDS = ("run", "boot", "device")
+ROUTE_FIELDS = ("owner", "profile", "gpio", "route_mux")
+EXTRA_OFF_FIELDS = ("other_gpio_input", "dma_idle", "pwm_idle")
 
 
-def validate_claim(value, run):
-    p._keys(value, (*OWNER_FIELDS, "bank", "service", "exclusive", "durable", *OFF_FIELDS))
+def _route_fields(source):
+    return () if source is None else ROUTE_FIELDS
+
+
+def _off_fields(source):
+    return OFF_FIELDS if source is None else (*OFF_FIELDS, *EXTRA_OFF_FIELDS)
+
+
+def owner_binding(value, source, run, incarnation=None, *, historical=False):
+    p.require(
+        isinstance(value, dict)
+        and all(
+            value.get(key) == expected
+            for key, expected in (
+                ("run", run),
+                ("boot", source["boot"]),
+                ("device", source["device"]),
+            )
+        ),
+        "Owner receipt belongs to a different run, device, or boot",
+    )
+    if not historical:
+        p.require(
+            _valid_token(value.get("owner"))
+            and (incarnation is None or value["owner"] == incarnation)
+            and value.get("profile") == source["profile"]
+            and type(value.get("gpio")) is int
+            and value["gpio"] == source["gpio"]
+            and value.get("route_mux") == source["mux"],
+            "Owner receipt belongs to a different profile, pin, or incarnation",
+        )
+
+
+def validate_claim(value, run, source=None):
+    p._keys(
+        value,
+        (
+            *OWNER_FIELDS,
+            *_route_fields(source),
+            "bank",
+            "service",
+            "exclusive",
+            "durable",
+            *_off_fields(source),
+        ),
+    )
     _service(value["service"])
-    _off(value)
+    _off(value, source)
     p.require(
         value["run"] == run and value["exclusive"] is True and value["durable"] is True,
         "Source lease or Pi-local recovery state is unconfirmed",
@@ -647,11 +792,13 @@ def validate_claim(value, run):
     return pi.bank(value["bank"])
 
 
-def validate_open(value, instance, drive, bank):
+def validate_open(value, instance, drive, bank, source=None):
     p._keys(
         value,
         (
             *OWNER_FIELDS,
+            *_route_fields(source),
+            *(("worker", "phase") if source is not None else ()),
             "instance",
             "drive_code",
             "bank",
@@ -660,11 +807,11 @@ def validate_open(value, instance, drive, bank):
             "ancillary_off",
             "lifetime_ms",
             "port",
-            *OFF_FIELDS,
+            *_off_fields(source),
         ),
     )
     _service(value["service"])
-    _off(value)
+    _off(value, source)
     p.require(
         value["instance"] == instance
         and type(value["drive_code"]) is int
@@ -673,29 +820,56 @@ def validate_open(value, instance, drive, bank):
         and value["listen"] == "127.0.0.1"
         and value["ancillary_off"] is True
         and type(value["port"]) is int
-        and 1024 <= value["port"] <= 49151
+        and 1024 <= value["port"] <= (49151 if source is None else 65535)
+        and (source is None or (value["phase"] == "ready" and _valid_token(value["worker"])))
         and type(value["lifetime_ms"]) is int
         and value["lifetime_ms"] == GROUP_LIFETIME_MS,
         "Temporary WsprryPi process, lifetime, pad state, or listener is unconfirmed",
     )
 
 
-def validate_group_close(value, instance, bank):
-    p._keys(value, (*OWNER_FIELDS, "instance", "bank", "exited", "service", *OFF_FIELDS))
+def validate_group_close(value, instance, bank, source=None, worker=None):
+    p._keys(
+        value,
+        (
+            *OWNER_FIELDS,
+            *_route_fields(source),
+            *(("worker",) if source is not None else ()),
+            "instance",
+            "bank",
+            "exited",
+            "service",
+            *_off_fields(source),
+        ),
+    )
     _service(value["service"])
-    _off(value)
+    _off(value, source)
     p.require(
         value["instance"] == instance
         and value["exited"] is True
+        and (
+            source is None
+            or (_valid_token(value["worker"]) and (worker is None or value["worker"] == worker))
+        )
         and pi.bank(value["bank"]) == bank,
         "Process exit or pad bank restoration is unconfirmed",
     )
 
 
-def validate_release(value, run, bank):
-    p._keys(value, (*OWNER_FIELDS, "bank", "released", "service", *OFF_FIELDS))
+def validate_release(value, run, bank, source=None):
+    p._keys(
+        value,
+        (
+            *OWNER_FIELDS,
+            *_route_fields(source),
+            "bank",
+            "released",
+            "service",
+            *_off_fields(source),
+        ),
+    )
     _service(value["service"])
-    _off(value)
+    _off(value, source)
     p.require(
         value["run"] == run and value["released"] is True and pi.bank(value["bank"]) == bank,
         "Source lease release or bank restoration is unconfirmed",
@@ -719,8 +893,23 @@ TONE_FIELDS = (
 )
 
 
-def validate_tone(value, row, admission, bank, phase):
-    p._keys(value, (*TONE_FIELDS, "bank"))
+def validate_tone(value, row, admission, bank, phase, source=None, worker=None):
+    extra = (
+        ()
+        if source is None
+        else (
+            "owner",
+            "profile",
+            "route_mux",
+            *EXTRA_OFF_FIELDS,
+            "worker",
+            "ceiling_ms",
+            "armed_at_ms",
+            "inactive_at_ms",
+            "reserved_until_ms",
+        )
+    )
+    p._keys(value, (*TONE_FIELDS, *extra, "bank"))
     _service(value["service"])
     p.require(
         value["instance"] == row["instance"]
@@ -732,19 +921,53 @@ def validate_tone(value, row, admission, bank, phase):
         and value["phase"] == phase
         and value["plan"] == admission["plan"]
         and type(value["gpio"]) is int
-        and value["gpio"] == 20
+        and value["gpio"] == (20 if source is None else source["gpio"])
         and value["clock"] == "GPCLK0"
         and type(value["cutoff_ms"]) is int
         and value["cutoff_ms"] == pi.TONE_MS
         and type(value["drive_code"]) is int
         and value["drive_code"] == admission["drive_code"],
-        "Owner response does not identify this bounded GPIO20 job",
+        "Owner response does not identify this bounded GPIO job",
     )
+    if source is not None:
+        reservation = row.get("reservation")
+        p.require(
+            value["worker"] == worker
+            and _valid_token(worker)
+            and value["other_gpio_input"] is True
+            and type(value["reserved_until_ms"]) is int
+            and value["reserved_until_ms"] > 0
+            and type(value["inactive_at_ms"]) is int
+            and type(value["armed_at_ms"]) is int
+            and type(value["ceiling_ms"]) is int
+            and (
+                value["armed_at_ms"] == value["ceiling_ms"] == 0
+                if phase in ("reserved", "cancelled-before-enable")
+                else 0 < value["armed_at_ms"] < value["reserved_until_ms"]
+                and value["ceiling_ms"] - value["armed_at_ms"] == pi.TONE_MS
+            )
+            and (
+                value["armed_at_ms"] <= value["inactive_at_ms"] <= value["ceiling_ms"]
+                if phase == "terminal"
+                else value["inactive_at_ms"] > 0
+                if phase == "cancelled-before-enable"
+                else value["inactive_at_ms"] == 0
+            )
+            and (
+                reservation is None
+                or (
+                    value["generation"] == reservation["generation"]
+                    and value["reserved_until_ms"] == reservation["reserved_until_ms"]
+                )
+            ),
+            "Qualification worker, reservation, or Pi deadline does not match",
+        )
     pad = pi.bank(value["bank"])
     if phase == "active":
         p.require(
             pad == {**bank, "drive": admission["drive_code"]}
-            and value["mux"] == "ALT5"
+            and value["mux"] == ("ALT5" if source is None else source["mux"])
+            and (source is None or (value["dma_idle"] is False and value["pwm_idle"] is False))
             and all(
                 value[key] is expected
                 for key, expected in (
@@ -754,12 +977,16 @@ def validate_tone(value, row, admission, bank, phase):
                     ("owned", True),
                 )
             ),
-            "GPIO20 clock or effective BCM2835 drive is unconfirmed",
+            "Selected GPIO clock or effective BCM2835 drive is unconfirmed",
         )
-    elif phase == "terminal":
-        _off(value)
+    elif phase in ("terminal", "reserved", "cancelled-before-enable"):
+        _off(value, source)
         p.require(
-            pad in (bank, {**bank, "drive": admission["drive_code"]}),
+            (
+                pad in (bank, {**bank, "drive": admission["drive_code"]})
+                if source is None
+                else pad == bank
+            ),
             "Unexpected pad bank change during tone shutdown",
         )
     return value
@@ -778,7 +1005,9 @@ class Tone:
         self.closing = threading.Event()
         self.stop_result = None
         self.stop_error = None
-        self.job = None
+        self.job = row["reservation"]["generation"]
+        self.pi_window = None
+        self.window_lock = threading.Lock()
         self.thread = threading.Thread(target=self._supervise, daemon=True)
 
     def __enter__(self):
@@ -816,7 +1045,10 @@ class Tone:
         finally:
             self.closing.set()
             try:
-                self.stop_result = self._call("stop", self.end, "terminal")
+                try:
+                    self.stop_result = self._call("stop", self.end, "terminal", independent=True)
+                except (TimeoutError, OSError):
+                    self.stop_result = self._call("status", self.end, "terminal", independent=True)
             except BaseException as exc:
                 self.stop_error = describe(exc)
 
@@ -828,15 +1060,34 @@ class Tone:
             instance=self.row["instance"],
             request=self.row["request"],
             generation=self.job,
+            worker=self.run.worker,
             **fields,
         )
         timestamp = self.clock()
         p.require(start <= timestamp <= end, "Owner receipt missed its host observation window")
-        validate_tone(receipt, self.row, self.admission, self.run.bank, phase)
-        p.require(
-            self.job is None or receipt["generation"] == self.job,
-            "Owner returned a different controller generation",
+        if (
+            operation in ("stop", "status")
+            and phase == "terminal"
+            and receipt.get("phase") == "cancelled-before-enable"
+        ):
+            phase = "cancelled-before-enable"
+        validate_tone(
+            receipt,
+            self.row,
+            self.admission,
+            self.run.bank,
+            phase,
+            self.run.source,
+            self.run.worker,
         )
+        p.require(
+            receipt["generation"] == self.job, "Owner returned a different controller generation"
+        )
+        if receipt["ceiling_ms"]:
+            window = (receipt["armed_at_ms"], receipt["ceiling_ms"])
+            with self.window_lock:
+                p.require(self.pi_window in (None, window), "Owner changed the armed Pi deadline")
+                self.pi_window = window
         return {"sent_ns": start, "received_ns": timestamp, "receipt": receipt}
 
     def _ensure_open(self, end):
@@ -856,8 +1107,7 @@ class Tone:
             duration_ms=pi.TONE_MS,
         )
         self.row["ack"] = ack
-        self.job = ack["receipt"]["generation"]
-        active = self._call("status", startup_end, "active", wait=True)
+        active = self._call("status", startup_end, "active")
         p.require(
             active["receipt"]["revision"] >= ack["receipt"]["revision"],
             "Active proof predates Start acceptance",
@@ -888,7 +1138,7 @@ class Tone:
         samples = self.row["samples"]
         previous = samples[-1]["after"] if samples else active
         samples.append(entry)
-        before = self._call("status", self.run.c.by(1, end), "active", wait=False)
+        before = self._call("status", self.run.c.by(1, end), "active")
         entry["before"] = before
         p.require(
             before["receipt"]["revision"] >= previous["receipt"]["revision"],
@@ -902,7 +1152,7 @@ class Tone:
         entry["read_finished_ns"] = self.clock()
         entry["received_utc"] = datetime.now(UTC).isoformat()
         self._ensure_open(end)
-        after = self._call("status", self.run.c.by(1, end), "active", wait=False)
+        after = self._call("status", self.run.c.by(1, end), "active")
         self._ensure_open(end)
         p.require(
             before["receipt"]["revision"] == after["receipt"]["revision"],
@@ -915,14 +1165,20 @@ class Tone:
 def main(argv=None, *, controller=None):
     parser = argparse.ArgumentParser(description=__doc__)
     actions = parser.add_subparsers(dest="action", required=True)
-    actions.add_parser("plan")
+    planning = actions.add_parser("plan")
+    planning.add_argument("--gpio", required=True, type=int, choices=tuple(pi.MUX))
     review = actions.add_parser("review")
+    review.add_argument("--gpio", required=True, type=int, choices=tuple(pi.MUX))
     review.add_argument("--fixture", required=True, type=Path)
     review.add_argument("--output", required=True, type=Path)
-    start = actions.add_parser("start")
-    start.add_argument("--review", required=True, type=Path)
-    start.add_argument("--authorize", required=True)
-    start.add_argument("--output", required=True, type=Path)
+    review.add_argument(
+        "--pilot", action="store_true", help="Authorize only the first GPIO20 point"
+    )
+    for action in ("start", "pilot"):
+        start = actions.add_parser(action)
+        start.add_argument("--review", required=True, type=Path)
+        start.add_argument("--authorize", required=True)
+        start.add_argument("--output", required=True, type=Path)
     report = actions.add_parser("report")
     report.add_argument("--capture", required=True, type=Path)
     report.add_argument("--output", required=True, type=Path)
@@ -933,13 +1189,17 @@ def main(argv=None, *, controller=None):
     )
     try:
         if args.action == "plan":
-            result = plan()
+            result = plan(args.gpio)
         elif args.action == "review":
-            result = controller.review(json_file(args.fixture), args.output)
+            result = controller.review(
+                json_file(args.fixture), args.output, args.gpio, pilot=args.pilot
+            )
             print(r.encoded(json_file(args.output)).decode(), end="")
             return int(any(row["refusal"] is not None for row in result["admissions"]))
-        elif args.action == "start":
-            result = controller.start(args.review, args.authorize, args.output)
+        elif args.action in ("start", "pilot"):
+            result = controller.start(
+                args.review, args.authorize, args.output, pilot=args.action == "pilot"
+            )
             print(
                 r.encoded(
                     {

@@ -126,6 +126,7 @@ def main(argv=None):
     plan.add_argument("profile", choices=sweep_matrix.PROFILES)
     sub.add_parser("pico-plan", help="Print the exact conducted direct-GPIO Pico plan")
     sub.add_parser("si5351-plan", help="Print the planned 56-point Pico Si5351 matrix")
+    sub.add_parser("tis-1w-plan", help="Print the 44-point Pico Si5351 TIS-1W matrix")
     review = sub.add_parser("live-review", help="Review a configured target without starting a run")
     review.add_argument("--target-id", required=True)
     review.add_argument("--point", action="append", dest="selected_ids")
@@ -158,8 +159,16 @@ def main(argv=None):
     if args.action == "pico-plan":
         print(json.dumps(sweep_matrix.pico_plan(guided_sweep.example()), indent=2))
         return
-    if args.action == "si5351-plan":
-        print(json.dumps(sweep_matrix.si5351_plan(guided_sweep.example()), indent=2))
+    if args.action in ("si5351-plan", "tis-1w-plan"):
+        base = guided_sweep.example()
+        schema = sweep_matrix.SI5351_SCHEMA
+        if args.action == "tis-1w-plan":
+            schema = sweep_matrix.TIS_1W_SCHEMA
+            base["name"] = "Pico Si5351 with Turn Island Systems TIS-1W"
+            base["measurement_notes"] = (
+                "Record the TIS-1W output path, including filtering and attenuation."
+            )
+        print(json.dumps(sweep_matrix.si5351_plan(base, schema=schema), indent=2))
         return
     if args.url is None:
         parser.error("--url is required for service actions")

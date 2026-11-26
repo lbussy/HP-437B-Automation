@@ -402,7 +402,12 @@ def main(argv=None):
             from .si5351_tone import Si5351Tone
 
             p.require(sweep_config is not None, "Pico review requires --sweep-setup")
-            pico_sweep.configuration(sweep_config)
+            pico_sweep.configuration(
+                sweep_config,
+                schema=pico_sweep.si5351_schema(sweep_config)
+                if args.pico_si5351_setup
+                else sweep_matrix.PICO_SCHEMA,
+            )
             for target_id, adapter, setup in (
                 ("pico-gpio", PicoTone, args.pico_review_setup),
                 (sweep_matrix.SI5351_TARGET, Si5351Tone, args.pico_si5351_setup),

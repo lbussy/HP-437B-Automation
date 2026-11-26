@@ -7,7 +7,7 @@ from functools import partial
 
 from . import diagnostics_physical as diagnostics
 from . import provenance as p
-from .errors import ProtocolError
+from .errors import OperationTimeout, ProtocolError
 from .instrument import Instrument
 from .reconciliation_physical import PhysicalTarget, _matching_usb
 from .sensor_correction import SENSOR_SERIAL
@@ -21,6 +21,9 @@ TARGET = PhysicalTarget(RESOURCE, ADAPTER, IDN)
 LIMIT_W = Decimal("0.1")
 BASELINE_W = Decimal("0.000005")
 FLOOR_W = Decimal("0.000001")
+LOCAL_RELEASE_S = 3
+# A late-read allowance, two worker disposals, and the graceful close allowance.
+FINAL_CLOSE_RESERVE_S = LOCAL_RELEASE_S + 4
 
 
 def zero(output, lock_root, run, cancelled):
@@ -85,6 +88,8 @@ class Meter:
         self.transport = transport(RESOURCE)
         self.instrument = Instrument(self.transport, timeout=2)
         self.opened = False
+        self._final_read_timed_out = False
+        self._timeout_cleanup = None
 
     def _limit(self, deadline):
         remaining = (deadline - self.clock()) / 10**9
@@ -157,10 +162,40 @@ class Meter:
         p.require(healthy(status), "Meter status is outside the prepared sweep conditions")
         return reading.value
 
+    def read_final(self, deadline, evidence):
+        """Read only after RF-off verification and arm terminal cleanup on a timeout."""
+        try:
+            return self.read(deadline, evidence)
+        except OperationTimeout:
+            self._final_read_timed_out = self.opened
+            raise
+
     def can_read(self):
         return self.opened and not self.instrument._uncertain
 
     def close(self):
         self.instrument.timeout = 2
-        self.instrument.close()
+        try:
+            self.instrument.close()
+        finally:
+            self.opened = False
+        if self._final_read_timed_out:
+            self._final_read_timed_out = False
+            if (self.instrument.cleanup or {}).get("status") != "accepted":
+                self._timeout_cleanup = {
+                    "status": "failed",
+                    "sequence": "USB488 REN release after final read timeout",
+                }
+                try:
+                    receipt = self.transport.release_after_final_timeout(
+                        ADAPTER, time.monotonic() + LOCAL_RELEASE_S
+                    )
+                    p.require(
+                        receipt.get("status") == "accepted", "USB488 REN release not accepted"
+                    )
+                    self._timeout_cleanup.update(status="accepted", remote_enable=receipt)
+                except Exception as exc:
+                    self._timeout_cleanup["error"] = f"{type(exc).__name__}: {exc}"
+        if self._timeout_cleanup is not None:
+            return self._timeout_cleanup
         return self.instrument.cleanup
